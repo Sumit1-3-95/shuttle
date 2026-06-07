@@ -431,4 +431,3 @@ export default function PlayerProfile({ playerId, onBack }) {
     </div>
   )
 }
-export default PlayerProfile
