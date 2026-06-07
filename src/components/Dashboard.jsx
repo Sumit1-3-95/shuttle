@@ -218,27 +218,40 @@ function LeaderRow({ player, rank, isCurrentUser, onClick }) {
   const badge = getRankBadge(rank)
 
   return (
-    <div onClick={onClick} style={{ display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background:isCurrentUser?`${level.aura}10`:'rgba(255,255,255,0.02)', border:`1px solid ${isCurrentUser?level.aura+'55':'rgba(255,255,255,0.07)'}`, borderRadius:14, cursor:'pointer', marginBottom:8, transition:'all 0.2s' }}>
-      <div style={{ width:36, height:36, borderRadius:8, background:badge.bg, border:`1px solid ${badge.border}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:14, color:badge.color }}>{badge.label}</span>
+    <div onClick={onClick} style={{
+      display:'flex', alignItems:'center', gap:10,
+      padding:'10px 12px',
+      background:isCurrentUser?`${level.aura}0e`:'rgba(255,255,255,0.02)',
+      border:`1px solid ${isCurrentUser?level.aura+'44':'rgba(255,255,255,0.07)'}`,
+      borderRadius:14, cursor:'pointer', marginBottom:8, transition:'all 0.2s',
+    }}>
+      {/* Rank */}
+      <div style={{ width:32,height:32,borderRadius:8,background:badge.bg,border:`1px solid ${badge.border}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0 }}>
+        <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:badge.color }}>{badge.label}</span>
       </div>
-      <Av id={player.id} size={44} aura={level.aura}/>
+      {/* Avatar */}
+      <Av id={player.id} size={42} aura={level.aura}/>
+      {/* Name + win bar */}
       <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4, flexWrap:'wrap' }}>
-          <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, letterSpacing:1, color:isCurrentUser?level.aura:'#f1f5f9', lineHeight:1 }}>{player.display_name}</span>
-          <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:10, background:`${level.aura}18`, color:level.aura, border:`1px solid ${level.aura}33`, fontFamily:"'Rajdhani',sans-serif" }}>{level.emoji} {level.name}</span>
-          {isCurrentUser && <span style={{ fontSize:9, color:'#4ade80', fontWeight:700, background:'rgba(74,222,128,0.12)', padding:'1px 6px', borderRadius:6, fontFamily:"'Rajdhani',sans-serif", letterSpacing:1 }}>YOU</span>}
-          {(player.current_streak||0) >= 3 && <span style={{ fontSize:11, color:'#f97316' }}>🔥{player.current_streak}</span>}
+        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:3 }}>
+          <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1,color:isCurrentUser?level.aura:'#f1f5f9',lineHeight:1 }}>{player.display_name}</span>
+          {isCurrentUser && <span style={{ fontSize:9,color:'#4ade80',fontWeight:700,background:'rgba(74,222,128,0.12)',padding:'1px 5px',borderRadius:6,fontFamily:"'Rajdhani',sans-serif",letterSpacing:1 }}>YOU</span>}
+          {(player.current_streak||0)>=3 && <span style={{ fontSize:11,color:'#f97316' }}>🔥{player.current_streak}</span>}
         </div>
-        <div style={{ height:3, background:'rgba(255,255,255,0.07)', borderRadius:2, overflow:'hidden', maxWidth:120 }}>
-          <div style={{ height:'100%', width:`${winPct}%`, background:level.aura, borderRadius:2 }}/>
+        <div style={{ height:3,background:'rgba(255,255,255,0.07)',borderRadius:2,overflow:'hidden',maxWidth:100 }}>
+          <div style={{ height:'100%',width:`${winPct}%`,background:level.aura,borderRadius:2 }}/>
+        </div>
+        {/* Level badge on its own line — clean */}
+        <div style={{ marginTop:4 }}>
+          <span style={{ fontSize:9,fontWeight:700,padding:'2px 7px',borderRadius:10,background:`${level.aura}15`,color:level.aura,border:`1px solid ${level.aura}30`,fontFamily:"'Rajdhani',sans-serif",letterSpacing:0.5 }}>{level.emoji} {level.name}</span>
         </div>
       </div>
-      <div style={{ display:'flex', gap:5, flexShrink:0 }}>
-        {[{v:player.total_wins||0,l:'W',c:'#4ade80',bg:'rgba(74,222,128,0.08)'},{v:player.total_losses||0,l:'L',c:'#f87171',bg:'rgba(248,113,113,0.08)'},{v:`${winPct}%`,l:'WIN%',c:level.aura,bg:'rgba(255,255,255,0.05)'}].map(s=>(
-          <div key={s.l} style={{ textAlign:'center', background:s.bg, borderRadius:8, padding:'5px 7px', minWidth:34 }}>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, color:s.c, lineHeight:1 }}>{s.v}</div>
-            <div style={{ fontSize:9, color:'#64748b', fontFamily:"'Rajdhani',sans-serif" }}>{s.l}</div>
+      {/* Stats chips */}
+      <div style={{ display:'flex',gap:4,flexShrink:0 }}>
+        {[{v:player.total_wins||0,l:'W',c:'#4ade80',bg:'rgba(74,222,128,0.08)'},{v:player.total_losses||0,l:'L',c:'#f87171',bg:'rgba(248,113,113,0.08)'},{v:`${winPct}%`,l:'WIN',c:level.aura,bg:'rgba(255,255,255,0.05)'}].map(s=>(
+          <div key={s.l} style={{ textAlign:'center',background:s.bg,borderRadius:7,padding:'4px 6px',minWidth:30 }}>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:s.c,lineHeight:1 }}>{s.v}</div>
+            <div style={{ fontSize:8,color:'#64748b',fontFamily:"'Rajdhani',sans-serif" }}>{s.l}</div>
           </div>
         ))}
       </div>
