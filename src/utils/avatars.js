@@ -1,39 +1,45 @@
 // src/utils/avatars.js
-// 12 custom sticker-style character avatars
-// Each player gets a deterministic character based on their player ID hash
-// Same player always gets same character across sessions
+// Each of the 8 players gets a UNIQUE character
+// Assignment is based on player's position in the leaderboard array
+// (sorted by created_at in DB — stable order)
+// Since you have 8 players and 12 characters, all are unique
 
 const CHARACTERS = [
-  { id: 'wolf',         file: '/avatars/wolf.jpg',         name: 'Dark Wolf' },
-  { id: 'kakashi',      file: '/avatars/kakashi.jpg',      name: 'Kakashi' },
-  { id: 'black-panther',file: '/avatars/black-panther.jpg',name: 'Black Panther' },
-  { id: 'luffy',        file: '/avatars/luffy.jpg',        name: 'Luffy' },
-  { id: 'itachi',       file: '/avatars/itachi.jpg',       name: 'Itachi' },
-  { id: 'deadpool',     file: '/avatars/deadpool.jpg',     name: 'Deadpool' },
-  { id: 'witcher',      file: '/avatars/witcher.jpg',      name: 'Witcher' },
-  { id: 'dr-strange',   file: '/avatars/dr-strange.jpg',   name: 'Dr. Strange' },
-  { id: 'spiderman',    file: '/avatars/spiderman.jpg',    name: 'Spider-Man' },
-  { id: 'batman',       file: '/avatars/batman.jpg',       name: 'Batman' },
-  { id: 'deadpool2',    file: '/avatars/deadpool2.jpg',    name: 'Deadpool 2' },
-  { id: 'wolverine',    file: '/avatars/wolverine.jpg',    name: 'Wolverine' },
+  { file: '/avatars/wolf.jpg',          name: 'Dark Wolf' },
+  { file: '/avatars/kakashi.jpg',       name: 'Kakashi' },
+  { file: '/avatars/black-panther.jpg', name: 'Black Panther' },
+  { file: '/avatars/luffy.jpg',         name: 'Luffy' },
+  { file: '/avatars/itachi.jpg',        name: 'Itachi' },
+  { file: '/avatars/deadpool.jpg',      name: 'Deadpool' },
+  { file: '/avatars/witcher.jpg',       name: 'Witcher' },
+  { file: '/avatars/dr-strange.jpg',    name: 'Dr. Strange' },
+  { file: '/avatars/spiderman.jpg',     name: 'Spider-Man' },
+  { file: '/avatars/batman.jpg',        name: 'Batman' },
+  { file: '/avatars/deadpool2.jpg',     name: 'Deadpool 2' },
+  { file: '/avatars/wolverine.jpg',     name: 'Wolverine' },
 ]
 
-// Stable hash — same playerId always returns same index
-function hashId(str) {
-  let h = 0
-  for (let i = 0; i < str.length; i++) {
-    h = ((h << 5) - h) + str.charCodeAt(i)
-    h |= 0
-  }
-  return Math.abs(h)
+// This map gets populated once when players are loaded
+// playerId → character index (unique per player)
+const assignedMap = {}
+
+/**
+ * Call this ONCE when you load the players array from Supabase.
+ * Assigns each player a unique character in order.
+ * players: array sorted by created_at (stable DB order)
+ */
+export function assignAvatars(players) {
+  players.forEach((player, index) => {
+    assignedMap[player.id] = index % CHARACTERS.length
+  })
 }
 
 export function getAvatarUrl(playerId) {
-  const char = CHARACTERS[hashId(playerId) % CHARACTERS.length]
-  return char.file
+  const idx = assignedMap[playerId] ?? 0
+  return CHARACTERS[idx].file
 }
 
 export function getCharacterName(playerId) {
-  const char = CHARACTERS[hashId(playerId) % CHARACTERS.length]
-  return char.name
+  const idx = assignedMap[playerId] ?? 0
+  return CHARACTERS[idx].name
 }
