@@ -212,27 +212,6 @@ export default function OnboardingScreen({ groups = [], onComplete }) {
           <div style={{ fontSize:13, color:'#475569', marginTop:6, fontWeight:600, letterSpacing:0.5 }}>Create your player profile</div>
         </div>
 
-        {/* ── Photo upload ── */}
-        <Field label="Profile Picture" error={errors.photo}>
-          <div style={{ display:'flex', alignItems:'center', gap:16 }}>
-            {/* Preview */}
-            <div
-              onClick={() => fileRef.current?.click()}
-              style={{ width:80, height:80, borderRadius:'50%', overflow:'hidden', border:`2px dashed ${errors.photo?'#f87171':'rgba(74,222,128,0.4)'}`, background:'rgba(74,222,128,0.05)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0, transition:'all 0.2s' }}>
-              {photoPreview
-                ? <img src={photoPreview} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                : <div style={{ textAlign:'center' }}><div style={{ fontSize:24 }}>📷</div><div style={{ fontSize:9, color:'#475569', marginTop:2, fontFamily:"'Rajdhani',sans-serif" }}>TAP</div></div>
-              }
-            </div>
-            <div>
-              <button onClick={() => fileRef.current?.click()} style={{ background:'rgba(74,222,128,0.1)', border:'1px solid rgba(74,222,128,0.3)', color:'#4ade80', borderRadius:20, padding:'8px 18px', cursor:'pointer', fontFamily:"'Rajdhani',sans-serif", fontSize:13, fontWeight:700, letterSpacing:0.5 }}>
-                {photoPreview ? 'Change Photo' : 'Upload Photo'}
-              </button>
-              <div style={{ fontSize:11, color:'#334155', marginTop:4, fontFamily:"'Rajdhani',sans-serif" }}>JPG, PNG · Max 5MB</div>
-            </div>
-          </div>
-          <input ref={fileRef} type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto}/>
-        </Field>
 
         {/* ── Name ── */}
         <Field label="Your Name · becomes your Player ID" error={errors.name}>
