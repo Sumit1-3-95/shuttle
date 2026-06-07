@@ -33,7 +33,7 @@ export default function LoginScreen({ onRegister }) {
       `}</style>
 
       {/* Court bg */}
-      <div style={{ position:'fixed', inset:0, overflow:'hidden', zIndex:0 }}>
+      <div style={{ position:'fixed', inset:0, overflow:'hidden', zIndex:0, pointerEvents:'none' }}>
         <svg width="100%" height="100%" viewBox="0 0 600 800" preserveAspectRatio="xMidYMid slice">
           <rect width="600" height="800" fill="#060d14"/>
           <g opacity="0.06" stroke="#4ade80" fill="none">
@@ -47,7 +47,7 @@ export default function LoginScreen({ onRegister }) {
         </svg>
       </div>
 
-      <div style={{ position:'relative', zIndex:1, background:'rgba(6,13,20,0.9)', border:'1px solid rgba(74,222,128,0.2)', borderRadius:24, padding:'40px 32px', width:'100%', maxWidth:380, boxShadow:'0 0 60px rgba(74,222,128,0.08)', animation:'slide-up 0.4s ease-out' }}>
+      <div style={{ position:'relative', zIndex:2, background:'rgba(6,13,20,0.9)', border:'1px solid rgba(74,222,128,0.2)', borderRadius:24, padding:'40px 32px', width:'100%', maxWidth:380, boxShadow:'0 0 60px rgba(74,222,128,0.08)', animation:'slide-up 0.4s ease-out' }}>
 
         {/* Logo */}
         <div style={{ textAlign:'center', marginBottom:32 }}>
