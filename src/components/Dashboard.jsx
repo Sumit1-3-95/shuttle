@@ -654,8 +654,16 @@ export default function Dashboard({ onOpenProfile }) {
             ))}
           </div>
         )}
-        {tab === 'teams' && <TeamsTab allPlayers={filteredPlayers} currentUserId={currentUser.id}/>}
-        {tab === 'games' && <GamesTab recentGames={recentGames} players={players} loading={loading}/>}
+        {tab === 'teams' && (
+  <div style={{ animation:'card-in 0.3s ease-out' }}>
+    <TeamsTab allPlayers={filteredPlayers} currentUserId={currentUser.id}/>
+  </div>
+)}
+        {tab === 'games' && (
+  <div style={{ animation:'card-in 0.3s ease-out' }}>
+    <GamesTab recentGames={recentGames} players={players} loading={loading}/>
+  </div>
+)}  
       </div>
 
       {/* Sticky FAB */}
