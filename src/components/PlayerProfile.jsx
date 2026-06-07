@@ -123,7 +123,7 @@ function Toast({ toast }) {
 }
 
 export default function PlayerProfile({ playerId, onBack }) {
-  const { player, games, allPlayers, loading, refreshing, toast, hasNewGame, refresh } = usePlayerProfile(playerId)
+  const { player, games, allPlayers, skills, loading, refreshing, toast, hasNewGame, refresh } = usePlayerProfile(playerId)
   const [tab, setTab] = useState('overview')
 
   if (loading || !player) return (
@@ -432,57 +432,98 @@ export default function PlayerProfile({ playerId, onBack }) {
               Strengths & Weaknesses
             </div>
 
-            {/* Skills section */}
-            <div className="chart-card" style={{ marginBottom:14 }}>
-              <div style={{ fontSize:13, color:'#4ade80', letterSpacing:1, fontWeight:700, marginBottom:12, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2 }}>⚡ SKILLS</div>
-              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                {['bullet_smash','killer_drop','service_streak'].map(key => {
-                  const meta = SKILLS_META[key]
-                  // count from game data — will populate once skills table has data
-                  const count = 0
-                  return (
-                    <div key={key} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:'rgba(74,222,128,0.05)', border:'1px solid rgba(74,222,128,0.15)', borderRadius:10 }}>
-                      <span style={{ fontSize:20 }}>{meta.icon}</span>
-                      <div style={{ flex:1 }}>
-                        <div style={{ fontFamily:"'Rajdhani',sans-serif", fontSize:15, fontWeight:700, color:'#f1f5f9' }}>{meta.label}</div>
-                        <div style={{ height:3, background:'rgba(255,255,255,0.07)', borderRadius:2, marginTop:4, overflow:'hidden' }}>
-                          <div style={{ height:'100%', width:`${Math.min(count*10,100)}%`, background:'#4ade80', borderRadius:2 }}/>
-                        </div>
+            {(() => {
+              // Count each skill from real data
+              const counts = {}
+              skills.forEach(s => { counts[s.skill_key] = (counts[s.skill_key]||0)+1 })
+              const maxCount = Math.max(...Object.values(counts), 1)
+              const skillKeys  = ['bullet_smash','killer_drop','service_streak']
+              const flawKeys   = ['unforced_error','nervous_net','forced_out']
+              const skillsMeta = {
+                bullet_smash:   { label:'Bullet Smash',   icon:'💥' },
+                killer_drop:    { label:'Killer Drop',    icon:'🎯' },
+                service_streak: { label:'Service Streak', icon:'🔥' },
+                unforced_error: { label:'Unforced Error', icon:'😬' },
+                nervous_net:    { label:'Nervous Net',    icon:'😰' },
+                forced_out:     { label:'Forced Out',     icon:'💨' },
+              }
+              const total = skills.length
+              return (
+                <>
+                  {/* Summary chip */}
+                  {total > 0 && (
+                    <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
+                      <div style={{ background:'rgba(74,222,128,0.1)', border:'1px solid rgba(74,222,128,0.2)', borderRadius:20, padding:'5px 14px', fontSize:12, color:'#4ade80', fontFamily:"'Rajdhani',sans-serif", fontWeight:700 }}>
+                        ⚡ {skillKeys.reduce((a,k)=>a+(counts[k]||0),0)} Skills tagged
                       </div>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#4ade80', minWidth:30, textAlign:'right' }}>{count}x</div>
+                      <div style={{ background:'rgba(248,113,113,0.1)', border:'1px solid rgba(248,113,113,0.2)', borderRadius:20, padding:'5px 14px', fontSize:12, color:'#f87171', fontFamily:"'Rajdhani',sans-serif", fontWeight:700 }}>
+                        ⚠️ {flawKeys.reduce((a,k)=>a+(counts[k]||0),0)} Flaws tagged
+                      </div>
                     </div>
-                  )
-                })}
-              </div>
-            </div>
+                  )}
 
-            {/* Flaws section */}
-            <div className="chart-card">
-              <div style={{ fontSize:13, color:'#f87171', letterSpacing:2, fontWeight:700, marginBottom:12, fontFamily:"'Bebas Neue',sans-serif" }}>⚠️ FLAWS</div>
-              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-                {['unforced_error','nervous_net','forced_out'].map(key => {
-                  const meta = SKILLS_META[key]
-                  const count = 0
-                  return (
-                    <div key={key} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:'rgba(248,113,113,0.05)', border:'1px solid rgba(248,113,113,0.15)', borderRadius:10 }}>
-                      <span style={{ fontSize:20 }}>{meta.icon}</span>
-                      <div style={{ flex:1 }}>
-                        <div style={{ fontFamily:"'Rajdhani',sans-serif", fontSize:15, fontWeight:700, color:'#f1f5f9' }}>{meta.label}</div>
-                        <div style={{ height:3, background:'rgba(255,255,255,0.07)', borderRadius:2, marginTop:4, overflow:'hidden' }}>
-                          <div style={{ height:'100%', width:`${Math.min(count*10,100)}%`, background:'#f87171', borderRadius:2 }}/>
+                  {/* Skills */}
+                  <div className="chart-card" style={{ marginBottom:14 }}>
+                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'#4ade80', letterSpacing:2, marginBottom:12 }}>⚡ SKILLS</div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                      {skillKeys.map(key => {
+                        const meta = skillsMeta[key]
+                        const count = counts[key]||0
+                        const pct = Math.min((count/Math.max(maxCount,1))*100, 100)
+                        return (
+                          <div key={key} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 12px', background:count>0?'rgba(74,222,128,0.06)':'rgba(255,255,255,0.02)', border:`1px solid ${count>0?'rgba(74,222,128,0.2)':'rgba(255,255,255,0.06)'}`, borderRadius:12, transition:'all 0.3s' }}>
+                            <span style={{ fontSize:22, flexShrink:0 }}>{meta.icon}</span>
+                            <div style={{ flex:1 }}>
+                              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
+                                <span style={{ fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700, color:count>0?'#f1f5f9':'#475569' }}>{meta.label}</span>
+                                <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:count>0?'#4ade80':'#334155', letterSpacing:1 }}>{count}x</span>
+                              </div>
+                              <div style={{ height:4, background:'rgba(255,255,255,0.07)', borderRadius:2, overflow:'hidden' }}>
+                                <div style={{ height:'100%', width:`${pct}%`, background:'linear-gradient(90deg,#4ade8077,#4ade80)', borderRadius:2, transition:'width 0.8s ease' }}/>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Flaws */}
+                  <div className="chart-card">
+                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'#f87171', letterSpacing:2, marginBottom:12 }}>⚠️ FLAWS</div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
+                      {flawKeys.map(key => {
+                        const meta = skillsMeta[key]
+                        const count = counts[key]||0
+                        const pct = Math.min((count/Math.max(maxCount,1))*100, 100)
+                        return (
+                          <div key={key} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 12px', background:count>0?'rgba(248,113,113,0.06)':'rgba(255,255,255,0.02)', border:`1px solid ${count>0?'rgba(248,113,113,0.2)':'rgba(255,255,255,0.06)'}`, borderRadius:12, transition:'all 0.3s' }}>
+                            <span style={{ fontSize:22, flexShrink:0 }}>{meta.icon}</span>
+                            <div style={{ flex:1 }}>
+                              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:5 }}>
+                                <span style={{ fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700, color:count>0?'#f1f5f9':'#475569' }}>{meta.label}</span>
+                                <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:count>0?'#f87171':'#334155', letterSpacing:1 }}>{count}x</span>
+                              </div>
+                              <div style={{ height:4, background:'rgba(255,255,255,0.07)', borderRadius:2, overflow:'hidden' }}>
+                                <div style={{ height:'100%', width:`${pct}%`, background:'linear-gradient(90deg,#f8717177,#f87171)', borderRadius:2, transition:'width 0.8s ease' }}/>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+
+                    {total === 0 && (
+                      <div style={{ marginTop:12, padding:'10px 12px', background:'rgba(255,255,255,0.03)', borderRadius:10, border:'1px solid rgba(255,255,255,0.06)', textAlign:'center' }}>
+                        <div style={{ fontSize:12, color:'#334155', fontFamily:"'Rajdhani',sans-serif" }}>
+                          No skills tagged yet — referee can add them after each game
                         </div>
                       </div>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#f87171', minWidth:30, textAlign:'right' }}>{count}x</div>
-                    </div>
-                  )
-                })}
-              </div>
-              <div style={{ marginTop:12, padding:'10px 12px', background:'rgba(255,255,255,0.03)', borderRadius:10, border:'1px solid rgba(255,255,255,0.06)' }}>
-                <div style={{ fontSize:12, color:'#475569', fontFamily:"'Rajdhani',sans-serif", textAlign:'center' }}>
-                  Skills are tracked by the referee after each game via Log Game →
-                </div>
-              </div>
-            </div>
+                    )}
+                  </div>
+                </>
+              )
+            })()}
           </div>
         )}
       </div>

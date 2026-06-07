@@ -520,7 +520,8 @@ function GamesTab({ recentGames, players, loading }) {
 export default function Dashboard({ onOpenProfile }) {
   const { currentUser, logout } = useAuth()
   const { players, recentGames, loading, refetch } = useRealtimeDashboard()
-  const [tab, setTab]             = useState('players')
+  const [tab, setTab] = useState('players')
+  const [tabLoading, setTabLoading] = useState(false)
   const [showLogGame, setShowLogGame] = useState(false)
   const [showMenu, setShowMenu]   = useState(false)
   const [newGame, setNewGame]     = useState(false)
@@ -586,7 +587,7 @@ export default function Dashboard({ onOpenProfile }) {
         <div key={i} style={{position:'fixed',zIndex:200,pointerEvents:'none',fontSize:24,top:`${20+i*18}%`,left:'-40px',animation:`shuttle-fly ${0.7+i*0.2}s ease-out ${i*0.12}s forwards`}}>🏸</div>
       ))}
 
-      {tabLoading && <TabLoader/>}
+
       {/* Hamburger menu */}
       {showMenu && (
         <HamburgerMenu
