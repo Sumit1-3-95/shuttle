@@ -117,52 +117,95 @@ function HeroCard({ player, isCurrentUser, onClick }) {
   const winPct = player.total_games > 0 ? Math.round((player.total_wins / player.total_games) * 100) : 0
 
   return (
-    <div onClick={onClick} style={{ position:'relative', borderRadius:20, overflow:'hidden', background:`linear-gradient(145deg,${level.bg},#060d14)`, border:`1.5px solid ${level.aura}55`, padding:'18px 16px 14px', marginBottom:20, cursor:'pointer', boxShadow:`0 8px 32px ${level.glow}` }}>
-      <div style={{ position:'absolute', inset:0, opacity:0.05, pointerEvents:'none' }}>
-        <svg width="100%" height="100%" viewBox="0 0 400 200" preserveAspectRatio="xMidYMid slice">
-          <line x1="200" y1="0" x2="200" y2="200" stroke="#4ade80" strokeWidth="1.5"/>
-          <line x1="0" y1="100" x2="400" y2="100" stroke="#4ade80" strokeWidth="1.5"/>
-          <rect x="20" y="10" width="360" height="180" fill="none" stroke="#4ade80" strokeWidth="1"/>
-        </svg>
-      </div>
-      <div style={{ position:'relative', zIndex:1 }}>
-        <div style={{ display:'flex', alignItems:'flex-start', gap:14, marginBottom:14 }}>
+    <div
+      onClick={onClick}
+      style={{
+        position: 'relative',
+        borderRadius: 22,
+        overflow: 'hidden',
+        background: `linear-gradient(160deg, ${level.bg} 0%, #060d14 100%)`,
+        border: `1.5px solid ${level.aura}44`,
+        padding: '0 0 16px',
+        marginBottom: 20,
+        cursor: 'pointer',
+        boxShadow: `0 8px 40px ${level.glow}, 0 0 0 1px ${level.aura}11`,
+      }}
+    >
+      {/* Court background */}
+      <svg width="100%" height="100%" viewBox="0 0 420 200" preserveAspectRatio="xMidYMid slice"
+        style={{ position:'absolute', inset:0, opacity:0.13 }} aria-hidden="true">
+        <rect width="420" height="200" fill={level.aura} opacity="0.04"/>
+        <rect x="12" y="10" width="396" height="180" fill="none" stroke={level.aura} strokeWidth="1.5" rx="2"/>
+        <line x1="44" y1="10" x2="44" y2="190" stroke={level.aura} strokeWidth="1"/>
+        <line x1="376" y1="10" x2="376" y2="190" stroke={level.aura} strokeWidth="1"/>
+        <line x1="210" y1="10" x2="210" y2="190" stroke={level.aura} strokeWidth="2"/>
+        <line x1="12" y1="64" x2="408" y2="64" stroke={level.aura} strokeWidth="1"/>
+        <line x1="12" y1="136" x2="408" y2="136" stroke={level.aura} strokeWidth="1"/>
+        <line x1="210" y1="64" x2="210" y2="136" stroke={level.aura} strokeWidth="1"/>
+        <line x1="12" y1="34" x2="408" y2="34" stroke={level.aura} strokeWidth="0.8" opacity="0.5"/>
+        <line x1="12" y1="166" x2="408" y2="166" stroke={level.aura} strokeWidth="0.8" opacity="0.5"/>
+        <circle cx="12" cy="100" r="3" fill={level.aura} opacity="0.5"/>
+        <circle cx="408" cy="100" r="3" fill={level.aura} opacity="0.5"/>
+      </svg>
+
+      <div style={{ position:'relative', zIndex:1, padding:'18px 18px 14px' }}>
+        {/* Avatar + name row */}
+        <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:16 }}>
           <div style={{ position:'relative', flexShrink:0 }}>
             <Av id={player.id} size={72} aura={level.aura} style={{ border:`3px solid ${level.aura}`, boxShadow:`0 0 24px ${level.glow}` }}/>
-            {level.tier >= 4 && <div style={{ position:'absolute', inset:-5, borderRadius:'50%', border:`1.5px solid ${level.aura}`, borderTopColor:'transparent', borderRightColor:'transparent', animation:'spin-ring 3s linear infinite' }}/>}
+            {level.tier >= 4 && (
+              <div style={{ position:'absolute', inset:-5, borderRadius:'50%', border:`1.5px solid ${level.aura}`, borderTopColor:'transparent', borderRightColor:'transparent', animation:'spin-ring 3s linear infinite' }}/>
+            )}
           </div>
-          <div style={{ flex:1 }}>
-            {isCurrentUser && <div style={{ fontSize:10, color:level.aura, letterSpacing:2, fontWeight:700, marginBottom:3, fontFamily:"'Rajdhani',sans-serif" }}>YOUR PROFILE</div>}
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:30, letterSpacing:2, color:'#ffffff', lineHeight:1, marginBottom:6 }}>{player.display_name}</div>
-            <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-              <span style={{ fontSize:12, fontWeight:700, padding:'3px 10px', borderRadius:20, background:`${level.aura}22`, color:level.aura, border:`1px solid ${level.aura}55`, fontFamily:"'Rajdhani',sans-serif", letterSpacing:0.5 }}>
+          <div style={{ flex:1, minWidth:0 }}>
+            {isCurrentUser && (
+              <div style={{ fontSize:10, color:level.aura, letterSpacing:2, fontWeight:700, fontFamily:"'Rajdhani',sans-serif", marginBottom:4 }}>YOUR PROFILE</div>
+            )}
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:30, letterSpacing:2, color:'#ffffff', lineHeight:1, marginBottom:8, textShadow:`0 0 20px ${level.aura}44` }}>
+              {player.display_name}
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap' }}>
+              <span style={{ fontSize:12, fontWeight:700, padding:'5px 12px', borderRadius:20, background:`${level.aura}25`, color:level.aura, border:`1.5px solid ${level.aura}66`, fontFamily:"'Rajdhani',sans-serif", letterSpacing:1 }}>
                 {level.emoji} {level.name}
               </span>
-              {(player.current_streak||0) >= 3 && <span style={{ fontSize:13, color:'#f97316' }}>🔥{player.current_streak}</span>}
+              {(player.current_streak||0) >= 3 && (
+                <span style={{ fontSize:12, fontWeight:700, padding:'5px 10px', borderRadius:20, background:'rgba(249,115,22,0.15)', border:'1px solid rgba(249,115,22,0.35)', color:'#fb923c', fontFamily:"'Rajdhani',sans-serif" }}>
+                  🔥 {player.current_streak} streak
+                </span>
+              )}
             </div>
           </div>
           <div style={{ textAlign:'center', flexShrink:0 }}>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:36, color:level.aura, lineHeight:1 }}>{winPct}%</div>
-            <div style={{ fontSize:11, color:'#64748b', fontFamily:"'Rajdhani',sans-serif", letterSpacing:1 }}>WIN RATE</div>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:38, color:level.aura, lineHeight:1, textShadow:`0 0 16px ${level.glow}` }}>{winPct}%</div>
+            <div style={{ fontSize:11, color:'#94a3b8', fontFamily:"'Rajdhani',sans-serif", letterSpacing:1, fontWeight:600 }}>WIN RATE</div>
           </div>
         </div>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:12 }}>
+
+        {/* Net divider */}
+        <div style={{ height:1, background:`linear-gradient(90deg,transparent,${level.aura}44,transparent)`, marginBottom:14 }}/>
+
+        {/* Stats */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, marginBottom:14 }}>
           {[
-            { label:'GAMES',  val:player.total_games||0,  color:'#60a5fa' },
-            { label:'WINS',   val:player.total_wins||0,   color:'#4ade80' },
-            { label:'LOSSES', val:player.total_losses||0, color:'#f87171' },
-            { label:'BEST',   val:`🔥${player.best_streak||0}`, color:'#f97316' },
+            { label:'GAMES',   val:player.total_games||0,  color:'#93c5fd' },
+            { label:'WINS',    val:player.total_wins||0,   color:'#4ade80' },
+            { label:'LOSSES',  val:player.total_losses||0, color:'#f87171' },
+            { label:'BEST 🔥', val:player.best_streak||0,  color:'#fb923c' },
           ].map(s => (
-            <div key={s.label} style={{ background:'rgba(0,0,0,0.4)', borderRadius:10, padding:'8px 4px', textAlign:'center' }}>
-              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:24, color:s.color, lineHeight:1 }}>{s.val}</div>
-              <div style={{ fontSize:10, color:'#64748b', fontFamily:"'Rajdhani',sans-serif", letterSpacing:1, marginTop:1 }}>{s.label}</div>
+            <div key={s.label} style={{ background:'rgba(0,0,0,0.45)', borderRadius:12, padding:'10px 4px', textAlign:'center', border:'1px solid rgba(255,255,255,0.07)' }}>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, color:s.color, lineHeight:1, textShadow:`0 0 12px ${s.color}44` }}>{s.val}</div>
+              <div style={{ fontSize:10, color:'#94a3b8', fontFamily:"'Rajdhani',sans-serif", letterSpacing:1, fontWeight:600, marginTop:2 }}>{s.label}</div>
             </div>
           ))}
         </div>
-        <div style={{ height:4, background:'rgba(255,255,255,0.07)', borderRadius:2, overflow:'hidden' }}>
-          <div style={{ height:'100%', width:`${winPct}%`, background:`linear-gradient(90deg,${level.aura}66,${level.aura})`, borderRadius:2 }}/>
+
+        {/* Win bar */}
+        <div style={{ height:5, background:'rgba(255,255,255,0.08)', borderRadius:3, overflow:'hidden', marginBottom:8 }}>
+          <div style={{ height:'100%', width:`${winPct}%`, background:`linear-gradient(90deg,${level.aura}66,${level.aura})`, borderRadius:3 }}/>
         </div>
-        <div style={{ fontSize:11, color:'#334155', textAlign:'right', marginTop:4, fontFamily:"'Rajdhani',sans-serif" }}>Tap to view full profile →</div>
+        <div style={{ fontSize:11, color:'#475569', textAlign:'right', fontFamily:"'Rajdhani',sans-serif" }}>
+          Tap to view charts & full stats →
+        </div>
       </div>
     </div>
   )
