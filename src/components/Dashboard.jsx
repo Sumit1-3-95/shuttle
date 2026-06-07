@@ -15,6 +15,32 @@ function getLevel(wins) {
   return            { name:'ROOKIE',     tier:1, aura:'#94a3b8', bg:'#111827', glow:'rgba(148,163,184,0.2)', emoji:'🎯' }
 }
 
+// ── Tab transition loader ─────────────────────────────────────
+function TabLoader() {
+  return (
+    <div style={{
+      position:'fixed', inset:0, zIndex:200,
+      background:'rgba(6,13,20,0.92)',
+      display:'flex', flexDirection:'column',
+      alignItems:'center', justifyContent:'center',
+      animation:'tab-loader-in 0.15s ease-out',
+      pointerEvents:'none',
+    }}>
+      <div style={{ position:'relative', width:60, height:60 }}>
+        {/* Shuttlecock spinning */}
+        <div style={{ fontSize:36, animation:'shuttle-spin 0.5s linear infinite', display:'inline-block' }}>🏸</div>
+        {/* Court lines */}
+        <svg style={{ position:'absolute', top:'-20px', left:'-20px', opacity:0.15 }} width="100" height="100" viewBox="0 0 100 100">
+          <rect x="5" y="5" width="90" height="90" fill="none" stroke="#4ade80" strokeWidth="1"/>
+          <line x1="50" y1="5" x2="50" y2="95" stroke="#4ade80" strokeWidth="1"/>
+          <line x1="5" y1="50" x2="95" y2="50" stroke="#4ade80" strokeWidth="1.5"/>
+        </svg>
+      </div>
+    </div>
+  )
+}
+
+
 function getRankBadge(rank) {
   if (rank === 1) return { label:'#1', color:'#ffd700', bg:'rgba(255,215,0,0.15)', border:'rgba(255,215,0,0.4)' }
   if (rank === 2) return { label:'#2', color:'#94a3b8', bg:'rgba(148,163,184,0.15)', border:'rgba(148,163,184,0.4)' }
@@ -250,8 +276,8 @@ function LeaderRow({ player, rank, isCurrentUser, onClick }) {
       <div style={{ display:'flex',gap:4,flexShrink:0 }}>
         {[{v:player.total_wins||0,l:'W',c:'#4ade80',bg:'rgba(74,222,128,0.08)'},{v:player.total_losses||0,l:'L',c:'#f87171',bg:'rgba(248,113,113,0.08)'},{v:`${winPct}%`,l:'WIN',c:level.aura,bg:'rgba(255,255,255,0.05)'}].map(s=>(
           <div key={s.l} style={{ textAlign:'center',background:s.bg,borderRadius:7,padding:'4px 6px',minWidth:30 }}>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:s.c,lineHeight:1 }}>{s.v}</div>
-            <div style={{ fontSize:8,color:'#64748b',fontFamily:"'Rajdhani',sans-serif" }}>{s.l}</div>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'#ffffff',fontWeight:700,lineHeight:1 }}>{s.v}</div>
+            <div style={{ fontSize:9,color:'#94a3b8',fontFamily:"'Rajdhani',sans-serif",fontWeight:600 }}>{s.l}</div>
           </div>
         ))}
       </div>
@@ -398,65 +424,86 @@ function GamesTab({ recentGames, players, loading }) {
       {Object.entries(groups).map(([ds,dayGames])=>{
         const {main,sub}=fmtHeader(ds)
         return (
-          <div key={ds} style={{marginBottom:24}}>
+          <div key={ds} style={{marginBottom:20}}>
+            {/* Date header — same style as section headers in other tabs */}
             <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:12}}>
               <div>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'#f1f5f9',letterSpacing:2,lineHeight:1}}>{main}</div>
-                <div style={{fontSize:12,color:'#475569',fontFamily:"'Rajdhani',sans-serif"}}>{sub}</div>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'#f1f5f9',letterSpacing:2,lineHeight:1}}>{main}</div>
+                <div style={{fontSize:11,color:'#475569',fontFamily:"'Rajdhani',sans-serif"}}>{sub}</div>
               </div>
               <div style={{flex:1,height:1,background:'rgba(255,255,255,0.06)'}}/>
-              <div style={{background:'rgba(255,255,255,0.05)',borderRadius:20,padding:'3px 12px',fontSize:12,color:'#64748b',fontFamily:"'Rajdhani',sans-serif",fontWeight:600}}>{dayGames.length} game{dayGames.length>1?'s':''}</div>
+              <div style={{background:'rgba(255,255,255,0.05)',borderRadius:20,padding:'3px 10px',fontSize:11,color:'#64748b',fontFamily:"'Rajdhani',sans-serif",fontWeight:600,whiteSpace:'nowrap'}}>{dayGames.length} game{dayGames.length>1?'s':''}</div>
             </div>
-            {dayGames.map(g=>{
+
+            {dayGames.map((g,i)=>{
               const tA=(g.team_a_ids||[]).map(id=>players.find(p=>p.id===id)).filter(Boolean)
               const tB=(g.team_b_ids||[]).map(id=>players.find(p=>p.id===id)).filter(Boolean)
               const ref=players.find(p=>p.id===g.logged_by)
               const winNames=(g.winner_team==='A'?tA:tB).map(p=>p.display_name).join(' + ')
               const time=new Date(g.played_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})
               return (
-                <div key={g.id} style={{background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:16,padding:'14px 13px',marginBottom:10}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-                    <span style={{fontSize:13,color:'#475569',fontFamily:"'Rajdhani',sans-serif",fontWeight:600}}>{time}</span>
-                    <span style={{fontSize:11,fontWeight:700,padding:'3px 10px',borderRadius:20,background:'rgba(74,222,128,0.1)',color:'#4ade80',border:'1px solid rgba(74,222,128,0.2)',fontFamily:"'Rajdhani',sans-serif",maxWidth:180,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                <div key={g.id} style={{
+                  background:'rgba(255,255,255,0.02)',
+                  border:'1px solid rgba(255,255,255,0.07)',
+                  borderRadius:14,
+                  padding:'10px 12px',
+                  marginBottom:8,
+                }}>
+                  {/* Time + winner chip — compact */}
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+                    <span style={{fontSize:12,color:'#475569',fontFamily:"'Rajdhani',sans-serif",fontWeight:600}}>{time}</span>
+                    <span style={{fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:20,background:'rgba(74,222,128,0.1)',color:'#4ade80',border:'1px solid rgba(74,222,128,0.2)',fontFamily:"'Rajdhani',sans-serif",maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                       🏆 {winNames} WON
                     </span>
                   </div>
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:12}}>
-                    <span style={{fontSize:14,fontWeight:700,color:g.winner_team==='A'?'#4ade80':'#475569',fontFamily:"'Rajdhani',sans-serif"}}>Team A</span>
-                    <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:36,color:'#f1f5f9',letterSpacing:5}}>{g.score_a} — {g.score_b}</span>
-                    <span style={{fontSize:14,fontWeight:700,color:g.winner_team==='B'?'#4ade80':'#475569',fontFamily:"'Rajdhani',sans-serif"}}>Team B</span>
+
+                  {/* Score — same size as other number displays */}
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+                    <span style={{fontSize:12,fontWeight:700,color:g.winner_team==='A'?'#4ade80':'#475569',fontFamily:"'Rajdhani',sans-serif"}}>Team A</span>
+                    <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'#f1f5f9',letterSpacing:4}}>{g.score_a} — {g.score_b}</span>
+                    <span style={{fontSize:12,fontWeight:700,color:g.winner_team==='B'?'#4ade80':'#475569',fontFamily:"'Rajdhani',sans-serif"}}>Team B</span>
                   </div>
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:10}}>
-                    <div style={{display:'flex',gap:8}}>
-                      {tA.map(p=>{const l=getLevel(p.total_wins||0);return(
-                        <div key={p.id} style={{textAlign:'center'}}>
-                          <div style={{width:36,height:36,borderRadius:'50%',overflow:'hidden',border:`2px solid ${g.winner_team==='A'?l.aura:l.aura+'44'}`,margin:'0 auto 3px',background:'#1a2a1a'}}>
-                            <img src={getAvatarUrl(p.id)} width={36} height={36} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
+
+                  {/* Players row — compact avatars same size as leaderboard */}
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+                    <div style={{display:'flex',gap:6}}>
+                      {tA.map(p=>{
+                        const lv=getLevel(p.total_wins||0)
+                        return(
+                          <div key={p.id} style={{textAlign:'center'}}>
+                            <div style={{width:30,height:30,borderRadius:'50%',overflow:'hidden',border:`1.5px solid ${g.winner_team==='A'?lv.aura:lv.aura+'44'}`,margin:'0 auto 2px',background:'#1a2a1a'}}>
+                              <img src={getAvatarUrl(p.id)} width={30} height={30} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
+                            </div>
+                            <div style={{fontSize:9,fontFamily:"'Rajdhani',sans-serif",fontWeight:700,color:g.winner_team==='A'?lv.aura:'#475569'}}>{p.display_name}</div>
+                            <div style={{fontSize:8,color:lv.aura,opacity:0.7}}>{lv.emoji}</div>
                           </div>
-                          <div style={{fontSize:10,fontFamily:"'Rajdhani',sans-serif",fontWeight:700,color:g.winner_team==='A'?l.aura:'#475569'}}>{p.display_name}</div>
-                          <div style={{fontSize:9,color:l.aura}}>{l.emoji}</div>
-                        </div>
-                      )})}
+                        )
+                      })}
                     </div>
-                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'#1e293b',letterSpacing:2}}>VS</div>
-                    <div style={{display:'flex',gap:8}}>
-                      {tB.map(p=>{const l=getLevel(p.total_wins||0);return(
-                        <div key={p.id} style={{textAlign:'center'}}>
-                          <div style={{width:36,height:36,borderRadius:'50%',overflow:'hidden',border:`2px solid ${g.winner_team==='B'?l.aura:l.aura+'44'}`,margin:'0 auto 3px',background:'#1a2a1a'}}>
-                            <img src={getAvatarUrl(p.id)} width={36} height={36} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:11,color:'#1e293b',letterSpacing:2}}>VS</div>
+                    <div style={{display:'flex',gap:6}}>
+                      {tB.map(p=>{
+                        const lv=getLevel(p.total_wins||0)
+                        return(
+                          <div key={p.id} style={{textAlign:'center'}}>
+                            <div style={{width:30,height:30,borderRadius:'50%',overflow:'hidden',border:`1.5px solid ${g.winner_team==='B'?lv.aura:lv.aura+'44'}`,margin:'0 auto 2px',background:'#1a2a1a'}}>
+                              <img src={getAvatarUrl(p.id)} width={30} height={30} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
+                            </div>
+                            <div style={{fontSize:9,fontFamily:"'Rajdhani',sans-serif",fontWeight:700,color:g.winner_team==='B'?lv.aura:'#475569'}}>{p.display_name}</div>
+                            <div style={{fontSize:8,color:lv.aura,opacity:0.7}}>{lv.emoji}</div>
                           </div>
-                          <div style={{fontSize:10,fontFamily:"'Rajdhani',sans-serif",fontWeight:700,color:g.winner_team==='B'?l.aura:'#475569'}}>{p.display_name}</div>
-                          <div style={{fontSize:9,color:l.aura}}>{l.emoji}</div>
-                        </div>
-                      )})}
+                        )
+                      })}
                     </div>
                   </div>
+
+                  {/* Referee chip — small, same as before */}
                   {ref && (
-                    <div style={{display:'inline-flex',alignItems:'center',gap:6,background:'rgba(255,255,255,0.04)',borderRadius:20,padding:'4px 10px',border:'1px solid rgba(255,255,255,0.07)'}}>
-                      <div style={{width:18,height:18,borderRadius:'50%',overflow:'hidden',background:'#1a2a1a'}}>
-                        <img src={getAvatarUrl(ref.id)} width={18} height={18} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
+                    <div style={{display:'inline-flex',alignItems:'center',gap:5,background:'rgba(255,255,255,0.04)',borderRadius:20,padding:'3px 8px',border:'1px solid rgba(255,255,255,0.07)'}}>
+                      <div style={{width:14,height:14,borderRadius:'50%',overflow:'hidden',background:'#1a2a1a',flexShrink:0}}>
+                        <img src={getAvatarUrl(ref.id)} width={14} height={14} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
                       </div>
-                      <span style={{fontSize:11,color:'#475569',fontFamily:"'Rajdhani',sans-serif",fontWeight:600}}>📋 {ref.display_name}</span>
+                      <span style={{fontSize:10,color:'#475569',fontFamily:"'Rajdhani',sans-serif",fontWeight:600}}>📋 {ref.display_name}</span>
                     </div>
                   )}
                 </div>
@@ -524,6 +571,8 @@ export default function Dashboard({ onOpenProfile }) {
         @keyframes card-in { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
         @keyframes fab-pulse { 0%,100%{box-shadow:0 4px 24px rgba(74,222,128,0.35)} 50%{box-shadow:0 4px 40px rgba(74,222,128,0.6),0 0 0 6px rgba(74,222,128,0.08)} }
         @keyframes shuttle-fly { 0%{left:-40px;opacity:1} 100%{left:110%;opacity:0} }
+        @keyframes shuttle-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        @keyframes tab-loader-in { from{opacity:0} to{opacity:1} }
         @keyframes drawer-in { from{transform:translateX(-100%)} to{transform:translateX(0)} }
         .tab-btn { background:none; border:none; color:#64748b; font-family:'Bebas Neue',sans-serif; font-size:17px; letter-spacing:2px; padding:14px 0; cursor:pointer; border-bottom:3px solid transparent; transition:all 0.2s; flex:1; text-align:center; }
         .tab-btn.active { color:#4ade80; border-bottom-color:#4ade80; }
@@ -537,6 +586,7 @@ export default function Dashboard({ onOpenProfile }) {
         <div key={i} style={{position:'fixed',zIndex:200,pointerEvents:'none',fontSize:24,top:`${20+i*18}%`,left:'-40px',animation:`shuttle-fly ${0.7+i*0.2}s ease-out ${i*0.12}s forwards`}}>🏸</div>
       ))}
 
+      {tabLoading && <TabLoader/>}
       {/* Hamburger menu */}
       {showMenu && (
         <HamburgerMenu
@@ -585,13 +635,13 @@ export default function Dashboard({ onOpenProfile }) {
 
       {/* Tabs */}
       <div style={{ position:'sticky', top: groups.length > 0 ? 106 : 54, zIndex:38, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', display:'flex', borderBottom:'2px solid rgba(255,255,255,0.05)' }}>
-        {[{id:'players',label:'⚡ PLAYERS'},{id:'teams',label:'🤝 TEAMS'},{id:'games',label:'📋 GAMES'}].map(t=>(
-          <button key={t.id} className={`tab-btn${tab===t.id?' active':''}`} onClick={()=>setTab(t.id)}>{t.label}</button>
+        {[{id:'players',label:'🏆 PLAYERS'},{id:'teams',label:'🔥 TEAMS'},{id:'games',label:'🏸 GAMES'}].map(t=>(
+          <button key={t.id} className={`tab-btn${tab===t.id?' active':''}`} onClick={()=>{ if(tab===t.id) return; setTabLoading(true); setTimeout(()=>setTabLoading(false),350); setTab(t.id) }}>{t.label}</button>
         ))}
       </div>
 
       {/* Content */}
-      <div style={{ padding:'16px 14px 100px', animation:'card-in 0.3s ease-out' }}>
+      <div style={{ padding:'14px 14px 100px', animation:'card-in 0.3s ease-out', minHeight:'calc(100vh - 160px)' }}>
         {tab === 'players' && (
           <div>
             {me && filteredPlayers.find(p=>p.id===me.id) && (
@@ -610,7 +660,7 @@ export default function Dashboard({ onOpenProfile }) {
       {/* Sticky FAB */}
       <div style={{ position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)', zIndex:50, width:'100%', maxWidth:480, padding:'10px 16px 24px', background:'linear-gradient(to top,rgba(6,13,20,1) 65%,transparent)', pointerEvents:'none' }}>
         <button onClick={() => setShowLogGame(true)} style={{ display:'block', width:'100%', background:'linear-gradient(135deg,#14532d,#166534)', border:'1.5px solid #4ade80', color:'#4ade80', fontFamily:"'Bebas Neue',sans-serif", fontSize:22, letterSpacing:5, padding:'17px', borderRadius:50, cursor:'pointer', animation:'fab-pulse 2.5s ease-in-out infinite', pointerEvents:'all' }}>
-          + LOG GAME
+          + ADD GAME
         </button>
       </div>
 

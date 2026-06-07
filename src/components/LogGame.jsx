@@ -95,21 +95,21 @@ function SkillsSheet({ playerMap, teamA, teamB, winner, onSubmit, onSkip }) {
               const pSel = sel[pid]||new Set()
               return (
                 <div key={pid} style={{ flex:1, background:'rgba(74,222,128,0.04)', border:'1px solid rgba(74,222,128,0.15)', borderRadius:12, padding:'8px 8px 6px', display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
-                  <PAv player={p} size={44}/>
+                  <PAv player={p} size={48}/>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:4, justifyContent:'center' }}>
                     {SKILLS_DEF.map(s => {
                       const on = pSel.has(s.key)
                       const isSkill = s.type==='skill'
                       return (
                         <button key={s.key} onClick={()=>toggle(pid,s.key)} style={{
-                          display:'flex', alignItems:'center', gap:2, padding:'3px 6px',
+                          display:'flex', alignItems:'center', gap:2, padding:'5px 8px',
                           borderRadius:20, border:`1px solid ${on?(isSkill?'#4ade80':'#f87171'):'rgba(255,255,255,0.1)'}`,
                           background:on?(isSkill?'rgba(74,222,128,0.2)':'rgba(248,113,113,0.2)'):'rgba(0,0,0,0.3)',
                           color:on?(isSkill?'#4ade80':'#f87171'):'#475569',
-                          fontFamily:"'Rajdhani',sans-serif", fontSize:10, fontWeight:700,
+                          fontFamily:"'Rajdhani',sans-serif", fontSize:12, fontWeight:700,
                           cursor:'pointer', transition:'all 0.15s',
                         }}>
-                          <span style={{fontSize:10}}>{s.icon}</span>
+                          <span style={{fontSize:12}}>{s.icon}</span>
                           <span>{s.label}</span>
                         </button>
                       )
@@ -137,21 +137,21 @@ function SkillsSheet({ playerMap, teamA, teamB, winner, onSubmit, onSkip }) {
               const pSel = sel[pid]||new Set()
               return (
                 <div key={pid} style={{ flex:1, background:'rgba(96,165,250,0.04)', border:'1px solid rgba(96,165,250,0.15)', borderRadius:12, padding:'8px 8px 6px', display:'flex', flexDirection:'column', alignItems:'center', gap:5 }}>
-                  <PAv player={p} size={44}/>
+                  <PAv player={p} size={48}/>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:4, justifyContent:'center' }}>
                     {SKILLS_DEF.map(s => {
                       const on = pSel.has(s.key)
                       const isSkill = s.type==='skill'
                       return (
                         <button key={s.key} onClick={()=>toggle(pid,s.key)} style={{
-                          display:'flex', alignItems:'center', gap:2, padding:'3px 6px',
+                          display:'flex', alignItems:'center', gap:2, padding:'5px 8px',
                           borderRadius:20, border:`1px solid ${on?(isSkill?'#4ade80':'#f87171'):'rgba(255,255,255,0.1)'}`,
                           background:on?(isSkill?'rgba(74,222,128,0.2)':'rgba(248,113,113,0.2)'):'rgba(0,0,0,0.3)',
                           color:on?(isSkill?'#4ade80':'#f87171'):'#475569',
-                          fontFamily:"'Rajdhani',sans-serif", fontSize:10, fontWeight:700,
+                          fontFamily:"'Rajdhani',sans-serif", fontSize:12, fontWeight:700,
                           cursor:'pointer', transition:'all 0.15s',
                         }}>
-                          <span style={{fontSize:10}}>{s.icon}</span>
+                          <span style={{fontSize:12}}>{s.icon}</span>
                           <span>{s.label}</span>
                         </button>
                       )
@@ -273,7 +273,7 @@ export default function LogGame({ onClose, onGameLogged }) {
         .pc.d{opacity:0.2;cursor:not-allowed;pointer-events:none;}
         .sb{background:rgba(0,0,0,0.7);border:2px solid rgba(255,255,255,0.15);color:#f1f5f9;font-family:'Bebas Neue',sans-serif;font-size:64px;text-align:center;border-radius:16px;width:100px;outline:none;padding:6px 0;-webkit-appearance:none;transition:border 0.2s;}
         .sb:focus{border-color:#4ade80;box-shadow:0 0 20px rgba(74,222,128,0.25);}
-        .cb{width:100%;background:linear-gradient(135deg,#14532d,#166534);border:1.5px solid #4ade80;color:#4ade80;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:3px;padding:16px;border-radius:50px;cursor:pointer;transition:all 0.2s;}
+        .cb{width:100%;background:linear-gradient(135deg,#14532d,#166534);border:1.5px solid #4ade80;color:#4ade80;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;padding:14px;border-radius:50px;cursor:pointer;transition:all 0.2s;}
         .cb:disabled{opacity:0.35;cursor:not-allowed;}
         .tt{flex:1;padding:12px;border-radius:12px;border:1.5px solid rgba(255,255,255,0.1);background:rgba(0,0,0,0.45);color:#475569;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;cursor:pointer;transition:all 0.2s;}
         .tt.a{background:rgba(74,222,128,0.15);border-color:#4ade80;color:#4ade80;}
@@ -439,7 +439,7 @@ export default function LogGame({ onClose, onGameLogged }) {
             <div style={{display:'flex',gap:10}}>
               <button onClick={()=>setStep(1)} style={{flex:1,background:'transparent',border:'1px solid #1e293b',color:'#475569',borderRadius:50,padding:14,cursor:'pointer',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:2}}>← BACK</button>
               <button className="cb" style={{flex:2}} disabled={!scoreA||!scoreB||loading} onClick={handleSubmit}>
-                {loading?'SAVING...':'DECLARE WINNER 🏆'}
+                {loading?'SAVING...':'DECLARE WINNER'}
               </button>
             </div>
           </div>
