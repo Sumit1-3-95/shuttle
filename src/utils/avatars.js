@@ -1,28 +1,39 @@
 // src/utils/avatars.js
-// Deterministic anime avatar assignment — same player always gets same character
-// Uses DiceBear anime API (free, no auth, SVG based)
+// 12 custom sticker-style character avatars
+// Each player gets a deterministic character based on their player ID hash
+// Same player always gets same character across sessions
 
-const ANIME_POOL = [
-  // Seeds that produce distinct chibi anime characters via DiceBear
-  'naruto-uzumaki', 'monkey-luffy', 'goku-saiyan', 'ichigo-kurosaki',
-  'edward-elric', 'eren-yeager', 'levi-ackerman', 'killua-zoldyck',
-  'rem-rezero', 'zero-two', 'hinata-shoyo', 'tanjiro-kamado',
+const CHARACTERS = [
+  { id: 'wolf',         file: '/avatars/wolf.jpg',         name: 'Dark Wolf' },
+  { id: 'kakashi',      file: '/avatars/kakashi.jpg',      name: 'Kakashi' },
+  { id: 'black-panther',file: '/avatars/black-panther.jpg',name: 'Black Panther' },
+  { id: 'luffy',        file: '/avatars/luffy.jpg',        name: 'Luffy' },
+  { id: 'itachi',       file: '/avatars/itachi.jpg',       name: 'Itachi' },
+  { id: 'deadpool',     file: '/avatars/deadpool.jpg',     name: 'Deadpool' },
+  { id: 'witcher',      file: '/avatars/witcher.jpg',      name: 'Witcher' },
+  { id: 'dr-strange',   file: '/avatars/dr-strange.jpg',   name: 'Dr. Strange' },
+  { id: 'spiderman',    file: '/avatars/spiderman.jpg',    name: 'Spider-Man' },
+  { id: 'batman',       file: '/avatars/batman.jpg',       name: 'Batman' },
+  { id: 'deadpool2',    file: '/avatars/deadpool2.jpg',    name: 'Deadpool 2' },
+  { id: 'wolverine',    file: '/avatars/wolverine.jpg',    name: 'Wolverine' },
 ]
 
-// Returns a stable DiceBear avatar URL for a player
-export function getAvatarUrl(playerId, style = 'avataaars') {
-  // Hash playerId to pick a seed
-  let hash = 0
-  for (let i = 0; i < playerId.length; i++) {
-    hash = ((hash << 5) - hash) + playerId.charCodeAt(i)
-    hash |= 0
+// Stable hash — same playerId always returns same index
+function hashId(str) {
+  let h = 0
+  for (let i = 0; i < str.length; i++) {
+    h = ((h << 5) - h) + str.charCodeAt(i)
+    h |= 0
   }
-  const seed = ANIME_POOL[Math.abs(hash) % ANIME_POOL.length]
-  // DiceBear v9 — avataaars style looks anime/cartoon
-  return `https://api.dicebear.com/9.x/avataaars/svg?seed=${seed}&backgroundColor=b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf&backgroundType=gradientLinear`
+  return Math.abs(h)
 }
 
-// Fallback — initials avatar
-export function getInitialsAvatar(name) {
-  return name?.charAt(0)?.toUpperCase() || '?'
+export function getAvatarUrl(playerId) {
+  const char = CHARACTERS[hashId(playerId) % CHARACTERS.length]
+  return char.file
+}
+
+export function getCharacterName(playerId) {
+  const char = CHARACTERS[hashId(playerId) % CHARACTERS.length]
+  return char.name
 }
