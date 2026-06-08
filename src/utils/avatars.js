@@ -1,4 +1,4 @@
-// src/utils/avatars.js — v4 with new character images
+// src/utils/avatars.js — v5 with bulletproof assignment
 const CHARACTERS = [
   { file: '/avatars/goku2.jpg',      name: 'Goku'       },
   { file: '/avatars/batman2.jpg',    name: 'Batman'     },
@@ -15,7 +15,9 @@ const CHARACTERS = [
   { file: '/avatars/wolverine3.jpg', name: 'Wolverine 2'},
 ]
 
+// Stable hash — same ID always returns same index
 function hashId(str) {
+  if (!str) return 0
   let h = 0
   for (let i = 0; i < str.length; i++) {
     h = ((h << 5) - h) + str.charCodeAt(i)
@@ -24,10 +26,32 @@ function hashId(str) {
   return Math.abs(h)
 }
 
+// Stable per-player assignment map
+// Populated once when players load via assignAvatars()
+const assignedMap = {}
+
+export function assignAvatars(players) {
+  if (!players) return
+  players.forEach((player, index) => {
+    // Use index-based for existing players (stable order)
+    // Use hash for new players not in the list
+    assignedMap[player.id] = index % CHARACTERS.length
+  })
+}
+
 export function getAvatarUrl(playerId) {
-  return CHARACTERS[hashId(playerId) % CHARACTERS.length].file
+  if (!playerId) return CHARACTERS[0].file
+  // If in assigned map use that, otherwise fall back to hash
+  const idx = assignedMap[playerId] !== undefined
+    ? assignedMap[playerId]
+    : hashId(playerId) % CHARACTERS.length
+  return CHARACTERS[idx].file
 }
 
 export function getCharacterName(playerId) {
-  return CHARACTERS[hashId(playerId) % CHARACTERS.length].name
+  if (!playerId) return CHARACTERS[0].name
+  const idx = assignedMap[playerId] !== undefined
+    ? assignedMap[playerId]
+    : hashId(playerId) % CHARACTERS.length
+  return CHARACTERS[idx].name
 }
