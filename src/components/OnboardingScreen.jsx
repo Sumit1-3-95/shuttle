@@ -83,7 +83,6 @@ export default function OnboardingScreen({ groups = [], onComplete }) {
     if (!name.trim() || name.trim().length < 2) e.name       = 'Name must be at least 2 characters'
     if (!/^\d{4}$/.test(pin))                   e.pin        = 'PIN must be exactly 4 digits'
     if (pin !== pinConfirm)                      e.pinConfirm = 'PINs do not match'
-    if (!photoFile)                              e.photo      = 'Please upload a profile picture'
     if (!skillLevel)                             e.skillLevel = 'Select your skill level'
     if (!selGroups.length)                       e.groups     = 'Select at least one court'
     return e
