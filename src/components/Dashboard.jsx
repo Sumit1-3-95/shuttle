@@ -44,7 +44,7 @@ function TabLoader() {
 }
 
 // ── Hamburger menu ─────────────────────────────────────────────
-function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated }) {
+function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup }) {
   const level = getLevel(currentPlayer?.total_wins || 0)
   const [showCreate, setShowCreate] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
@@ -126,6 +126,7 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
           <div style={{ height:1, background:'rgba(255,255,255,0.05)', margin:'4px 16px 12px' }}/>
 
           {/* Create group */}
+          {(currentUser.isAdmin || currentUser.role === 'admin') && (
           <div style={{ padding:'0 16px' }}>
             <div style={{ fontSize:10, color:'#475569', letterSpacing:2, textTransform:'uppercase', fontWeight:700, marginBottom:10, fontFamily:"'Rajdhani',sans-serif" }}>Manage</div>
             {!showCreate ? (
@@ -151,6 +152,7 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
               </div>
             )}
           </div>
+          )}
         </div>
 
         {/* Logout */}
@@ -359,27 +361,86 @@ function TeamsTab({ allPlayers, currentUserId }) {
 
 // ── Games tab ──────────────────────────────────────────────────
 function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEditGame }) {
+  const [filter, setFilter] = useState('all')
+
+  function getFilteredGames() {
+    if (filter === 'all') return recentGames
+    const now = new Date()
+    return recentGames.filter(g => {
+      const d = new Date(g.played_at)
+      if (filter === 'today') {
+        return d.toDateString() === now.toDateString()
+      }
+      if (filter === 'week') {
+        // Week starting Monday
+        const mon = new Date(now)
+        mon.setDate(now.getDate() - ((now.getDay() + 6) % 7))
+        mon.setHours(0,0,0,0)
+        return d >= mon
+      }
+      if (filter === 'month') {
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+      }
+      return true
+    })
+  }
+
+  const filtered = getFilteredGames()
+
+  const FILTERS = [
+    { id:'all',   label:'All' },
+    { id:'today', label:'Today' },
+    { id:'week',  label:'This Week' },
+    { id:'month', label:'This Month' },
+  ]
+
   if (loading) return <div style={{textAlign:'center',color:'#475569',padding:40,fontFamily:"'Rajdhani',sans-serif",fontSize:16}}>Loading...</div>
-  if (!recentGames.length) return (
-    <div style={{textAlign:'center',color:'#334155',padding:60}}>
-      <div style={{fontSize:48,marginBottom:12}}>🏸</div>
-      <div style={{fontSize:16,fontFamily:"'Rajdhani',sans-serif"}}>No games yet — tap ADD GAME!</div>
-    </div>
-  )
+
   const groups = {}
-  recentGames.forEach(g => {
+  filtered.forEach(g => {
     const key = new Date(g.played_at).toDateString()
     if (!groups[key]) groups[key] = []
     groups[key].push(g)
   })
+
   function fmtHeader(ds) {
     const d=new Date(ds),t=new Date(),y=new Date(t); y.setDate(t.getDate()-1)
     if(d.toDateString()===t.toDateString()) return {main:'Today',sub:d.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}
     if(d.toDateString()===y.toDateString()) return {main:'Yesterday',sub:d.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})}
     return {main:d.toLocaleDateString('en-IN',{weekday:'long'}),sub:d.toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'})}
   }
+
   return (
     <div>
+      {/* Filter chips */}
+      <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
+        {FILTERS.map(f => (
+          <button key={f.id} onClick={() => setFilter(f.id)} style={{
+            padding:'7px 14px', borderRadius:20, cursor:'pointer', transition:'all 0.15s',
+            border:`1px solid ${filter===f.id?'rgba(74,222,128,0.5)':'rgba(255,255,255,0.1)'}`,
+            background: filter===f.id?'rgba(74,222,128,0.15)':'rgba(255,255,255,0.03)',
+            color: filter===f.id?'#4ade80':'#64748b',
+            fontFamily:"'Rajdhani',sans-serif", fontSize:13, fontWeight:700, letterSpacing:0.5,
+          }}>{f.label}</button>
+        ))}
+        {filter !== 'all' && (
+          <div style={{ display:'flex', alignItems:'center', marginLeft:'auto', fontSize:12, color:'#475569', fontFamily:"'Rajdhani',sans-serif" }}>
+            {filtered.length} game{filtered.length!==1?'s':''} found
+          </div>
+        )}
+      </div>
+
+      {/* Empty state */}
+      {!filtered.length && (
+        <div style={{textAlign:'center',color:'#334155',padding:48}}>
+          <div style={{fontSize:40,marginBottom:12}}>🏸</div>
+          <div style={{fontSize:15,fontFamily:"'Rajdhani',sans-serif",color:'#475569'}}>
+            {filter==='today'?'No games today yet':filter==='week'?'No games this week':filter==='month'?'No games this month':'No games yet'}
+          </div>
+          {filter!=='all' && <div style={{fontSize:12,color:'#334155',marginTop:6,fontFamily:"'Rajdhani',sans-serif",cursor:'pointer',color:'#4ade80'}} onClick={()=>setFilter('all')}>View all games →</div>}
+        </div>
+      )}
+
       {Object.entries(groups).map(([ds,dayGames])=>{
         const {main,sub}=fmtHeader(ds)
         return (
@@ -434,15 +495,10 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
                       )})}
                     </div>
                   </div>
-                  {/* Admin controls */}
                   {isAdmin && (
-                    <div style={{ display:'flex', gap:6, marginBottom:6 }}>
-                      <button onClick={() => onEditGame && onEditGame(g)} style={{ display:'flex', alignItems:'center', gap:4, padding:'3px 8px', background:'rgba(96,165,250,0.1)', border:'1px solid rgba(96,165,250,0.25)', borderRadius:20, cursor:'pointer', color:'#60a5fa', fontFamily:"'Rajdhani',sans-serif", fontSize:11, fontWeight:700 }}>
-                        ✏️ Edit Score
-                      </button>
-                      <button onClick={() => onDeleteGame && onDeleteGame(g.id)} style={{ display:'flex', alignItems:'center', gap:4, padding:'3px 8px', background:'rgba(248,113,113,0.1)', border:'1px solid rgba(248,113,113,0.25)', borderRadius:20, cursor:'pointer', color:'#f87171', fontFamily:"'Rajdhani',sans-serif", fontSize:11, fontWeight:700 }}>
-                        🗑 Delete
-                      </button>
+                    <div style={{display:'flex',gap:6,marginBottom:6}}>
+                      <button onClick={()=>onEditGame&&onEditGame(g)} style={{display:'flex',alignItems:'center',gap:4,padding:'3px 8px',background:'rgba(96,165,250,0.1)',border:'1px solid rgba(96,165,250,0.25)',borderRadius:20,cursor:'pointer',color:'#60a5fa',fontFamily:"'Rajdhani',sans-serif",fontSize:11,fontWeight:700}}>✏️ Edit Score</button>
+                      <button onClick={()=>onDeleteGame&&onDeleteGame(g.id)} style={{display:'flex',alignItems:'center',gap:4,padding:'3px 8px',background:'rgba(248,113,113,0.1)',border:'1px solid rgba(248,113,113,0.25)',borderRadius:20,cursor:'pointer',color:'#f87171',fontFamily:"'Rajdhani',sans-serif",fontSize:11,fontWeight:700}}>🗑 Delete</button>
                     </div>
                   )}
                   {ref && (
@@ -463,6 +519,209 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
   )
 }
 
+
+// ── League Tab ─────────────────────────────────────────────────
+function LeagueTab({ players }) {
+  const [activeRule, setActiveRule] = useState(null)
+
+  const START = new Date('2026-06-15')
+  const END   = new Date('2026-06-30')
+  const FINAL = new Date('2026-07-04')
+  const now   = new Date()
+
+  const totalDays = 15
+  const daysElapsed = Math.max(0, Math.min(totalDays, Math.floor((now - START) / (1000*60*60*24))))
+  const progress = Math.round((daysElapsed / totalDays) * 100)
+  const hasStarted = now >= START
+  const hasEnded   = now >= END
+
+  const msToStart = START - now
+  const days  = Math.floor(msToStart / (1000*60*60*24))
+  const hours = Math.floor((msToStart % (1000*60*60*24)) / (1000*60*60))
+
+  const RULES = [
+    { icon:'📅', title:'15-Day Sprint', desc:'League runs 15 June → 30 June. Every game counts toward your ELO rating.' },
+    { icon:'🎯', title:'ELO Rating System', desc:'Win vs high-rated opponents = big ELO gain. Lose to low-rated = big drop. Starting ELO: 1000 for all.' },
+    { icon:'🤝', title:'Play Everyone', desc:'Partner with all other players during the league. Versatility is rewarded.' },
+    { icon:'📈', title:'Wins + Volume Matter', desc:'Every match awards points. More games = more chances to climb.' },
+    { icon:'⚔️', title:'Upset Bonus', desc:'Beat a higher-rated team? You earn extra ELO. The bigger the upset, the bigger the reward.' },
+    { icon:'😬', title:'Upset Penalty', desc:'Lose to a lower-rated team? You drop more ELO. Protect your ranking!' },
+    { icon:'🏅', title:'Top 4 Advance', desc:'After 30 June, top 4 players by ELO go to the Finals weekend.' },
+    { icon:'🎾', title:'Finals Format', desc:'Semifinals: #1 + #4 vs #2 + #3. Best of 3 sets. Winners claim the prize.' },
+    { icon:'🏆', title:'The Prize', desc:'Winners each receive a brand-new Yonex Racquet. The glory is priceless.' },
+  ]
+
+  return (
+    <div style={{ fontFamily:"'Rajdhani',sans-serif", color:'#f1f5f9' }}>
+
+      {/* Prize hero */}
+      <div style={{ position:'relative', borderRadius:20, overflow:'hidden', marginBottom:20, background:'linear-gradient(160deg,#1a0f00,#060d14)', border:'1.5px solid rgba(255,215,0,0.3)', padding:'24px 20px 20px' }}>
+        {/* Subtle court lines */}
+        <svg width="100%" height="100%" viewBox="0 0 420 180" preserveAspectRatio="xMidYMid slice"
+          style={{ position:'absolute', inset:0, opacity:0.08 }} aria-hidden="true">
+          <rect x="12" y="10" width="396" height="160" fill="none" stroke="#ffd700" strokeWidth="1.5"/>
+          <line x1="210" y1="10" x2="210" y2="170" stroke="#ffd700" strokeWidth="2"/>
+          <line x1="12" y1="85" x2="408" y2="85" stroke="#ffd700" strokeWidth="1.5"/>
+          <line x1="12" y1="50" x2="408" y2="50" stroke="#ffd700" strokeWidth="0.8" opacity="0.5"/>
+          <line x1="12" y1="130" x2="408" y2="130" stroke="#ffd700" strokeWidth="0.8" opacity="0.5"/>
+        </svg>
+        <div style={{ position:'relative', zIndex:1 }}>
+          <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:16 }}>
+            <div>
+              <div style={{ fontSize:11, color:'rgba(255,215,0,0.7)', letterSpacing:3, fontWeight:700, marginBottom:6 }}>SHUTTLE LEAGUE 2026</div>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:34, color:'#ffd700', letterSpacing:3, lineHeight:1, textShadow:'0 0 30px rgba(255,215,0,0.5)', marginBottom:6 }}>
+                JUNE CHAMPIONSHIP
+              </div>
+              <div style={{ fontSize:13, color:'#94a3b8', fontWeight:600 }}>
+                15 Jun → 30 Jun · Finals 4 Jul
+              </div>
+            </div>
+            {/* Racquet icon */}
+            <div style={{ fontSize:52, lineHeight:1, filter:'drop-shadow(0 0 12px rgba(255,215,0,0.6))' }}>🏸</div>
+          </div>
+
+          {/* Prize banner */}
+          <div style={{ background:'rgba(255,215,0,0.12)', border:'1.5px solid rgba(255,215,0,0.35)', borderRadius:12, padding:'10px 16px', marginBottom:16, display:'flex', alignItems:'center', gap:12 }}>
+            <span style={{ fontSize:28 }}>🏆</span>
+            <div>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'#ffd700', letterSpacing:2, lineHeight:1 }}>PRIZE: YONEX RACQUET</div>
+              <div style={{ fontSize:12, color:'rgba(255,215,0,0.6)', marginTop:2 }}>Awarded to both players of the winning Finals team</div>
+            </div>
+          </div>
+
+          {/* Countdown or Progress */}
+          {!hasStarted ? (
+            <div style={{ background:'rgba(0,0,0,0.4)', borderRadius:12, padding:'12px 16px' }}>
+              <div style={{ fontSize:11, color:'#64748b', letterSpacing:2, marginBottom:6 }}>LEAGUE STARTS IN</div>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:32, color:'#ffd700', letterSpacing:3, lineHeight:1 }}>
+                {days}d {hours}h
+              </div>
+              <div style={{ fontSize:12, color:'#475569', marginTop:4 }}>Monday, 15 June 2026</div>
+            </div>
+          ) : hasEnded ? (
+            <div style={{ background:'rgba(74,222,128,0.1)', borderRadius:12, padding:'12px 16px', border:'1px solid rgba(74,222,128,0.2)' }}>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:'#4ade80', letterSpacing:2 }}>LEAGUE COMPLETE — FINALS ON 4 JUL 🏆</div>
+            </div>
+          ) : (
+            <div>
+              <div style={{ display:'flex', justifyContent:'space-between', marginBottom:6 }}>
+                <span style={{ fontSize:11, color:'#64748b', letterSpacing:1 }}>LEAGUE PROGRESS</span>
+                <span style={{ fontSize:11, color:'#ffd700', fontWeight:700 }}>Day {daysElapsed} of {totalDays}</span>
+              </div>
+              <div style={{ height:8, background:'rgba(255,255,255,0.08)', borderRadius:4, overflow:'hidden' }}>
+                <div style={{ height:'100%', width:`${progress}%`, background:'linear-gradient(90deg,#f97316,#ffd700)', borderRadius:4, transition:'width 1s' }}/>
+              </div>
+              <div style={{ display:'flex', justifyContent:'space-between', marginTop:4 }}>
+                <span style={{ fontSize:10, color:'#334155' }}>15 Jun</span>
+                <span style={{ fontSize:10, color:'#334155' }}>30 Jun</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Format timeline */}
+      <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:16, padding:'16px 14px', marginBottom:20 }}>
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'#f1f5f9', letterSpacing:2, marginBottom:14 }}>📋 LEAGUE FORMAT</div>
+        <div style={{ display:'flex', alignItems:'stretch', gap:0 }}>
+          {[
+            { date:'15 Jun', label:'League Starts', color:'#4ade80', icon:'🚀' },
+            { date:'30 Jun', label:'League Ends', color:'#fb923c', icon:'🏁' },
+            { date:'4 Jul', label:'Finals Day', color:'#ffd700', icon:'🏆' },
+          ].map((s, i) => (
+            <div key={i} style={{ flex:1, textAlign:'center', position:'relative' }}>
+              {i < 2 && <div style={{ position:'absolute', top:18, left:'50%', right:'-50%', height:2, background:'rgba(255,255,255,0.08)', zIndex:0 }}/>}
+              <div style={{ position:'relative', zIndex:1 }}>
+                <div style={{ width:36, height:36, borderRadius:'50%', background:`${s.color}20`, border:`2px solid ${s.color}`, margin:'0 auto 8px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16 }}>{s.icon}</div>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:14, color:s.color, letterSpacing:1, lineHeight:1 }}>{s.date}</div>
+                <div style={{ fontSize:10, color:'#64748b', marginTop:3, fontFamily:"'Rajdhani',sans-serif", fontWeight:600 }}>{s.label}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Rules — tap to expand */}
+      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'#f1f5f9', letterSpacing:2, marginBottom:12 }}>📖 LEAGUE RULES</div>
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+        {RULES.map((r, i) => (
+          <div key={i}
+            onClick={() => setActiveRule(activeRule===i ? null : i)}
+            style={{ background:activeRule===i?'rgba(255,215,0,0.06)':'rgba(255,255,255,0.02)', border:`1px solid ${activeRule===i?'rgba(255,215,0,0.25)':'rgba(255,255,255,0.07)'}`, borderRadius:12, padding:'12px 14px', cursor:'pointer', transition:'all 0.2s' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <span style={{ fontSize:20, flexShrink:0 }}>{r.icon}</span>
+              <div style={{ flex:1 }}>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:activeRule===i?'#ffd700':'#f1f5f9', letterSpacing:1, lineHeight:1 }}>{r.title}</div>
+                {activeRule===i && (
+                  <div style={{ fontSize:13, color:'#94a3b8', marginTop:6, fontFamily:"'Rajdhani',sans-serif", lineHeight:1.4 }}>{r.desc}</div>
+                )}
+              </div>
+              <span style={{ fontSize:14, color:'#334155', transform:activeRule===i?'rotate(180deg)':'rotate(0)', transition:'transform 0.2s', flexShrink:0 }}>▾</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* ELO explainer */}
+      <div style={{ marginTop:20, background:'rgba(96,165,250,0.06)', border:'1px solid rgba(96,165,250,0.2)', borderRadius:16, padding:'16px 14px' }}>
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:'#60a5fa', letterSpacing:2, marginBottom:10 }}>⚡ HOW ELO WORKS</div>
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8 }}>
+          {[
+            { scenario:'Beat higher-rated team', result:'+25 to +40 pts', color:'#4ade80', bg:'rgba(74,222,128,0.08)' },
+            { scenario:'Beat same-rated team',   result:'+15 to +20 pts', color:'#4ade80', bg:'rgba(74,222,128,0.06)' },
+            { scenario:'Lose to lower-rated',    result:'-25 to -40 pts', color:'#f87171', bg:'rgba(248,113,113,0.08)' },
+            { scenario:'Lose to higher-rated',   result:'-5 to -10 pts',  color:'#fb923c', bg:'rgba(249,115,22,0.08)' },
+          ].map((e,i) => (
+            <div key={i} style={{ background:e.bg, borderRadius:10, padding:'10px 10px' }}>
+              <div style={{ fontSize:11, color:'#64748b', fontFamily:"'Rajdhani',sans-serif", marginBottom:4, lineHeight:1.3 }}>{e.scenario}</div>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:e.color, letterSpacing:1 }}>{e.result}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ fontSize:11, color:'#334155', marginTop:10, fontFamily:"'Rajdhani',sans-serif", textAlign:'center' }}>All players start at ELO 1000</div>
+      </div>
+
+      {/* Finals structure */}
+      <div style={{ marginTop:16, background:'rgba(255,215,0,0.05)', border:'1px solid rgba(255,215,0,0.2)', borderRadius:16, padding:'16px 14px' }}>
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:'#ffd700', letterSpacing:2, marginBottom:12 }}>🏅 FINALS STRUCTURE</div>
+        <div style={{ display:'flex', gap:10, marginBottom:12 }}>
+          {[
+            { label:'Semi 1', teams:'#1 + #4', color:'#ffd700', bg:'rgba(255,215,0,0.1)' },
+            { label:'Semi 2', teams:'#2 + #3', color:'#c084fc', bg:'rgba(192,132,252,0.1)' },
+          ].map((s,i) => (
+            <div key={i} style={{ flex:1, background:s.bg, border:`1px solid ${s.color}33`, borderRadius:12, padding:'10px 10px', textAlign:'center' }}>
+              <div style={{ fontSize:10, color:'#475569', letterSpacing:1, marginBottom:4, fontFamily:"'Rajdhani',sans-serif" }}>{s.label}</div>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:s.color, letterSpacing:1, lineHeight:1 }}>{s.teams}</div>
+              <div style={{ fontSize:10, color:'#475569', marginTop:3, fontFamily:"'Rajdhani',sans-serif" }}>Best of 3 sets</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ textAlign:'center', padding:'10px', background:'rgba(255,215,0,0.08)', borderRadius:10, border:'1px solid rgba(255,215,0,0.2)' }}>
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'#ffd700', letterSpacing:2, marginBottom:2 }}>🏆 FINAL WINNERS</div>
+          <div style={{ fontSize:12, color:'rgba(255,215,0,0.7)', fontFamily:"'Rajdhani',sans-serif" }}>Each receive a Yonex Racquet · 4 July 2026</div>
+        </div>
+      </div>
+
+      {/* Player count */}
+      <div style={{ marginTop:16, display:'flex', alignItems:'center', gap:10, padding:'12px 14px', background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12 }}>
+        <div style={{ display:'flex', marginRight:4 }}>
+          {(players||[]).slice(0,5).map((p,i) => (
+            <div key={p.id} style={{ width:28, height:28, borderRadius:'50%', overflow:'hidden', border:'1.5px solid #060d14', marginLeft:i>0?-8:0, background:'#1a2a1a' }}>
+              <img src={getAvatarUrl(p.id)} width={28} height={28} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
+            </div>
+          ))}
+        </div>
+        <div>
+          <div style={{ fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700, color:'#f1f5f9' }}>{(players||[]).length} Players Registered</div>
+          <div style={{ fontSize:11, color:'#475569', fontFamily:"'Rajdhani',sans-serif" }}>Top 4 advance to Finals</div>
+        </div>
+        <div style={{ marginLeft:'auto', fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#ffd700', letterSpacing:2 }}>
+          {hasStarted && !hasEnded ? 'LIVE 🔴' : hasEnded ? 'DONE' : `${days}D`}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ── Edit Game Modal ────────────────────────────────────────────
 function EditGameModal({ game, players, onClose, onSave }) {
@@ -517,6 +776,71 @@ function EditGameModal({ game, players, onClose, onSave }) {
   )
 }
 
+
+// ── Join Court Modal ───────────────────────────────────────────
+function JoinCourtModal({ group, onClose, onJoined, currentUserId }) {
+  const [pin, setPin] = useState('')
+  const [error, setError] = useState('')
+  const [joining, setJoining] = useState(false)
+
+  async function handleJoin() {
+    if (pin.length !== 4) { setError('Enter the 4-digit court PIN'); return }
+    setJoining(true); setError('')
+    try {
+      // Verify PIN
+      const { data: g, error: e } = await supabase
+        .from('groups').select('id,pin').eq('id', group.id).single()
+      if (e || !g) throw new Error('Court not found')
+      if (g.pin !== pin) { setError('Wrong PIN — ask your court admin'); setJoining(false); return }
+
+      // Already a member?
+      const { data: existing } = await supabase.from('group_members')
+        .select('player_id').eq('group_id', group.id).eq('player_id', currentUserId).single()
+      if (existing) { setError('You are already in this court!'); setJoining(false); return }
+
+      // Join
+      await supabase.from('group_members').insert({ group_id: group.id, player_id: currentUserId })
+      onJoined && onJoined()
+      onClose()
+    } catch (err) { setError(err.message || 'Failed to join') }
+    setJoining(false)
+  }
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.75)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+      <div style={{ background:'#0a1628', border:'1px solid rgba(74,222,128,0.25)', borderRadius:20, padding:24, width:'100%', maxWidth:300, fontFamily:"'Rajdhani',sans-serif" }}>
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'#f1f5f9', letterSpacing:2, marginBottom:4 }}>Join Court</div>
+        <div style={{ fontSize:13, color:'#64748b', marginBottom:16 }}>🏟️ {group.name}</div>
+
+        <div style={{ fontSize:11, color:'#64748b', letterSpacing:1.5, fontWeight:700, textTransform:'uppercase', marginBottom:8 }}>Court PIN</div>
+        <input
+          type="password" inputMode="numeric" maxLength={4}
+          value={pin} onChange={e=>{ if(/^\d{0,4}$/.test(e.target.value)) setPin(e.target.value) }}
+          onKeyDown={e=>e.key==='Enter'&&handleJoin()}
+          placeholder="••••" autoFocus
+          style={{ width:'100%', boxSizing:'border-box', background:'rgba(0,0,0,0.4)', border:'1.5px solid rgba(255,255,255,0.1)', borderRadius:12, padding:'12px 16px', color:'#4ade80', fontFamily:"'Bebas Neue',sans-serif", fontSize:32, textAlign:'center', letterSpacing:8, outline:'none', marginBottom:8 }}/>
+
+        {/* PIN dots */}
+        <div style={{ display:'flex', justifyContent:'center', gap:8, marginBottom:12 }}>
+          {[0,1,2,3].map(i=>(
+            <div key={i} style={{ width:8, height:8, borderRadius:'50%', background:i<pin.length?'#4ade80':'rgba(255,255,255,0.1)', transition:'all 0.2s', boxShadow:i<pin.length?'0 0 6px #4ade80':'none' }}/>
+          ))}
+        </div>
+
+        {error && <div style={{ fontSize:12, color:'#f87171', textAlign:'center', marginBottom:12, fontFamily:"'Rajdhani',sans-serif" }}>⚠ {error}</div>}
+
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={onClose} style={{ flex:1, background:'transparent', border:'1px solid rgba(255,255,255,0.1)', color:'#475569', borderRadius:50, padding:'11px', cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:14, letterSpacing:1 }}>CANCEL</button>
+          <button onClick={handleJoin} disabled={joining||pin.length!==4}
+            style={{ flex:2, background:pin.length===4?'linear-gradient(135deg,#14532d,#166534)':'rgba(255,255,255,0.05)', border:`1.5px solid ${pin.length===4?'#4ade80':'rgba(255,255,255,0.1)'}`, color:pin.length===4?'#4ade80':'#475569', borderRadius:50, padding:'11px', cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:14, letterSpacing:1 }}>
+            {joining?'JOINING...':'JOIN COURT'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Dashboard ─────────────────────────────────────────────
 export default function Dashboard({ onOpenProfile }) {
   const { currentUser, logout } = useAuth()
@@ -530,6 +854,7 @@ export default function Dashboard({ onOpenProfile }) {
   const [groupMembers, setGroupMembers] = useState({})
   const [activeGroup, setActiveGroup]   = useState('all')
   const [editGame, setEditGame]         = useState(null)
+  const [joinGroup, setJoinGroup]       = useState(null)
 
   const me = players.find(p => p.id === currentUser.id)
   const isAdmin = currentUser.isAdmin || currentUser.role === 'admin'
@@ -609,6 +934,7 @@ export default function Dashboard({ onOpenProfile }) {
           onLogout={logout}
           onOpenProfile={onOpenProfile}
           onGroupCreated={loadGroups}
+          onJoinGroup={(g) => { setJoinGroup(g); setShowMenu(false) }}
         />
       )}
 
@@ -628,19 +954,19 @@ export default function Dashboard({ onOpenProfile }) {
         )}
       </div>
 
-      {/* Group filter chips */}
-      {groups.length > 0 && (
-        <div style={{ position:'sticky', top:54, zIndex:39, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', padding:'10px 16px', display:'flex', gap:8, overflowX:'auto', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
-          <button className={`group-chip${activeGroup==='all'?' active':''}`} onClick={()=>setActiveGroup('all')}>All Courts</button>
-          {groups.map(g => (
-            <button key={g.id} className={`group-chip${activeGroup===g.id?' active':''}`} onClick={()=>setActiveGroup(g.id)}>{g.name}</button>
+      {/* Group filter chips — only courts player is in, max 3, single line */}
+      {myGroupIds.length > 0 && (
+        <div style={{ position:'sticky', top:54, zIndex:39, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', padding:'8px 16px', display:'flex', gap:8, borderBottom:'1px solid rgba(255,255,255,0.04)', overflow:'hidden' }}>
+          <button className={`group-chip${activeGroup==='all'?' active':''}`} onClick={()=>setActiveGroup('all')}>All</button>
+          {groups.filter(g => myGroupIds.includes(g.id)).slice(0,3).map(g => (
+            <button key={g.id} className={`group-chip${activeGroup===g.id?' active':''}`} onClick={()=>setActiveGroup(g.id)} style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:120}}>{g.name}</button>
           ))}
         </div>
       )}
 
       {/* Tabs */}
-      <div style={{ position:'sticky', top:groups.length>0?106:54, zIndex:38, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', display:'flex', borderBottom:'2px solid rgba(255,255,255,0.05)' }}>
-        {[{id:'players',label:'🏆 PLAYERS'},{id:'teams',label:'🔥 TEAMS'},{id:'games',label:'🏸 GAMES'}].map(t=>(
+      <div style={{ position:'sticky', top:myGroupIds.length>0?98:54, zIndex:38, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', display:'flex', borderBottom:'2px solid rgba(255,255,255,0.05)' }}>
+        {[{id:'players',label:'🏆 PLAYERS'},{id:'teams',label:'🔥 TEAMS'},{id:'games',label:'🏸 GAMES'},{id:'league',label:'⚡ LEAGUE'}].map(t=>(
           <button key={t.id} className={`tab-btn${tab===t.id?' active':''}`} onClick={()=>switchTab(t.id)}>{t.label}</button>
         ))}
       </div>
@@ -668,6 +994,11 @@ export default function Dashboard({ onOpenProfile }) {
             <GamesTab recentGames={recentGames} players={players} loading={loading} isAdmin={isAdmin} onDeleteGame={async(id)=>{ if(window.confirm('Delete this game? Stats will be updated.')) { await deleteGame(id); refetch() }}} onEditGame={(g)=>setEditGame(g)}/>
           </div>
         )}
+        {tab === 'league' && (
+          <div style={{ animation:'card-in 0.3s ease-out' }}>
+            <LeagueTab players={players}/>
+          </div>
+        )}
       </div>
 
       {/* FAB */}
@@ -677,6 +1008,14 @@ export default function Dashboard({ onOpenProfile }) {
         </button>
       </div>
 
+      {joinGroup && (
+        <JoinCourtModal
+          group={joinGroup}
+          currentUserId={currentUser.id}
+          onClose={() => setJoinGroup(null)}
+          onJoined={() => { loadGroups(); setJoinGroup(null) }}
+        />
+      )}
       {editGame && (
         <EditGameModal
           game={editGame}
