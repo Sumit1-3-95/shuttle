@@ -193,7 +193,7 @@ export default function PlayerProfile({ playerId, onBack }) {
   ]
 
   return (
-    <div style={{ minHeight:'100vh', background:'#060d14', fontFamily:"'Rajdhani',sans-serif", color:'#f1f5f9', width:'100%' }}>
+    <div style={{ minHeight:'100vh', background:'#060d14', fontFamily:"'Rajdhani',sans-serif", color:'#f1f5f9', maxWidth:480, margin:'0 auto' }}>
       <style>{`
         ${FONTS}
         @keyframes toast-in { from{opacity:0;transform:translateX(-50%) translateY(-10px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
@@ -253,6 +253,7 @@ export default function PlayerProfile({ playerId, onBack }) {
           </div>
 
           <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, marginBottom:12, flexWrap:'wrap' }}>
+            {player.role === 'admin' && <span style={{ fontSize:11, fontWeight:700, padding:'4px 10px', borderRadius:20, background:'rgba(255,215,0,0.15)', color:'#ffd700', border:'1px solid rgba(255,215,0,0.35)', fontFamily:"'Rajdhani',sans-serif", letterSpacing:1 }}>👑 ADMIN</span>}
             <span style={{ fontSize:13, fontWeight:700, padding:'5px 14px', borderRadius:20, background:`${level.aura}22`, color:level.aura, border:`1.5px solid ${level.aura}55`, fontFamily:"'Rajdhani',sans-serif", letterSpacing:1 }}>
               {level.emoji} {level.name}
             </span>
@@ -293,7 +294,7 @@ export default function PlayerProfile({ playerId, onBack }) {
       </div>
 
       {/* ── Tab content ── */}
-      <div style={{ padding:'16px 12px 60px', minHeight:400 }}>
+      <div style={{ padding:'20px 16px 60px', minHeight:400 }}>
 
         {/* OVERVIEW */}
         {tab==='overview' && (

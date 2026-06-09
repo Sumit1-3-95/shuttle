@@ -5,6 +5,7 @@ import { useRealtimeDashboard } from '../hooks/useRealtimeDashboard'
 import { getAvatarUrl, getCharacterName } from '../utils/avatars'
 import { supabase } from '../supabaseClient'
 import LogGame from './LogGame'
+import { useGameLogger } from '../hooks/useGameLogger'
 
 function getLevel(wins) {
   if (wins >= 50) return { name:'LEGEND',    tier:5, aura:'#ffd700', bg:'#2a1f00', glow:'rgba(255,215,0,0.4)',   emoji:'👑' }
@@ -357,7 +358,7 @@ function TeamsTab({ allPlayers, currentUserId }) {
 }
 
 // ── Games tab ──────────────────────────────────────────────────
-function GamesTab({ recentGames, players, loading }) {
+function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEditGame }) {
   if (loading) return <div style={{textAlign:'center',color:'#475569',padding:40,fontFamily:"'Rajdhani',sans-serif",fontSize:16}}>Loading...</div>
   if (!recentGames.length) return (
     <div style={{textAlign:'center',color:'#334155',padding:60}}>
@@ -433,6 +434,17 @@ function GamesTab({ recentGames, players, loading }) {
                       )})}
                     </div>
                   </div>
+                  {/* Admin controls */}
+                  {isAdmin && (
+                    <div style={{ display:'flex', gap:6, marginBottom:6 }}>
+                      <button onClick={() => onEditGame && onEditGame(g)} style={{ display:'flex', alignItems:'center', gap:4, padding:'3px 8px', background:'rgba(96,165,250,0.1)', border:'1px solid rgba(96,165,250,0.25)', borderRadius:20, cursor:'pointer', color:'#60a5fa', fontFamily:"'Rajdhani',sans-serif", fontSize:11, fontWeight:700 }}>
+                        ✏️ Edit Score
+                      </button>
+                      <button onClick={() => onDeleteGame && onDeleteGame(g.id)} style={{ display:'flex', alignItems:'center', gap:4, padding:'3px 8px', background:'rgba(248,113,113,0.1)', border:'1px solid rgba(248,113,113,0.25)', borderRadius:20, cursor:'pointer', color:'#f87171', fontFamily:"'Rajdhani',sans-serif", fontSize:11, fontWeight:700 }}>
+                        🗑 Delete
+                      </button>
+                    </div>
+                  )}
                   {ref && (
                     <div style={{display:'inline-flex',alignItems:'center',gap:5,background:'rgba(255,255,255,0.04)',borderRadius:20,padding:'3px 8px',border:'1px solid rgba(255,255,255,0.07)'}}>
                       <div style={{width:14,height:14,borderRadius:'50%',overflow:'hidden',background:'#1a2a1a',flexShrink:0}}>
@@ -451,6 +463,60 @@ function GamesTab({ recentGames, players, loading }) {
   )
 }
 
+
+// ── Edit Game Modal ────────────────────────────────────────────
+function EditGameModal({ game, players, onClose, onSave }) {
+  const [sA, setSA] = useState(String(game.score_a))
+  const [sB, setSB] = useState(String(game.score_b))
+  const [saving, setSaving] = useState(false)
+  const tA = (game.team_a_ids||[]).map(id=>players.find(p=>p.id===id)).filter(Boolean)
+  const tB = (game.team_b_ids||[]).map(id=>players.find(p=>p.id===id)).filter(Boolean)
+
+  async function handleSave() {
+    const a=parseInt(sA), b=parseInt(sB)
+    if (isNaN(a)||isNaN(b)||a<0||b<0||a===b) return
+    setSaving(true)
+    await onSave(a, b)
+    setSaving(false)
+  }
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+      <div style={{ background:'#0a1628', border:'1px solid rgba(74,222,128,0.25)', borderRadius:20, padding:24, width:'100%', maxWidth:340, fontFamily:"'Rajdhani',sans-serif" }}>
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:'#f1f5f9', letterSpacing:2, marginBottom:4 }}>Edit Score</div>
+        <div style={{ fontSize:12, color:'#475569', marginBottom:20 }}>
+          {tA.map(p=>p.display_name).join(' + ')} vs {tB.map(p=>p.display_name).join(' + ')}
+        </div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:16, marginBottom:20 }}>
+          <div style={{ textAlign:'center' }}>
+            <div style={{ fontSize:12, color:'#4ade80', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2, marginBottom:8 }}>TEAM A</div>
+            <input type="number" inputMode="numeric" value={sA} onChange={e=>setSA(e.target.value)}
+              style={{ width:80, background:'rgba(0,0,0,0.5)', border:'2px solid rgba(74,222,128,0.3)', borderRadius:12, padding:'8px 0', color:'#f1f5f9', fontFamily:"'Bebas Neue',sans-serif", fontSize:48, textAlign:'center', outline:'none' }}/>
+          </div>
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:32, color:'#1e3a2f', marginTop:24 }}>—</div>
+          <div style={{ textAlign:'center' }}>
+            <div style={{ fontSize:12, color:'#60a5fa', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2, marginBottom:8 }}>TEAM B</div>
+            <input type="number" inputMode="numeric" value={sB} onChange={e=>setSB(e.target.value)}
+              style={{ width:80, background:'rgba(0,0,0,0.5)', border:'2px solid rgba(96,165,250,0.3)', borderRadius:12, padding:'8px 0', color:'#f1f5f9', fontFamily:"'Bebas Neue',sans-serif", fontSize:48, textAlign:'center', outline:'none' }}/>
+          </div>
+        </div>
+        {sA && sB && parseInt(sA)!==parseInt(sB) && (
+          <div style={{ textAlign:'center', marginBottom:12, fontFamily:"'Bebas Neue',sans-serif", fontSize:14, color:'#4ade80', letterSpacing:2 }}>
+            🏆 TEAM {parseInt(sA)>parseInt(sB)?'A':'B'} WINS
+          </div>
+        )}
+        <div style={{ display:'flex', gap:10 }}>
+          <button onClick={onClose} style={{ flex:1, background:'transparent', border:'1px solid #1e293b', color:'#475569', borderRadius:50, padding:12, cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:2 }}>CANCEL</button>
+          <button onClick={handleSave} disabled={saving||!sA||!sB||parseInt(sA)===parseInt(sB)}
+            style={{ flex:2, background:'linear-gradient(135deg,#14532d,#166534)', border:'1.5px solid #4ade80', color:'#4ade80', borderRadius:50, padding:12, cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:2, opacity:saving?0.6:1 }}>
+            {saving?'SAVING...':'SAVE CHANGES'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── Main Dashboard ─────────────────────────────────────────────
 export default function Dashboard({ onOpenProfile }) {
   const { currentUser, logout } = useAuth()
@@ -463,8 +529,11 @@ export default function Dashboard({ onOpenProfile }) {
   const [groups, setGroups]         = useState([])
   const [groupMembers, setGroupMembers] = useState({})
   const [activeGroup, setActiveGroup]   = useState('all')
+  const [editGame, setEditGame]         = useState(null)
 
   const me = players.find(p => p.id === currentUser.id)
+  const isAdmin = currentUser.isAdmin || currentUser.role === 'admin'
+  const { deleteGame, updateGameScore } = useGameLogger()
   const myGroupIds = Object.entries(groupMembers)
     .filter(([,pids]) => pids.includes(currentUser.id))
     .map(([gid]) => gid)
@@ -596,7 +665,7 @@ export default function Dashboard({ onOpenProfile }) {
         )}
         {tab === 'games' && (
           <div style={{ animation:'card-in 0.3s ease-out' }}>
-            <GamesTab recentGames={recentGames} players={players} loading={loading}/>
+            <GamesTab recentGames={recentGames} players={players} loading={loading} isAdmin={isAdmin} onDeleteGame={async(id)=>{ if(window.confirm('Delete this game? Stats will be updated.')) { await deleteGame(id); refetch() }}} onEditGame={(g)=>setEditGame(g)}/>
           </div>
         )}
       </div>
@@ -608,6 +677,18 @@ export default function Dashboard({ onOpenProfile }) {
         </button>
       </div>
 
+      {editGame && (
+        <EditGameModal
+          game={editGame}
+          players={players}
+          onClose={() => setEditGame(null)}
+          onSave={async(sA,sB) => {
+            await updateGameScore(editGame.id, sA, sB)
+            setEditGame(null)
+            refetch()
+          }}
+        />
+      )}
       {showLogGame && <LogGame onClose={()=>setShowLogGame(false)} onGameLogged={handleGameLogged}/>}
     </div>
   )
