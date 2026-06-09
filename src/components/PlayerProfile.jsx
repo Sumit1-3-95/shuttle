@@ -193,7 +193,7 @@ export default function PlayerProfile({ playerId, onBack }) {
   ]
 
   return (
-    <div style={{ minHeight:'100vh', background:'#060d14', fontFamily:"'Rajdhani',sans-serif", color:'#f1f5f9', maxWidth:480, margin:'0 auto' }}>
+    <div style={{ minHeight:'100vh', background:'#060d14', fontFamily:"'Rajdhani',sans-serif", color:'#f1f5f9', width:'100%' }}>
       <style>{`
         ${FONTS}
         @keyframes toast-in { from{opacity:0;transform:translateX(-50%) translateY(-10px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
@@ -202,8 +202,8 @@ export default function PlayerProfile({ playerId, onBack }) {
         @keyframes tab-fade { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
         .ptab { background:none; border:none; color:#64748b; font-family:'Rajdhani',sans-serif; font-size:14px; font-weight:700; letter-spacing:1px; padding:12px 0; cursor:pointer; border-bottom:2.5px solid transparent; transition:color 0.2s, border-color 0.2s; flex:1; text-align:center; text-transform:uppercase; }
         .ptab.active { color:#4ade80; border-bottom-color:#4ade80; }
-        .stat-box { background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:12px 8px; text-align:center; }
-        .chart-card { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:18px; margin-bottom:14px; }
+        .stat-box { background:rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.07); border-radius:12px; padding:12px 4px; text-align:center; min-width:0; }
+        .chart-card { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:16px; padding:14px; margin-bottom:14px; width:100%; box-sizing:border-box; }
       `}</style>
 
       <Toast toast={toast}/>
@@ -271,7 +271,7 @@ export default function PlayerProfile({ playerId, onBack }) {
         </div>
 
         {/* Quick stats */}
-        <div style={{ position:'relative', zIndex:2, display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, padding:'16px 16px 0' }}>
+        <div style={{ position:'relative', zIndex:2, display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, padding:'12px 14px 0' }}>
           {[
             { label:'GAMES',   val:player.total_games||0,  color:'#93c5fd' },
             { label:'WINS',    val:player.total_wins||0,   color:'#4ade80' },
@@ -294,13 +294,13 @@ export default function PlayerProfile({ playerId, onBack }) {
       </div>
 
       {/* ── Tab content ── */}
-      <div style={{ padding:'20px 16px 60px', minHeight:400 }}>
+      <div style={{ padding:'16px 14px 60px', minHeight:400, width:'100%', boxSizing:'border-box', overflowX:'hidden' }}>
 
         {/* OVERVIEW */}
         {tab==='overview' && (
           <div key="overview" style={{ animation:'tab-fade 0.25s ease-out' }}>
             <div style={{ fontSize:12, color:'#475569', letterSpacing:2, textTransform:'uppercase', fontWeight:700, marginBottom:12, fontFamily:"'Rajdhani',sans-serif" }}>Full Stats</div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:20 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:16, width:'100%' }}>
               {[
                 { label:'Total Wins',      val:player.total_wins||0,      color:'#4ade80' },
                 { label:'Total Losses',    val:player.total_losses||0,    color:'#f87171' },
@@ -340,7 +340,7 @@ export default function PlayerProfile({ playerId, onBack }) {
                 const won=g.winner_team===(inA?'A':'B')
                 const own=inA?g.score_a:g.score_b, opp=inA?g.score_b:g.score_a
                 return (
-                  <div key={g.id} style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,0.02)', border:`1px solid ${won?'rgba(74,222,128,0.15)':'rgba(248,113,113,0.1)'}`, borderRadius:12, padding:'10px 14px' }}>
+                  <div key={g.id} style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,0.02)', border:`1px solid ${won?'rgba(74,222,128,0.15)':'rgba(248,113,113,0.1)'}`, borderRadius:12, padding:'10px 12px', width:'100%', boxSizing:'border-box' }}>
                     <div style={{ width:28, height:28, borderRadius:'50%', background:won?'rgba(74,222,128,0.15)':'rgba(248,113,113,0.15)', border:`1px solid ${won?'#4ade80':'#f87171'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, fontFamily:"'Bebas Neue',sans-serif", color:won?'#4ade80':'#f87171', flexShrink:0 }}>{won?'W':'L'}</div>
                     <div style={{ flex:1, fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:'#f1f5f9', letterSpacing:2 }}>{own} — {opp}</div>
                     <div style={{ fontSize:11, color:'#334155', fontFamily:"'Rajdhani',sans-serif" }}>{new Date(g.played_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div>
@@ -399,7 +399,7 @@ export default function PlayerProfile({ playerId, onBack }) {
                 const pct=h.total>0?Math.round((h.wins/h.total)*100):0
                 const color=pct>=50?'#4ade80':'#f87171'
                 return (
-                  <div key={i} style={{ background:'rgba(255,255,255,0.02)', border:`1px solid ${pct>=50?'rgba(74,222,128,0.15)':'rgba(248,113,113,0.1)'}`, borderRadius:14, padding:'14px 16px' }}>
+                  <div key={i} style={{ background:'rgba(255,255,255,0.02)', border:`1px solid ${pct>=50?'rgba(74,222,128,0.15)':'rgba(248,113,113,0.1)'}`, borderRadius:14, padding:'12px 14px', width:'100%', boxSizing:'border-box' }}>
                     <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
                       <Av id={h.pid} size={42} aura={color}/>
                       <div style={{ flex:1 }}>
