@@ -881,7 +881,10 @@ export default function Dashboard({ onOpenProfile }) {
 
   useEffect(() => { loadGroups() }, [])
 
-  const effectiveGroup = activeGroup === 'player_default' ? 'all' : activeGroup
+  const myFirstGroup = myGroupIds[0]
+const effectiveGroup = (activeGroup === 'player_default' || activeGroup === 'all')
+  ? (isAdmin ? 'all' : myFirstGroup || 'all')
+  : activeGroup
   const filteredPlayers = (effectiveGroup === 'all' && isAdmin)
     ? players
     : players.filter(p => (groupMembers[effectiveGroup]||[]).includes(p.id))
@@ -1031,7 +1034,7 @@ export default function Dashboard({ onOpenProfile }) {
           }}
         />
       )}
-      {showLogGame && <LogGame onClose={()=>setShowLogGame(false)} onGameLogged={handleGameLogged}/>}
+      {showLogGame && <LogGame onClose={()=>setShowLogGame(false)} onGameLogged={handleGameLogged} activeGroup={effectiveGroup} groupMembers={groupMembers}/>}
     </div>
   )
 }
