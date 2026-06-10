@@ -852,7 +852,7 @@ export default function Dashboard({ onOpenProfile }) {
   const [newGame, setNewGame]       = useState(false)
   const [groups, setGroups]         = useState([])
   const [groupMembers, setGroupMembers] = useState({})
-  const [activeGroup, setActiveGroup]   = useState('all')
+  const [activeGroup, setActiveGroup]   = useState('player_default')
   const [editGame, setEditGame]         = useState(null)
   const [joinGroup, setJoinGroup]       = useState(null)
 
@@ -881,9 +881,10 @@ export default function Dashboard({ onOpenProfile }) {
 
   useEffect(() => { loadGroups() }, [])
 
-  const filteredPlayers = activeGroup === 'all'
+  const effectiveGroup = activeGroup === 'player_default' ? 'all' : activeGroup
+  const filteredPlayers = (effectiveGroup === 'all' && isAdmin)
     ? players
-    : players.filter(p => (groupMembers[activeGroup]||[]).includes(p.id))
+    : players.filter(p => (groupMembers[effectiveGroup]||[]).includes(p.id))
 
   function switchTab(id) {
     if (tab === id) return
@@ -954,12 +955,14 @@ export default function Dashboard({ onOpenProfile }) {
         )}
       </div>
 
-      {/* Group filter chips — only courts player is in, max 3, single line */}
+      {/* Group filter chips — player's courts only, All for admins */}
       {myGroupIds.length > 0 && (
         <div style={{ position:'sticky', top:54, zIndex:39, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', padding:'8px 16px', display:'flex', gap:8, borderBottom:'1px solid rgba(255,255,255,0.04)', overflow:'hidden' }}>
-          <button className={`group-chip${activeGroup==='all'?' active':''}`} onClick={()=>setActiveGroup('all')}>All</button>
+          {isAdmin && (
+            <button className={`group-chip${activeGroup==='all'?' active':''}`} onClick={()=>setActiveGroup('all')}>All</button>
+          )}
           {groups.filter(g => myGroupIds.includes(g.id)).slice(0,3).map(g => (
-            <button key={g.id} className={`group-chip${activeGroup===g.id?' active':''}`} onClick={()=>setActiveGroup(g.id)} style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:120}}>{g.name}</button>
+            <button key={g.id} className={`group-chip${activeGroup===g.id?' active':''}`} onClick={()=>setActiveGroup(g.id)} style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:130}}>{g.name}</button>
           ))}
         </div>
       )}
