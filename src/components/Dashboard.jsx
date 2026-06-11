@@ -5,6 +5,7 @@ import { useRealtimeDashboard } from '../hooks/useRealtimeDashboard'
 import { getAvatarUrl, getCharacterName } from '../utils/avatars'
 import { supabase } from '../supabaseClient'
 import LogGame from './LogGame'
+import CourtManager from './CourtManager'
 import { useGameLogger } from '../hooks/useGameLogger'
 
 function getLevel(wins) {
@@ -44,7 +45,7 @@ function TabLoader() {
 }
 
 // ── Hamburger menu ─────────────────────────────────────────────
-function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup }) {
+function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup, onOpenCourtManager }) {
   const level = getLevel(currentPlayer?.total_wins || 0)
   const [showCreate, setShowCreate] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
@@ -855,6 +856,7 @@ export default function Dashboard({ onOpenProfile }) {
   const [activeGroup, setActiveGroup]   = useState('player_default')
   const [editGame, setEditGame]         = useState(null)
   const [joinGroup, setJoinGroup]       = useState(null)
+  const [showCourtManager, setShowCourtManager] = useState(false)
 
   const me = players.find(p => p.id === currentUser.id)
   const isAdmin = currentUser.isAdmin || currentUser.role === 'admin'
@@ -881,10 +883,7 @@ export default function Dashboard({ onOpenProfile }) {
 
   useEffect(() => { loadGroups() }, [])
 
-  const myFirstGroup = myGroupIds[0]
-const effectiveGroup = (activeGroup === 'player_default' || activeGroup === 'all')
-  ? (isAdmin ? 'all' : myFirstGroup || 'all')
-  : activeGroup
+  const effectiveGroup = activeGroup === 'player_default' ? 'all' : activeGroup
   const filteredPlayers = (effectiveGroup === 'all' && isAdmin)
     ? players
     : players.filter(p => (groupMembers[effectiveGroup]||[]).includes(p.id))
@@ -939,6 +938,7 @@ const effectiveGroup = (activeGroup === 'player_default' || activeGroup === 'all
           onOpenProfile={onOpenProfile}
           onGroupCreated={loadGroups}
           onJoinGroup={(g) => { setJoinGroup(g); setShowMenu(false) }}
+          onOpenCourtManager={() => { setShowCourtManager(true); setShowMenu(false) }}
         />
       )}
 
@@ -997,7 +997,7 @@ const effectiveGroup = (activeGroup === 'player_default' || activeGroup === 'all
         )}
         {tab === 'games' && (
           <div style={{ animation:'card-in 0.3s ease-out' }}>
-            <GamesTab recentGames={recentGames} players={players} loading={loading} isAdmin={isAdmin} onDeleteGame={async(id)=>{ if(window.confirm('Delete this game? Stats will be updated.')) { await deleteGame(id); refetch() }}} onEditGame={(g)=>setEditGame(g)}/>
+            <GamesTab recentGames={recentGames} players={players} loading={loading} isAdmin={isAdmin} onDeleteGame={async(id)=>{ if(window.confirm('Delete this game? Stats will be updated for all players.')) { const r = await deleteGame(id); if(r.success){ setTimeout(()=>refetch(), 800) } else { alert('Delete failed: ' + r.message) } }}} onEditGame={(g)=>setEditGame(g)}/>
           </div>
         )}
         {tab === 'league' && (
@@ -1014,6 +1014,12 @@ const effectiveGroup = (activeGroup === 'player_default' || activeGroup === 'all
         </button>
       </div>
 
+      {showCourtManager && (
+        <CourtManager
+          onClose={() => setShowCourtManager(false)}
+          currentUserId={currentUser.id}
+        />
+      )}
       {joinGroup && (
         <JoinCourtModal
           group={joinGroup}
