@@ -886,6 +886,12 @@ export default function Dashboard({ onOpenProfile }) {
 
   useEffect(() => { loadGroups() }, [])
 
+  useEffect(() => {
+    if (activeGroup === 'player_default' && myGroupIds.length > 0) {
+      setActiveGroup(myGroupIds[0])
+    }
+  }, [myGroupIds.join(',')])
+
   const effectiveGroup = activeGroup === 'player_default' ? 'all' : activeGroup
   const filteredPlayers = (effectiveGroup === 'all' && isAdmin)
     ? players
