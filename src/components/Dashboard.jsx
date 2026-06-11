@@ -129,7 +129,10 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
           {/* Create group */}
           {(currentUser.isAdmin || currentUser.role === 'admin') && (
           <div style={{ padding:'0 16px' }}>
-            <div style={{ fontSize:10, color:'#475569', letterSpacing:2, textTransform:'uppercase', fontWeight:700, marginBottom:10, fontFamily:"'Rajdhani',sans-serif" }}>Manage</div>
+            <div style={{ fontSize:10, color:'#475569', letterSpacing:2, textTransform:'uppercase', fontWeight:700, marginBottom:10, fontFamily:"'Rajdhani',sans-serif" }}>Admin</div>
+            <button onClick={() => { onOpenCourtManager && onOpenCourtManager() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', marginBottom:8, background:'rgba(74,222,128,0.08)', border:'1px solid rgba(74,222,128,0.25)', borderRadius:10, cursor:'pointer', color:'#4ade80', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
+              <span>🏟️</span> Manage All Courts
+            </button>
             {!showCreate ? (
               <button onClick={() => setShowCreate(true)} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:'rgba(74,222,128,0.05)', border:'1px dashed rgba(74,222,128,0.3)', borderRadius:10, cursor:'pointer', color:'#4ade80', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
                 <span style={{ fontSize:18 }}>＋</span> Create New Court
@@ -962,10 +965,10 @@ export default function Dashboard({ onOpenProfile }) {
       {myGroupIds.length > 0 && (
         <div style={{ position:'sticky', top:54, zIndex:39, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', padding:'8px 16px', display:'flex', gap:8, borderBottom:'1px solid rgba(255,255,255,0.04)', overflow:'hidden' }}>
           {isAdmin && (
-            <button className={`group-chip${activeGroup==='all'?' active':''}`} onClick={()=>setActiveGroup('all')}>All</button>
+            <button className={`group-chip${effectiveGroup==='all'?' active':''}`} onClick={()=>setActiveGroup('all')}>All</button>
           )}
           {groups.filter(g => myGroupIds.includes(g.id)).slice(0,3).map(g => (
-            <button key={g.id} className={`group-chip${activeGroup===g.id?' active':''}`} onClick={()=>setActiveGroup(g.id)} style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:130}}>{g.name}</button>
+            <button key={g.id} className={`group-chip${effectiveGroup===g.id?' active':''}`} onClick={()=>setActiveGroup(g.id)} style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:130}}>{g.name}</button>
           ))}
         </div>
       )}
@@ -1040,7 +1043,7 @@ export default function Dashboard({ onOpenProfile }) {
           }}
         />
       )}
-      {showLogGame && <LogGame onClose={()=>setShowLogGame(false)} onGameLogged={handleGameLogged} activeGroup={effectiveGroup} groupMembers={groupMembers}/>}
+      {showLogGame && <LogGame onClose={()=>setShowLogGame(false)} onGameLogged={handleGameLogged} activeGroup={effectiveGroup} groupMembers={groupMembers} groups={groups} currentUserId={currentUser.id}/>}
     </div>
   )
 }

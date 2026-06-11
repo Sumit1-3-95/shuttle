@@ -76,14 +76,7 @@ function SkillsSheet({ playerMap, teamA, teamB, winner, onSubmit, onSkip }) {
             <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'#f1f5f9', letterSpacing:2 }}>Tag Highlights</div>
             <div style={{ fontSize:11, color:'#64748b', fontFamily:"'Rajdhani',sans-serif" }}>Optional · tap any standout moments</div>
           </div>
-          {/* Skip — more visible */}
-          <button onClick={onSkip} style={{
-            background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.2)',
-            color:'#94a3b8', borderRadius:20, padding:'7px 16px', cursor:'pointer',
-            fontFamily:"'Rajdhani',sans-serif", fontSize:13, fontWeight:700, letterSpacing:0.5,
-          }}>
-            Skip →
-          </button>
+
         </div>
 
         {/* Court split */}
@@ -99,11 +92,10 @@ function SkillsSheet({ playerMap, teamA, teamB, winner, onSubmit, onSkip }) {
               const pSel = sel[pid]||new Set()
               return (
                 <div key={pid} style={{ flex:1, background:'rgba(74,222,128,0.04)', border:'1px solid rgba(74,222,128,0.15)', borderRadius:12, padding:'10px 8px', display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
-                  {/* Avatar — 2pt bigger: 46px */}
-                  <div style={{ width:46, height:46, borderRadius:'50%', overflow:'hidden', border:`1.5px solid ${level.aura}`, background:'#1a2a1a', flexShrink:0 }}>
-                    <img src={getAvatarUrl(pid)} width={46} height={46} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
+                  <div style={{ width:48, height:48, borderRadius:'50%', overflow:'hidden', border:`1.5px solid ${level.aura}`, background:'#1a2a1a', flexShrink:0 }}>
+                    <img src={getAvatarUrl(pid)} width={48} height={48} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
                   </div>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'#4ade80', letterSpacing:0.5, lineHeight:1, textAlign:'center' }}>{p.display_name}</div>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:'#4ade80', letterSpacing:0.5, lineHeight:1, textAlign:'center' }}>{p.display_name}</div>
                   <div style={{ height:1, background:'rgba(255,255,255,0.05)', width:'100%' }}/>
                   {/* Skill chips — 2pt bigger */}
                   <div style={{ display:'flex', flexWrap:'wrap', gap:4, justifyContent:'center' }}>
@@ -116,10 +108,10 @@ function SkillsSheet({ playerMap, teamA, teamB, winner, onSubmit, onSkip }) {
                           borderRadius:20, border:`1px solid ${on?(isSkill?'#4ade80':'#f87171'):'rgba(255,255,255,0.1)'}`,
                           background:on?(isSkill?'rgba(74,222,128,0.2)':'rgba(248,113,113,0.2)'):'rgba(0,0,0,0.3)',
                           color:on?(isSkill?'#4ade80':'#f87171'):'#475569',
-                          fontFamily:"'Rajdhani',sans-serif", fontSize:12, fontWeight:700,
+                          fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700,
                           cursor:'pointer', transition:'all 0.15s', width:'100%', textAlign:'left',
                         }}>
-                          <span style={{fontSize:12}}>{s.icon}</span>
+                          <span style={{fontSize:14}}>{s.icon}</span>
                           <span>{s.label}</span>
                         </button>
                       )
@@ -148,10 +140,10 @@ function SkillsSheet({ playerMap, teamA, teamB, winner, onSubmit, onSkip }) {
               const pSel = sel[pid]||new Set()
               return (
                 <div key={pid} style={{ flex:1, background:'rgba(96,165,250,0.04)', border:'1px solid rgba(96,165,250,0.15)', borderRadius:12, padding:'10px 8px', display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
-                  <div style={{ width:46, height:46, borderRadius:'50%', overflow:'hidden', border:`1.5px solid ${level.aura}`, background:'#1a2a1a', flexShrink:0 }}>
-                    <img src={getAvatarUrl(pid)} width={46} height={46} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
+                  <div style={{ width:48, height:48, borderRadius:'50%', overflow:'hidden', border:`1.5px solid ${level.aura}`, background:'#1a2a1a', flexShrink:0 }}>
+                    <img src={getAvatarUrl(pid)} width={48} height={48} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
                   </div>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'#60a5fa', letterSpacing:0.5, lineHeight:1, textAlign:'center' }}>{p.display_name}</div>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:'#60a5fa', letterSpacing:0.5, lineHeight:1, textAlign:'center' }}>{p.display_name}</div>
                   <div style={{ height:1, background:'rgba(255,255,255,0.05)', width:'100%' }}/>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:4, justifyContent:'center' }}>
                     {SKILLS_DEF.map(s => {
@@ -163,10 +155,10 @@ function SkillsSheet({ playerMap, teamA, teamB, winner, onSubmit, onSkip }) {
                           borderRadius:20, border:`1px solid ${on?(isSkill?'#4ade80':'#f87171'):'rgba(255,255,255,0.1)'}`,
                           background:on?(isSkill?'rgba(74,222,128,0.2)':'rgba(248,113,113,0.2)'):'rgba(0,0,0,0.3)',
                           color:on?(isSkill?'#4ade80':'#f87171'):'#475569',
-                          fontFamily:"'Rajdhani',sans-serif", fontSize:12, fontWeight:700,
+                          fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700,
                           cursor:'pointer', transition:'all 0.15s', width:'100%', textAlign:'left',
                         }}>
-                          <span style={{fontSize:12}}>{s.icon}</span>
+                          <span style={{fontSize:14}}>{s.icon}</span>
                           <span>{s.label}</span>
                         </button>
                       )
@@ -183,9 +175,9 @@ function SkillsSheet({ playerMap, teamA, teamB, winner, onSubmit, onSkip }) {
       <div style={{ position:'relative', zIndex:1, padding:'10px 14px 24px', flexShrink:0 }}>
         <button onClick={()=>onSubmit(sel)} style={{
           width:'100%',
-          background: anySelected?'linear-gradient(135deg,#14532d,#166534)':'rgba(255,255,255,0.05)',
-          border:`1.5px solid ${anySelected?'#4ade80':'rgba(255,255,255,0.12)'}`,
-          color: anySelected?'#4ade80':'#64748b',
+          background: 'linear-gradient(135deg,#14532d,#166534)',
+          border:'1.5px solid #4ade80',
+          color:'#4ade80',
           fontFamily:"'Bebas Neue',sans-serif", fontSize:19, letterSpacing:3,
           padding:'15px', borderRadius:50, cursor:'pointer', transition:'all 0.2s',
         }}>SUBMIT</button>
@@ -194,11 +186,13 @@ function SkillsSheet({ playerMap, teamA, teamB, winner, onSubmit, onSkip }) {
   )
 }
 
-export default function LogGame({ onClose, onGameLogged }) {
+export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembers, groups, currentUserId }) {
   const { currentUser } = useAuth()
   const { getPlayers, logGame } = useGameLogger()
 
   const [players, setPlayers]           = useState([])
+  const [allPlayers, setAllPlayers]     = useState([])
+  const [courtFilter, setCourtFilter]   = useState(null)  // null = use activeGroup
   const [teamA, setTeamA]               = useState([])
   const [teamB, setTeamB]               = useState([])
   const [selectingFor, setSelectingFor] = useState('A')
@@ -216,12 +210,33 @@ export default function LogGame({ onClose, onGameLogged }) {
   useEffect(() => {
     getPlayers().then(r => {
       if (r.success) {
-        // Sort by total_games desc so most active players first
-        const sorted = [...r.data].sort((a,b) => (b.total_games||0) - (a.total_games||0))
-        setPlayers(sorted)
+        setAllPlayers(r.data)
       }
     })
   }, [])
+
+  // Filter players whenever courtFilter or groupMembers changes
+  useEffect(() => {
+    if (!allPlayers.length) return
+    const filterGroup = courtFilter || activeGroup
+    let filtered = allPlayers
+    if (filterGroup && filterGroup !== 'all' && groupMembers && groupMembers[filterGroup]) {
+      filtered = allPlayers.filter(p => groupMembers[filterGroup].includes(p.id))
+    }
+    const sorted = [...filtered].sort((a,b) => (b.total_games||0) - (a.total_games||0))
+    setPlayers(sorted)
+  }, [allPlayers, courtFilter, activeGroup, groupMembers])
+
+  // Set default courtFilter to player's primary court on load
+  useEffect(() => {
+    if (courtFilter !== null) return
+    if (activeGroup && activeGroup !== 'all') {
+      setCourtFilter(activeGroup)
+    } else if (groups && groupMembers && currentUserId) {
+      const myGroup = groups.find(g => (groupMembers[g.id]||[]).includes(currentUserId))
+      if (myGroup) setCourtFilter(myGroup.id)
+    }
+  }, [groups, groupMembers, currentUserId, activeGroup])
 
   useEffect(() => {
     if (step!==3||!winner) return
@@ -415,9 +430,7 @@ export default function LogGame({ onClose, onGameLogged }) {
                 })}
               </div>
             </div>
-            {players.length > 8 && (
-              <div style={{fontSize:10,color:'#334155',textAlign:'center',marginBottom:8,fontFamily:"'Rajdhani',sans-serif"}}>↕ Scroll for more players</div>
-            )}
+
 
             <button className="cb" disabled={!canProceed} onClick={()=>setStep(2)}>
               {canProceed?'ENTER SCORE →':`SELECT ${(2-teamA.length)+(2-teamB.length)} MORE PLAYERS`}
