@@ -6,6 +6,7 @@ import { getAvatarUrl, getCharacterName } from '../utils/avatars'
 import { supabase } from '../supabaseClient'
 import LogGame from './LogGame'
 import CourtManager from './CourtManager'
+import TeamProfile from './TeamProfile'
 import { useGameLogger } from '../hooks/useGameLogger'
 
 function getLevel(wins) {
@@ -259,7 +260,7 @@ function LeaderRow({ player, rank, isCurrentUser, onClick }) {
 }
 
 // ── Teams tab ──────────────────────────────────────────────────
-function TeamsTab({ allPlayers, currentUserId }) {
+function TeamsTab({ allPlayers, currentUserId, onOpenTeam }) {
   const [teams, setTeams] = useState([])
   const [loading, setLoading] = useState(true)
   const playerMap = Object.fromEntries((allPlayers||[]).map(p=>[p.id,p]))
@@ -298,7 +299,7 @@ function TeamsTab({ allPlayers, currentUserId }) {
         const total=myBest.wins+myBest.losses, pct=total>0?Math.round((myBest.wins/total)*100):0
         const lM=getLevel(me.total_wins||0), lP=getLevel(partner.total_wins||0)
         return (
-          <div style={{background:'linear-gradient(135deg,rgba(74,222,128,0.08),rgba(96,165,250,0.06))',border:'1.5px solid rgba(74,222,128,0.25)',borderRadius:18,padding:'16px 14px',marginBottom:20}}>
+          <div onClick={()=>onOpenTeam&&onOpenTeam(me,partner)} style={{background:'linear-gradient(135deg,rgba(74,222,128,0.08),rgba(96,165,250,0.06))',border:'1.5px solid rgba(74,222,128,0.25)',borderRadius:18,padding:'16px 14px',marginBottom:20,cursor:'pointer'}}>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:'#4ade80',letterSpacing:3,marginBottom:12}}>🤝 YOUR BEST DUO</div>
             <div style={{display:'flex',gap:10,marginBottom:12}}>
               {[{p:me,l:lM},{p:partner,l:lP}].map(({p,l},i)=>(
@@ -331,7 +332,7 @@ function TeamsTab({ allPlayers, currentUserId }) {
         const l1=getLevel(p1.total_wins||0),l2=getLevel(p2.total_wins||0)
         const tc=pct>=60?'#ffd700':pct>=40?'#4ade80':'#94a3b8'
         return (
-          <div key={t.ids.join('|')} style={{display:'flex',alignItems:'center',gap:10,padding:'12px',marginBottom:8,background:isMe?'rgba(74,222,128,0.05)':'rgba(255,255,255,0.02)',border:`1px solid ${isMe?'rgba(74,222,128,0.3)':'rgba(255,255,255,0.07)'}`,borderRadius:14}}>
+          <div key={t.ids.join('|')} onClick={()=>onOpenTeam&&onOpenTeam(p1,p2)} style={{display:'flex',alignItems:'center',gap:10,padding:'12px',marginBottom:8,background:isMe?'rgba(74,222,128,0.05)':'rgba(255,255,255,0.02)',border:`1px solid ${isMe?'rgba(74,222,128,0.3)':'rgba(255,255,255,0.07)'}`,borderRadius:14,cursor:'pointer'}}>
             <div style={{width:34,height:34,borderRadius:8,background:badge.bg,border:`1px solid ${badge.border}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
               <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:badge.color}}>{badge.label}</span>
             </div>
@@ -860,6 +861,7 @@ export default function Dashboard({ onOpenProfile }) {
   const [editGame, setEditGame]         = useState(null)
   const [joinGroup, setJoinGroup]       = useState(null)
   const [showCourtManager, setShowCourtManager] = useState(false)
+  const [openTeam, setOpenTeam]               = useState(null) // {p1, p2}
 
   const me = players.find(p => p.id === currentUser.id)
   const isAdmin = currentUser.isAdmin || currentUser.role === 'admin'
@@ -1001,7 +1003,7 @@ export default function Dashboard({ onOpenProfile }) {
         )}
         {tab === 'teams' && (
           <div style={{ animation:'card-in 0.3s ease-out' }}>
-            <TeamsTab allPlayers={filteredPlayers} currentUserId={currentUser.id}/>
+            <TeamsTab allPlayers={filteredPlayers} currentUserId={currentUser.id} onOpenTeam={(p1,p2)=>setOpenTeam({p1,p2})}/>
           </div>
         )}
         {tab === 'games' && (
@@ -1023,6 +1025,13 @@ export default function Dashboard({ onOpenProfile }) {
         </button>
       </div>
 
+      {openTeam && (
+        <TeamProfile
+          p1={openTeam.p1}
+          p2={openTeam.p2}
+          onBack={() => setOpenTeam(null)}
+        />
+      )}
       {showCourtManager && (
         <CourtManager
           onClose={() => setShowCourtManager(false)}
