@@ -1061,10 +1061,11 @@ export default function Dashboard({ onOpenProfile }) {
   // When admin views "All" — use global data. Otherwise use court-scoped data.
   const players = (effectiveGroup === 'all' && isAdmin) ? allPlayers : courtPlayers
   const recentGames = (effectiveGroup === 'all' && isAdmin) ? allGames : courtGames
-  const loading = (effectiveGroup === 'all' && isAdmin) ? globalLoading : courtLoading
+  const isLoading = (effectiveGroup === 'all' && isAdmin) ? globalLoading : courtLoading
+  const loading = isLoading
   const meGlobal = allPlayers.find(p => p.id === currentUser.id)
   const me = players.find(p => p.id === currentUser.id) || meGlobal
-
+  
   function refetch() {
     if (effectiveGroup === 'all' && isAdmin) globalRefetch()
     else courtRefetch()
@@ -1072,6 +1073,7 @@ export default function Dashboard({ onOpenProfile }) {
 
   const filteredPlayers = players
   const filteredGames = recentGames
+  const loading = isLoading
 
   function switchTab(id) {
     if (tab === id) return
