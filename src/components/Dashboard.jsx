@@ -372,7 +372,7 @@ function TeamsTab({ allPlayers, currentUserId, onOpenTeam }) {
 }
 
 // ── Games tab ──────────────────────────────────────────────────
-function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEditGame }) {
+function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEditGame, groups }) {
   const [filter, setFilter] = useState('all')
 
   function getFilteredGames() {
@@ -408,11 +408,11 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
 
   if (loading) return <div style={{textAlign:'center',color:'#475569',padding:40,fontFamily:"'Rajdhani',sans-serif",fontSize:16}}>Loading...</div>
 
-  const groups = {}
+  const dateGroups = {}
   filtered.forEach(g => {
     const key = new Date(g.played_at).toDateString()
-    if (!groups[key]) groups[key] = []
-    groups[key].push(g)
+    if (!dateGroups[key]) dateGroups[key] = []
+    dateGroups[key].push(g)
   })
 
   function fmtHeader(ds) {
@@ -453,7 +453,7 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
         </div>
       )}
 
-      {Object.entries(groups).map(([ds,dayGames])=>{
+      {Object.entries(dateGroups).map(([ds,dayGames])=>{
         const {main,sub}=fmtHeader(ds)
         return (
           <div key={ds} style={{marginBottom:20}}>
@@ -473,9 +473,16 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
               const time=new Date(g.played_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})
               return (
                 <div key={g.id} style={{background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:14,padding:'10px 12px',marginBottom:8}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
-                    <span style={{fontSize:12,color:'#475569',fontFamily:"'Rajdhani',sans-serif",fontWeight:600}}>{time}</span>
-                    <span style={{fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:20,background:'rgba(74,222,128,0.1)',color:'#4ade80',border:'1px solid rgba(74,222,128,0.2)',fontFamily:"'Rajdhani',sans-serif",maxWidth:160,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+                    <div style={{display:'flex',alignItems:'center',gap:6}}>
+                      <span style={{fontSize:12,color:'#475569',fontFamily:"'Rajdhani',sans-serif",fontWeight:600}}>{time}</span>
+                      {g.group_id && groups.find(gr=>gr.id===g.group_id) && (
+                        <span style={{fontSize:10,padding:'2px 7px',borderRadius:20,background:'rgba(96,165,250,0.1)',color:'#60a5fa',border:'1px solid rgba(96,165,250,0.2)',fontFamily:"'Rajdhani',sans-serif",fontWeight:700,whiteSpace:'nowrap'}}>
+                          🏟️ {groups.find(gr=>gr.id===g.group_id)?.name}
+                        </span>
+                      )}
+                    </div>
+                    <span style={{fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:20,background:'rgba(74,222,128,0.1)',color:'#4ade80',border:'1px solid rgba(74,222,128,0.2)',fontFamily:"'Rajdhani',sans-serif",maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                       🏆 {winNames} WON
                     </span>
                   </div>
@@ -1013,7 +1020,6 @@ export default function Dashboard({ onOpenProfile }) {
   const [showCourtManager, setShowCourtManager] = useState(false)
   const [openTeam, setOpenTeam]               = useState(null) // {p1, p2}
 
-  const me = allPlayers.find(p => p.id === currentUser.id)
   const isAdmin = currentUser.isAdmin || currentUser.role === 'admin'
   const { deleteGame, updateGameScore } = useGameLogger()
   const myGroupIds = Object.entries(groupMembers)
@@ -1054,6 +1060,8 @@ export default function Dashboard({ onOpenProfile }) {
   const players = (effectiveGroup === 'all' && isAdmin) ? allPlayers : courtPlayers
   const recentGames = (effectiveGroup === 'all' && isAdmin) ? allGames : courtGames
   const loading = (effectiveGroup === 'all' && isAdmin) ? globalLoading : courtLoading
+  const meGlobal = allPlayers.find(p => p.id === currentUser.id)
+  const me = players.find(p => p.id === currentUser.id) || meGlobal
 
   function refetch() {
     if (effectiveGroup === 'all' && isAdmin) globalRefetch()
@@ -1133,20 +1141,18 @@ export default function Dashboard({ onOpenProfile }) {
         )}
       </div>
 
-      {/* Group filter chips — player's courts only, All for admins */}
-      {myGroupIds.length > 0 && (
-        <div style={{ position:'sticky', top:54, zIndex:39, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', padding:'8px 16px', display:'flex', gap:8, borderBottom:'1px solid rgba(255,255,255,0.04)', overflow:'hidden' }}>
-          {isAdmin && (
-            <button className={`group-chip${effectiveGroup==='all'?' active':''}`} onClick={()=>setActiveGroup('all')}>All</button>
-          )}
-          {groups.filter(g => myGroupIds.includes(g.id)).slice(0,3).map(g => (
-            <button key={g.id} className={`group-chip${effectiveGroup===g.id?' active':''}`} onClick={()=>setActiveGroup(g.id)} style={{overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:130}}>{g.name}</button>
+      {/* Group filter chips — ALL courts shown, scrollable, All chip for everyone */}
+      {groups.length > 0 && (
+        <div style={{ position:'sticky', top:54, zIndex:39, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', padding:'8px 16px', display:'flex', gap:8, borderBottom:'1px solid rgba(255,255,255,0.04)', overflowX:'auto' }}>
+          <button className={`group-chip${effectiveGroup==='all'?' active':''}`} onClick={()=>setActiveGroup('all')} style={{flexShrink:0}}>All</button>
+          {groups.map(g => (
+            <button key={g.id} className={`group-chip${effectiveGroup===g.id?' active':''}`} onClick={()=>setActiveGroup(g.id)} style={{flexShrink:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:130}}>{g.name}</button>
           ))}
         </div>
       )}
 
       {/* Tabs */}
-      <div style={{ position:'sticky', top:myGroupIds.length>0?98:54, zIndex:38, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', display:'flex', borderBottom:'2px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ position:'sticky', top:groups.length>0?98:54, zIndex:38, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', display:'flex', borderBottom:'2px solid rgba(255,255,255,0.05)' }}>
         {[{id:'players',label:'🏆 PLAYERS'},{id:'teams',label:'🔥 TEAMS'},{id:'games',label:'🏸 GAMES'},{id:'report',label:'📊 REPORT'}].map(t=>(
           <button key={t.id} className={`tab-btn${tab===t.id?' active':''}`} onClick={()=>switchTab(t.id)}>{t.label}</button>
         ))}
@@ -1156,7 +1162,7 @@ export default function Dashboard({ onOpenProfile }) {
       <div style={{ padding:'14px 14px 100px', minHeight:'calc(100vh - 160px)' }}>
         {tab === 'players' && (
           <div style={{ animation:'card-in 0.3s ease-out' }}>
-            {me && filteredPlayers.find(p=>p.id===me.id) && (
+            {me && (
               <HeroCard player={me} isCurrentUser onClick={()=>onOpenProfile&&onOpenProfile(me.id, effectiveGroup)}/>
             )}
             <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, color:'#64748b', letterSpacing:3, marginBottom:14 }}>🏆 LEADERBOARD</div>
@@ -1172,7 +1178,7 @@ export default function Dashboard({ onOpenProfile }) {
         )}
         {tab === 'games' && (
           <div style={{ animation:'card-in 0.3s ease-out' }}>
-            <GamesTab recentGames={filteredGames} players={filteredPlayers} loading={loading} isAdmin={isAdmin} onDeleteGame={async(id)=>{ if(window.confirm('Delete this game? Stats will be updated for all players.')) { const r = await deleteGame(id); if(r.success){ setTimeout(()=>refetch(), 800) } else { alert('Delete failed: ' + r.message) } }}} onEditGame={(g)=>setEditGame(g)}/>
+            <GamesTab recentGames={filteredGames} players={filteredPlayers} loading={loading} isAdmin={isAdmin} groups={groups} onDeleteGame={async(id)=>{ if(window.confirm('Delete this game? Stats will be updated for all players.')) { const r = await deleteGame(id); if(r.success){ setTimeout(()=>refetch(), 800) } else { alert('Delete failed: ' + r.message) } }}} onEditGame={(g)=>setEditGame(g)}/>
           </div>
         )}
         {tab === 'report' && (
