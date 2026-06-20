@@ -1144,18 +1144,18 @@ export default function Dashboard({ onOpenProfile }) {
         )}
       </div>
 
-      {/* Group filter chips — ALL courts shown, scrollable, All chip for everyone */}
-      {groups.length > 0 && (
+      {/* Group filter chips — only player's courts + All */}
+      {myGroupIds.length > 0 && (
         <div style={{ position:'sticky', top:54, zIndex:39, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', padding:'8px 16px', display:'flex', gap:8, borderBottom:'1px solid rgba(255,255,255,0.04)', overflowX:'auto' }}>
           <button className={`group-chip${effectiveGroup==='all'?' active':''}`} onClick={()=>setActiveGroup('all')} style={{flexShrink:0}}>All</button>
-          {groups.map(g => (
+          {groups.filter(g => myGroupIds.includes(g.id)).map(g => (
             <button key={g.id} className={`group-chip${effectiveGroup===g.id?' active':''}`} onClick={()=>setActiveGroup(g.id)} style={{flexShrink:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:130}}>{g.name}</button>
           ))}
         </div>
       )}
 
       {/* Tabs */}
-      <div style={{ position:'sticky', top:groups.length>0?98:54, zIndex:38, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', display:'flex', borderBottom:'2px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ position:'sticky', top:myGroupIds.length>0?98:54, zIndex:38, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', display:'flex', borderBottom:'2px solid rgba(255,255,255,0.05)' }}>
         {[{id:'players',label:'🏆 PLAYERS'},{id:'teams',label:'🔥 TEAMS'},{id:'games',label:'🏸 GAMES'},{id:'report',label:'📊 REPORT'}].map(t=>(
           <button key={t.id} className={`tab-btn${tab===t.id?' active':''}`} onClick={()=>switchTab(t.id)}>{t.label}</button>
         ))}
