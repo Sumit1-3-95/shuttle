@@ -238,7 +238,7 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
     if (isNaN(sA)||isNaN(sB)||sA<0||sB<0) { setError('Enter valid scores'); return }
     if (sA===sB) { setError('Scores cannot be equal'); return }
     setLoading(true); setError('')
-    const result = await logGame(teamA, teamB, sA, sB)
+    const result = await logGame(teamA, teamB, sA, sB, activeGroup)
     setLoading(false)
     if (!result.success) { setError(result.message); return }
     setGameId(result.game?.id); setWinner(sA>sB?'A':'B'); setShowSkills(true)
@@ -361,7 +361,7 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
             {/* Court filter chips */}
             {groups && groups.length > 0 && (
               <div style={{display:'flex',gap:6,overflowX:'auto',marginBottom:10,flexShrink:0,paddingBottom:2}}>
-                {groups.filter(g => groupMembers && groupMembers[g.id] && groupMembers[g.id].includes(currentUserId)).map(g => (
+                {groups.map(g => (
                   <button key={g.id} onClick={()=>setCourtFilter(g.id)} style={{
                     padding:'5px 12px', borderRadius:20, cursor:'pointer', flexShrink:0,
                     border: courtFilter===g.id ? '1px solid rgba(74,222,128,0.5)' : '1px solid rgba(255,255,255,0.1)',
@@ -396,6 +396,7 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
                         </div>
                       </div>
                       <div style={{fontSize:12,fontWeight:700,color:inA?'#4ade80':inB?'#60a5fa':'#94a3b8',fontFamily:"'Rajdhani',sans-serif"}}>{p.display_name}</div>
+                      <div style={{fontSize:9,color:level.aura}}>{p.total_games||0}🏸</div>
                     </div>
                   )
                 })}

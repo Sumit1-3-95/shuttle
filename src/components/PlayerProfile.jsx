@@ -135,6 +135,17 @@ export default function PlayerProfile({ playerId, onBack }) {
   const level   = getLevel(player.total_wins||0)
   const winPct  = player.total_games>0 ? Math.round((player.total_wins/player.total_games)*100) : 0
   const ptDiff  = (player.points_scored||0)-(player.points_conceded||0)
+
+  // Days played this calendar month
+  const now = new Date()
+  const daysThisMonth = new Set(
+    games
+      .filter(g => {
+        const d = new Date(g.played_at)
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+      })
+      .map(g => new Date(g.played_at).toDateString())
+  ).size
   const playerMap = Object.fromEntries(allPlayers.map(p=>[p.id,p]))
 
   // Charts data
@@ -271,16 +282,17 @@ export default function PlayerProfile({ playerId, onBack }) {
         </div>
 
         {/* Quick stats */}
-        <div style={{ position:'relative', zIndex:2, display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, padding:'12px 14px 0' }}>
+        <div style={{ position:'relative', zIndex:2, display:'grid', gridTemplateColumns:'repeat(5,1fr)', gap:5, padding:'12px 14px 0' }}>
           {[
             { label:'GAMES',   val:player.total_games||0,  color:'#93c5fd' },
             { label:'WINS',    val:player.total_wins||0,   color:'#4ade80' },
             { label:'WIN %',   val:`${winPct}%`,            color:level.aura },
             { label:'STREAK',  val:`🔥${player.best_streak||0}`, color:'#fb923c' },
+            { label:'DAYS MTH',val:daysThisMonth,           color:'#a78bfa' },
           ].map(s => (
             <div key={s.label} className="stat-box">
-              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, color:s.color, lineHeight:1, textShadow:`0 0 10px ${s.color}44` }}>{s.val}</div>
-              <div style={{ fontSize:10, color:'#94a3b8', fontFamily:"'Rajdhani',sans-serif", letterSpacing:1, fontWeight:600, marginTop:2 }}>{s.label}</div>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:s.color, lineHeight:1, textShadow:`0 0 10px ${s.color}44` }}>{s.val}</div>
+              <div style={{ fontSize:8, color:'#94a3b8', fontFamily:"'Rajdhani',sans-serif", letterSpacing:0.5, fontWeight:600, marginTop:2 }}>{s.label}</div>
             </div>
           ))}
         </div>
