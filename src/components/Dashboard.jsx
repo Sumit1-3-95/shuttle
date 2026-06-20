@@ -1062,10 +1062,9 @@ export default function Dashboard({ onOpenProfile }) {
   const players = (effectiveGroup === 'all' && isAdmin) ? allPlayers : courtPlayers
   const recentGames = (effectiveGroup === 'all' && isAdmin) ? allGames : courtGames
   const isLoading = (effectiveGroup === 'all' && isAdmin) ? globalLoading : courtLoading
-  const loading = isLoading
   const meGlobal = allPlayers.find(p => p.id === currentUser.id)
   const me = players.find(p => p.id === currentUser.id) || meGlobal
-  
+
   function refetch() {
     if (effectiveGroup === 'all' && isAdmin) globalRefetch()
     else courtRefetch()
