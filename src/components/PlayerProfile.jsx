@@ -122,9 +122,12 @@ function Toast({ toast }) {
   )
 }
 
-export default function PlayerProfile({ playerId, onBack }) {
-  const { player, games, allPlayers, skills, loading, refreshing, toast, hasNewGame, refresh } = usePlayerProfile(playerId)
+export default function PlayerProfile({ playerId, groupId, onBack }) {
+  const { player, games, allPlayers, skills, loading, refreshing, toast, hasNewGame, refresh } = usePlayerProfile(playerId, groupId)
   const [tab, setTab] = useState('overview')
+
+  // Show court scope label if viewing court-specific stats
+  const courtLabel = groupId && groupId !== 'all' ? '🏟️ Court Stats' : null
 
   if (loading || !player) return (
     <div style={{ minHeight:'100vh', background:'#060d14', display:'flex', alignItems:'center', justifyContent:'center', color:'#4ade80', fontFamily:"'Bebas Neue',sans-serif", fontSize:24, letterSpacing:3 }}>

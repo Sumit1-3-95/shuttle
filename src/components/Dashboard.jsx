@@ -7,6 +7,7 @@ import { getAvatarUrl, getCharacterName } from '../utils/avatars'
 import { supabase } from '../supabaseClient'
 import LogGame from './LogGame'
 import CourtManager from './CourtManager'
+import MyCourts from './MyCourts'
 import TeamProfile from './TeamProfile'
 import { useGameLogger } from '../hooks/useGameLogger'
 
@@ -47,7 +48,7 @@ function TabLoader() {
 }
 
 // ── Hamburger menu ─────────────────────────────────────────────
-function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup, onOpenCourtManager }) {
+function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup, onOpenCourtManager, onOpenMyCourts }) {
   const level = getLevel(currentPlayer?.total_wins || 0)
   const [showCreate, setShowCreate] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
@@ -1018,6 +1019,7 @@ export default function Dashboard({ onOpenProfile }) {
   const [editGame, setEditGame]         = useState(null)
   const [joinGroup, setJoinGroup]       = useState(null)
   const [showCourtManager, setShowCourtManager] = useState(false)
+  const [showMyCourts, setShowMyCourts]         = useState(false)
   const [openTeam, setOpenTeam]               = useState(null) // {p1, p2}
 
   const isAdmin = currentUser.isAdmin || currentUser.role === 'admin'
@@ -1122,6 +1124,7 @@ export default function Dashboard({ onOpenProfile }) {
           onGroupCreated={loadGroups}
           onJoinGroup={(g) => { setJoinGroup(g); setShowMenu(false) }}
           onOpenCourtManager={() => { setShowCourtManager(true); setShowMenu(false) }}
+          onOpenMyCourts={() => { setShowMyCourts(true); setShowMenu(false) }}
         />
       )}
 
@@ -1200,6 +1203,12 @@ export default function Dashboard({ onOpenProfile }) {
           p1={openTeam.p1}
           p2={openTeam.p2}
           onBack={() => setOpenTeam(null)}
+        />
+      )}
+      {showMyCourts && (
+        <MyCourts
+          currentUser={currentUser}
+          onClose={() => { setShowMyCourts(false); loadGroups() }}
         />
       )}
       {showCourtManager && (

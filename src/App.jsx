@@ -1,19 +1,19 @@
-// src/App.jsx — v4 with onboarding flow
-import { useState, useEffect } from 'react'
+// src/App.jsx — v5 with court-scoped player profile
+import { useState } from 'react'
 import { useAuth } from './context/AuthContext'
 import LoginScreen from './components/LoginScreen'
 import Dashboard from './components/Dashboard'
 import PlayerProfile from './components/PlayerProfile'
 import OnboardingScreen from './components/OnboardingScreen'
 import { supabase } from './supabaseClient'
+import { useEffect } from 'react'
 
 export default function App() {
   const { currentUser, loading } = useAuth()
-  const [profileId, setProfileId] = useState(null)
+  const [profileState, setProfileState] = useState(null) // { id, groupId }
   const [showOnboarding, setShowOnboarding] = useState(false)
   const [groups, setGroups] = useState([])
 
-  // Load groups for onboarding
   useEffect(() => {
     supabase.from('groups').select('*').order('name')
       .then(({ data }) => { if (data) setGroups(data) })
@@ -29,19 +29,23 @@ export default function App() {
     if (showOnboarding) return (
       <OnboardingScreen
         groups={groups}
-        onComplete={(username) => {
-          setShowOnboarding(false)
-          // username=null means they clicked "Sign in" — go back to login
-          // username=string means they just registered — go to login with prefilled name
-        }}
+        onComplete={() => setShowOnboarding(false)}
       />
     )
     return <LoginScreen onRegister={() => setShowOnboarding(true)}/>
   }
 
-  if (profileId) return (
-    <PlayerProfile playerId={profileId} onBack={() => setProfileId(null)}/>
+  if (profileState) return (
+    <PlayerProfile
+      playerId={profileState.id}
+      groupId={profileState.groupId}
+      onBack={() => setProfileState(null)}
+    />
   )
 
-  return <Dashboard onOpenProfile={(id) => setProfileId(id)}/>
+  return (
+    <Dashboard
+      onOpenProfile={(id, groupId) => setProfileState({ id, groupId })}
+    />
+  )
 }
