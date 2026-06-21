@@ -2,6 +2,7 @@
 // Fixed back button, smooth tabs, standardised layout, skills/flaws section
 import { useState } from 'react'
 import { supabase } from '../supabaseClient'
+import { useAuth } from '../context/AuthContext'
 import { usePlayerProfile } from '../hooks/usePlayerProfile'
 import { getAvatarUrl, getCharacterName } from '../utils/avatars'
 
@@ -124,6 +125,8 @@ function Toast({ toast }) {
 }
 
 export default function PlayerProfile({ playerId, groupId, onBack }) {
+  const { currentUser } = useAuth()
+  const isOwnProfile = currentUser?.id === playerId
   const { player, games, allPlayers, skills, loading, refreshing, toast, hasNewGame, refresh } = usePlayerProfile(playerId, groupId)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [photoToast, setPhotoToast]         = useState(null)
@@ -134,7 +137,8 @@ export default function PlayerProfile({ playerId, groupId, onBack }) {
     setUploadingPhoto(true)
     try {
       const ext  = file.name.split('.').pop()
-      const path = `avatars/${player.username}_${Date.now()}.${ext}`
+      // Use playerId (not username) to ensure unique, stable path per player
+      const path = `player-photos/${playerId}_${Date.now()}.${ext}`
       const { error: upErr } = await supabase.storage.from('avatars').upload(path, file)
       if (upErr) throw upErr
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
@@ -281,13 +285,15 @@ export default function PlayerProfile({ playerId, groupId, onBack }) {
         <div style={{ position:'relative', zIndex:2, textAlign:'center', padding:'20px 16px 0' }}>
           <div style={{ position:'relative', display:'inline-block', marginBottom:12 }}>
             <div style={{ width:88, height:88, borderRadius:'50%', overflow:'hidden', border:`3px solid ${level.aura}`, margin:'0 auto', background:'#1a2a1a', boxShadow:`0 0 32px ${level.glow}`, animation:'float 3s ease-in-out infinite' }}>
-              <img src={player.profile_pic || getAvatarUrl(playerId)} alt={player.display_name} width={88} height={88} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>{ e.target.src=getAvatarUrl(playerId) }}/>
+              <img src={player.profile_pic || getAvatarUrl(playerId)} alt={player.display_name} width={88} height={88} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>{ e.target.onerror=null; e.target.src=getAvatarUrl(playerId) }}/>
             </div>
-            {/* Camera upload button */}
-            <label style={{ position:'absolute', bottom:2, right:2, width:28, height:28, borderRadius:'50%', background:'#060d14', border:`2px solid ${level.aura}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:13, zIndex:10, boxShadow:`0 0 8px ${level.glow}` }} title="Upload photo">
-              {uploadingPhoto ? '⏳' : '📷'}
-              <input type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhotoUpload}/>
-            </label>
+            {/* Camera upload button — own profile only */}
+            {isOwnProfile && (
+              <label style={{ position:'absolute', bottom:2, right:2, width:28, height:28, borderRadius:'50%', background:'#060d14', border:`2px solid ${level.aura}`, display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', fontSize:13, zIndex:10, boxShadow:`0 0 8px ${level.glow}` }} title="Upload photo">
+                {uploadingPhoto ? '⏳' : '📷'}
+                <input type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhotoUpload}/>
+              </label>
+            )}
             {level.tier>=4 && <div style={{ position:'absolute', inset:-6, borderRadius:'50%', border:`1.5px solid ${level.aura}`, borderTopColor:'transparent', borderRightColor:'transparent', animation:'spin-ring 3s linear infinite' }}/>}
           </div>
 
