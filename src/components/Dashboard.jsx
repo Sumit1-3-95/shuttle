@@ -27,14 +27,24 @@ function getRankBadge(rank) {
 }
 
 function Av({ id, size=40, aura='#4ade8055', style={}, profilePic=null }) {
-  const [err, setErr] = useState(false)
-  const src = profilePic && !err ? profilePic : getAvatarUrl(id)
+  const [src, setSrc] = useState(profilePic || getAvatarUrl(id))
+  const [failed, setFailed] = useState(false)
+
+  // Update src when profilePic changes (e.g. after upload)
+  useState(() => { setSrc(profilePic || getAvatarUrl(id)); setFailed(false) }, [profilePic, id])
+
+  function handleError() {
+    if (!failed) {
+      setFailed(true)
+      // Fall back to character avatar, don't loop
+      const fallback = getAvatarUrl(id)
+      if (src !== fallback) setSrc(fallback)
+    }
+  }
+
   return (
     <div style={{ width:size, height:size, borderRadius:'50%', overflow:'hidden', border:`1.5px solid ${aura}`, background:'#1a2a1a', flexShrink:0, ...style }}>
-      {!err
-        ? <img src={src} width={size} height={size} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={()=>setErr(true)}/>
-        : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:size*0.4,color:aura}}>?</div>
-      }
+      <img src={src} width={size} height={size} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={handleError}/>
     </div>
   )
 }
@@ -60,8 +70,9 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
     if (!newGroupName.trim()) { setCreateError('Enter a group name'); return }
     setCreating(true); setCreateError('')
     try {
+      const courtCode = Math.random().toString(36).substring(2,8).toUpperCase()
       const { data: newGroup, error } = await supabase
-        .from('groups').insert({ name: newGroupName.trim() }).select().single()
+        .from('groups').insert({ name: newGroupName.trim(), court_code: courtCode, pin: '1234' }).select().single()
       if (error) throw error
       await supabase.from('group_members').insert({ group_id: newGroup.id, player_id: currentUser.id })
       setNewGroupName(''); setShowCreate(false)
@@ -75,7 +86,7 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
   return (
     <>
       <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:90, backdropFilter:'blur(4px)' }}/>
-      <div style={{ position:'fixed', top:0, left:0, bottom:0, width:290, background:'#0a1628', borderRight:'1px solid rgba(74,222,128,0.15)', zIndex:91, display:'flex', flexDirection:'column', animation:'drawer-in 0.25s cubic-bezier(0.34,1.2,0.64,1)', boxShadow:'4px 0 40px rgba(0,0,0,0.8)' }}>
+      <div style={{ position:'fixed', top:0, left:0, bottom:0, width:'min(290px, 85vw)', background:'#0a1628', borderRight:'1px solid rgba(74,222,128,0.15)', zIndex:91, display:'flex', flexDirection:'column', animation:'drawer-in 0.25s cubic-bezier(0.34,1.2,0.64,1)', boxShadow:'4px 0 40px rgba(0,0,0,0.8)', overflowY:'auto' }}>
 
         {/* Profile */}
         <div style={{ padding:'40px 20px 16px', background:`linear-gradient(180deg,${level.bg},transparent)`, borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
@@ -95,7 +106,7 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
         </div>
 
         {/* Scrollable body */}
-        <div style={{ flex:1, overflowY:'auto', padding:'16px 0' }}>
+        <div style={{ flex:1, overflowY:'auto', padding:'16px 0', WebkitOverflowScrolling:'touch' }}>
 
           {/* Your courts */}
           <div style={{ padding:'0 16px 8px' }}>
@@ -1221,7 +1232,7 @@ export default function Dashboard({ onOpenProfile }) {
       )}
       {showCourtManager && (
         <CourtManager
-          onClose={() => setShowCourtManager(false)}
+          onClose={(newCourtId) => { setShowCourtManager(false); loadGroups(); if(newCourtId){ setActiveGroup(newCourtId); setTab('games') } }}
           currentUserId={currentUser.id}
         />
       )}

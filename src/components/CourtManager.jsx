@@ -41,58 +41,146 @@ function generateUsername(name, phone) {
 // ── Create Court Screen ────────────────────────────────────────
 function CreateCourt({ onBack, currentUserId, onCreated }) {
   const [courtName, setCourtName] = useState('')
+  const [players, setPlayers]     = useState([{ name:'', phone:'' }])
   const [creating, setCreating]   = useState(false)
   const [error, setError]         = useState('')
+
+  function updatePlayer(i, field, val) {
+    setPlayers(prev => prev.map((p,idx) => idx===i ? {...p,[field]:val} : p))
+  }
+
+  function addRow() {
+    setPlayers(prev => [...prev, { name:'', phone:'' }])
+  }
+
+  function removeRow(i) {
+    if (players.length === 1) return
+    setPlayers(prev => prev.filter((_,idx) => idx !== i))
+  }
 
   async function handleCreate() {
     const name = courtName.trim()
     if (!name) { setError('Enter a court name'); return }
     setCreating(true); setError('')
 
-    // Check name uniqueness
-    const { data: existing } = await supabase
-      .from('groups').select('id').ilike('name', name).single()
-    if (existing) { setError('A court with this name already exists'); setCreating(false); return }
+    try {
+      // Check court name uniqueness
+      const { data: existing } = await supabase.from('groups').select('id').ilike('name', name).single()
+      if (existing) { setError('A court with this name already exists'); setCreating(false); return }
 
-    const code = generateCode()
-    const { data: newCourt, error: err } = await supabase
-      .from('groups')
-      .insert({ name, court_code: code, pin: DEFAULT_PIN })
-      .select().single()
+      // Create court
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase()
+      const { data: newCourt, error: courtErr } = await supabase
+        .from('groups').insert({ name, court_code: code, pin: DEFAULT_PIN }).select().single()
+      if (courtErr) throw courtErr
 
-    if (err) { setError(err.message); setCreating(false); return }
+      // Add creator as member + admin
+      await supabase.from('group_members').insert({ group_id: newCourt.id, player_id: currentUserId })
+      await supabase.from('players').update({ role: 'admin' }).eq('id', currentUserId)
 
-    // Add creator as member + admin
-    await supabase.from('group_members').insert({ group_id: newCourt.id, player_id: currentUserId })
-    await supabase.from('players').update({ role: 'admin' }).eq('id', currentUserId)
+      // Add players
+      const validPlayers = players.filter(p => p.name.trim() && /^\d{10}$/.test(p.phone))
+      for (const pl of validPlayers) {
+        // Check if phone exists
+        const { data: existingPlayer } = await supabase
+          .from('players').select('*').eq('phone', pl.phone).single()
 
-    onCreated(newCourt)
+        let playerId
+        if (existingPlayer) {
+          playerId = existingPlayer.id
+        } else {
+          const pinHash = await bcrypt.hash(DEFAULT_PIN, 10)
+          const username = pl.name.toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'') + pl.phone.slice(-3)
+          const { data: newPlayer, error: pErr } = await supabase.from('players').insert({
+            username, display_name: pl.name.trim(), phone: pl.phone,
+            pin_hash: pinHash,
+            total_games:0, total_wins:0, total_losses:0,
+            points_scored:0, points_conceded:0, level:1, role:'player',
+          }).select().single()
+          if (pErr) continue
+          playerId = newPlayer.id
+        }
+
+        // Add to court (skip if already member)
+        const { data: inCourt } = await supabase.from('group_members')
+          .select('player_id').eq('group_id', newCourt.id).eq('player_id', playerId).single()
+        if (!inCourt) {
+          await supabase.from('group_members').insert({ group_id: newCourt.id, player_id: playerId })
+        }
+      }
+
+      onCreated(newCourt)
+    } catch (err) {
+      setError(err.message || 'Something went wrong')
+      setCreating(false)
+    }
   }
 
+  const inp = (val, ph, onChange, type='text', mode='text') => ({
+    background:'rgba(0,0,0,0.4)',
+    border:`1px solid ${val.length===10&&type==='tel'?'rgba(74,222,128,0.5)':'rgba(255,255,255,0.1)'}`,
+    borderRadius:10, padding:'10px 12px',
+    color: val.length===10&&type==='tel'?'#4ade80':'#f1f5f9',
+    fontSize:14, fontFamily:"'Rajdhani',sans-serif",
+    outline:'none', width:'100%', boxSizing:'border-box',
+  })
+
   return (
-    <div style={{ flex:1, display:'flex', flexDirection:'column', padding:'20px 16px' }}>
-      <button onClick={onBack} style={{ background:'none', border:'none', color:'#475569', cursor:'pointer', fontFamily:"'Rajdhani',sans-serif", fontSize:13, fontWeight:700, textAlign:'left', marginBottom:20, padding:0 }}>← Back</button>
+    <div style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0 }}>
+      <div style={{ flex:1, overflowY:'auto', padding:'16px 16px 0' }}>
+        <button onClick={onBack} style={{ background:'none', border:'none', color:'#475569', cursor:'pointer', fontFamily:"'Rajdhani',sans-serif", fontSize:13, fontWeight:700, padding:0, marginBottom:20 }}>← Back</button>
 
-      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:24, color:'#f1f5f9', letterSpacing:2, marginBottom:6 }}>Create New Court</div>
-      <div style={{ fontSize:13, color:'#475569', marginBottom:28, fontFamily:"'Rajdhani',sans-serif" }}>A unique court code will be generated automatically</div>
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:24, color:'#f1f5f9', letterSpacing:2, marginBottom:4 }}>Create New Court</div>
+        <div style={{ fontSize:13, color:'#475569', marginBottom:20, fontFamily:"'Rajdhani',sans-serif" }}>Name your court and add players to get started</div>
 
-      <div style={{ marginBottom:16 }}>
-        <div style={{ fontSize:11, color:'#64748b', letterSpacing:1.5, fontWeight:700, textTransform:'uppercase', marginBottom:8, fontFamily:"'Rajdhani',sans-serif" }}>Court Name</div>
-        <input
-          value={courtName}
-          onChange={e => { setCourtName(e.target.value); setError('') }}
-          onKeyDown={e => e.key === 'Enter' && handleCreate()}
-          placeholder="e.g. Lotus Court 3"
-          autoFocus
-          style={{ width:'100%', boxSizing:'border-box', background:'rgba(0,0,0,0.4)', border:'1.5px solid rgba(255,255,255,0.12)', borderRadius:14, padding:'14px 16px', color:'#f1f5f9', fontSize:16, fontFamily:"'Rajdhani',sans-serif", outline:'none' }}
-        />
-        {error && <div style={{ fontSize:12, color:'#f87171', marginTop:6, fontFamily:"'Rajdhani',sans-serif" }}>⚠ {error}</div>}
+        {/* Court name */}
+        <div style={{ marginBottom:20 }}>
+          <div style={{ fontSize:11, color:'#64748b', letterSpacing:1.5, fontWeight:700, textTransform:'uppercase', marginBottom:8, fontFamily:"'Rajdhani',sans-serif" }}>Court Name</div>
+          <input value={courtName} onChange={e=>{ setCourtName(e.target.value); setError('') }}
+            placeholder="e.g. Lotus Court 3" autoFocus
+            style={{ ...inp(courtName,'',()=>{}), width:'100%', boxSizing:'border-box', padding:'12px 14px', fontSize:16, borderRadius:12 }}/>
+        </div>
+
+        {/* Players */}
+        <div style={{ marginBottom:12 }}>
+          <div style={{ fontSize:11, color:'#64748b', letterSpacing:1.5, fontWeight:700, textTransform:'uppercase', marginBottom:10, fontFamily:"'Rajdhani',sans-serif" }}>Add Players (optional)</div>
+
+          {players.map((p, i) => (
+            <div key={i} style={{ display:'flex', gap:8, alignItems:'center', marginBottom:8 }}>
+              <input value={p.name} onChange={e=>updatePlayer(i,'name',e.target.value)}
+                placeholder="Name"
+                style={{ flex:1, background:'rgba(0,0,0,0.4)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:10, padding:'10px 12px', color:'#f1f5f9', fontSize:14, fontFamily:"'Rajdhani',sans-serif", outline:'none' }}/>
+              <input value={p.phone} onChange={e=>{ if(/^\d{0,10}$/.test(e.target.value)) updatePlayer(i,'phone',e.target.value) }}
+                placeholder="Phone" type="tel" inputMode="numeric" maxLength={10}
+                style={{ flex:1, background:'rgba(0,0,0,0.4)', border:`1px solid ${p.phone.length===10?'rgba(74,222,128,0.5)':'rgba(255,255,255,0.1)'}`, borderRadius:10, padding:'10px 12px', color:p.phone.length===10?'#4ade80':'#f1f5f9', fontSize:14, fontFamily:"'Rajdhani',sans-serif", outline:'none' }}/>
+              {players.length > 1 && (
+                <button onClick={()=>removeRow(i)} style={{ background:'none', border:'none', color:'#475569', cursor:'pointer', fontSize:18, padding:'0 4px', flexShrink:0 }}>✕</button>
+              )}
+            </div>
+          ))}
+
+          <button onClick={addRow} style={{ background:'none', border:'none', color:'#4ade80', cursor:'pointer', fontFamily:"'Rajdhani',sans-serif", fontSize:13, fontWeight:700, padding:'4px 0', display:'flex', alignItems:'center', gap:6 }}>
+            <span style={{ fontSize:16 }}>+</span> Add another player
+          </button>
+        </div>
+
+        {/* Info note */}
+        <div style={{ background:'rgba(96,165,250,0.06)', border:'1px solid rgba(96,165,250,0.15)', borderRadius:12, padding:'10px 14px', marginBottom:16 }}>
+          <div style={{ fontSize:12, color:'#60a5fa', fontFamily:"'Rajdhani',sans-serif", lineHeight:1.5 }}>
+            ℹ️ New players log in with their <strong>phone number</strong> and default PIN <strong>1234</strong>
+          </div>
+        </div>
+
+        {error && <div style={{ fontSize:12, color:'#f87171', marginBottom:12, fontFamily:"'Rajdhani',sans-serif" }}>⚠ {error}</div>}
       </div>
 
-      <button onClick={handleCreate} disabled={creating || !courtName.trim()}
-        style={{ width:'100%', background: courtName.trim() ? 'linear-gradient(135deg,#14532d,#166534)' : 'rgba(255,255,255,0.05)', border:`1.5px solid ${courtName.trim()?'#4ade80':'rgba(255,255,255,0.1)'}`, color: courtName.trim()?'#4ade80':'#475569', borderRadius:50, padding:'15px', cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:3, opacity:creating?0.6:1 }}>
-        {creating ? 'CREATING...' : 'CREATE COURT →'}
-      </button>
+      {/* Bottom CTA */}
+      <div style={{ padding:'12px 16px 28px', borderTop:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
+        <button onClick={handleCreate} disabled={creating || !courtName.trim()}
+          style={{ width:'100%', background: courtName.trim() ? 'linear-gradient(135deg,#14532d,#166534)' : 'rgba(255,255,255,0.05)', border:`1.5px solid ${courtName.trim()?'#4ade80':'rgba(255,255,255,0.1)'}`, color: courtName.trim()?'#4ade80':'#475569', borderRadius:50, padding:'15px', cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:3, opacity:creating?0.6:1 }}>
+          {creating ? 'CREATING...' : 'CREATE COURT →'}
+        </button>
+      </div>
     </div>
   )
 }
@@ -397,8 +485,8 @@ export default function CourtManager({ onClose, currentUserId }) {
           onBack={() => setView('list')}
           onCreated={async (newCourt) => {
             await loadAll()
-            setSelectedCourt(newCourt)
-            setView('detail')
+            // Close and redirect to games tab with new court selected
+            onClose(newCourt.id)
           }}
         />
       )}
