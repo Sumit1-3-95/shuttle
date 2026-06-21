@@ -26,12 +26,13 @@ function getRankBadge(rank) {
   return { label:`#${rank}`, color:'#475569', bg:'rgba(71,85,105,0.1)', border:'rgba(71,85,105,0.2)' }
 }
 
-function Av({ id, size=40, aura='#4ade8055', style={} }) {
+function Av({ id, size=40, aura='#4ade8055', style={}, profilePic=null }) {
   const [err, setErr] = useState(false)
+  const src = profilePic && !err ? profilePic : getAvatarUrl(id)
   return (
     <div style={{ width:size, height:size, borderRadius:'50%', overflow:'hidden', border:`1.5px solid ${aura}`, background:'#1a2a1a', flexShrink:0, ...style }}>
       {!err
-        ? <img src={getAvatarUrl(id)} width={size} height={size} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={()=>setErr(true)}/>
+        ? <img src={src} width={size} height={size} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={()=>setErr(true)}/>
         : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:size*0.4,color:aura}}>?</div>
       }
     </div>
@@ -80,7 +81,7 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
         <div style={{ padding:'40px 20px 16px', background:`linear-gradient(180deg,${level.bg},transparent)`, borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
             <div style={{ position:'relative', cursor:'pointer' }} onClick={() => { onOpenProfile(currentUser.id, activeGroup); onClose() }}>
-              <Av id={currentUser.id} size={56} aura={level.aura} style={{ border:`2.5px solid ${level.aura}`, boxShadow:`0 0 16px ${level.glow}` }}/>
+              <Av id={currentUser.id} size={56} aura={level.aura} profilePic={currentPlayer?.profile_pic} style={{ border:`2.5px solid ${level.aura}`, boxShadow:`0 0 16px ${level.glow}` }}/>
               {level.tier >= 4 && <div style={{ position:'absolute', inset:-3, borderRadius:'50%', border:`1px solid ${level.aura}`, borderTopColor:'transparent', animation:'spin-ring 3s linear infinite', pointerEvents:'none' }}/>}
             </div>
             <div>
@@ -191,7 +192,7 @@ function HeroCard({ player, isCurrentUser, onClick }) {
       <div style={{ position:'relative', zIndex:1, padding:'18px 18px 14px' }}>
         <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:16 }}>
           <div style={{ position:'relative', flexShrink:0 }}>
-            <Av id={player.id} size={72} aura={level.aura} style={{ border:`3px solid ${level.aura}`, boxShadow:`0 0 24px ${level.glow}` }}/>
+            <Av id={player.id} size={72} aura={level.aura} profilePic={player.profile_pic} style={{ border:`3px solid ${level.aura}`, boxShadow:`0 0 24px ${level.glow}` }}/>
             {level.tier >= 4 && <div style={{ position:'absolute', inset:-5, borderRadius:'50%', border:`1.5px solid ${level.aura}`, borderTopColor:'transparent', borderRightColor:'transparent', animation:'spin-ring 3s linear infinite' }}/>}
           </div>
           <div style={{ flex:1 }}>
@@ -235,7 +236,7 @@ function LeaderRow({ player, rank, isCurrentUser, onClick }) {
       <div style={{ width:32, height:32, borderRadius:8, background:badge.bg, border:`1px solid ${badge.border}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
         <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:badge.color }}>{badge.label}</span>
       </div>
-      <Av id={player.id} size={42} aura={level.aura}/>
+      <Av id={player.id} size={42} aura={level.aura} profilePic={player.profile_pic}/>
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:3 }}>
           <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:1, color:isCurrentUser?level.aura:'#f1f5f9', lineHeight:1 }}>{player.display_name}</span>
@@ -312,7 +313,7 @@ function TeamsTab({ allPlayers, currentUserId, onOpenTeam }) {
             <div style={{display:'flex',gap:10,marginBottom:12}}>
               {[{p:me,l:lM},{p:partner,l:lP}].map(({p,l},i)=>(
                 <div key={p.id} style={{display:'flex',alignItems:'center',gap:8,flex:1,background:'rgba(0,0,0,0.3)',borderRadius:12,padding:'10px'}}>
-                  <Av id={p.id} size={42} aura={l.aura}/>
+                  <Av id={p.id} size={42} aura={l.aura} profilePic={p.profile_pic}/>
                   <div><div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:'#f1f5f9',lineHeight:1}}>{p.display_name}</div><div style={{fontSize:10,color:l.aura,fontFamily:"'Rajdhani',sans-serif"}}>{l.emoji} {l.name}</div></div>
                   {i===0&&<div style={{fontSize:14,color:'#334155',marginLeft:'auto'}}>+</div>}
                 </div>
@@ -487,6 +488,19 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
                       🏆 {winNames} WON
                     </span>
                   </div>
+                  {/* Under-10 highlight */}
+                  {Math.abs(g.score_a - g.score_b) >= 10 && (
+                    <div style={{display:'flex',alignItems:'center',gap:6,padding:'4px 10px',background:'rgba(251,146,60,0.1)',border:'1px solid rgba(251,146,60,0.3)',borderRadius:20,marginBottom:6,width:'fit-content'}}>
+                      <span style={{fontSize:12}}>💥</span>
+                      <span style={{fontSize:11,color:'#fb923c',fontWeight:700,fontFamily:"'Rajdhani',sans-serif"}}>DOMINATED — Won by {Math.abs(g.score_a-g.score_b)} pts!</span>
+                    </div>
+                  )}
+                  {Math.abs(g.score_a - g.score_b) <= 3 && (
+                    <div style={{display:'flex',alignItems:'center',gap:6,padding:'4px 10px',background:'rgba(255,215,0,0.1)',border:'1px solid rgba(255,215,0,0.3)',borderRadius:20,marginBottom:6,width:'fit-content'}}>
+                      <span style={{fontSize:12}}>😱</span>
+                      <span style={{fontSize:11,color:'#ffd700',fontWeight:700,fontFamily:"'Rajdhani',sans-serif"}}>NAIL-BITER — {Math.abs(g.score_a-g.score_b)} pt margin!</span>
+                    </div>
+                  )}
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
                     <span style={{fontSize:12,fontWeight:700,color:g.winner_team==='A'?'#4ade80':'#475569',fontFamily:"'Rajdhani',sans-serif"}}>Team A</span>
                     <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'#f1f5f9',letterSpacing:4}}>{g.score_a} — {g.score_b}</span>
@@ -497,7 +511,7 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
                       {tA.map(p=>{const lv=getLevel(p.total_wins||0);return(
                         <div key={p.id} style={{textAlign:'center'}}>
                           <div style={{width:30,height:30,borderRadius:'50%',overflow:'hidden',border:`1.5px solid ${g.winner_team==='A'?lv.aura:lv.aura+'44'}`,margin:'0 auto 2px',background:'#1a2a1a'}}>
-                            <img src={getAvatarUrl(p.id)} width={30} height={30} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
+                            <img src={p.profile_pic || getAvatarUrl(p.id)} width={30} height={30} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>{ e.target.src=getAvatarUrl(p.id) }}/>
                           </div>
                           <div style={{fontSize:9,fontFamily:"'Rajdhani',sans-serif",fontWeight:700,color:g.winner_team==='A'?lv.aura:'#475569'}}>{p.display_name}</div>
                         </div>
@@ -508,7 +522,7 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
                       {tB.map(p=>{const lv=getLevel(p.total_wins||0);return(
                         <div key={p.id} style={{textAlign:'center'}}>
                           <div style={{width:30,height:30,borderRadius:'50%',overflow:'hidden',border:`1.5px solid ${g.winner_team==='B'?lv.aura:lv.aura+'44'}`,margin:'0 auto 2px',background:'#1a2a1a'}}>
-                            <img src={getAvatarUrl(p.id)} width={30} height={30} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
+                            <img src={p.profile_pic || getAvatarUrl(p.id)} width={30} height={30} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>{ e.target.src=getAvatarUrl(p.id) }}/>
                           </div>
                           <div style={{fontSize:9,fontFamily:"'Rajdhani',sans-serif",fontWeight:700,color:g.winner_team==='B'?lv.aura:'#475569'}}>{p.display_name}</div>
                         </div>
@@ -768,7 +782,7 @@ function ReportTab({ players, currentUserId }) {
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
                     <span style={{ fontSize:16, width:24, flexShrink:0 }}>{medals[i]||`#${i+1}`}</span>
                     <div style={{ width:28, height:28, borderRadius:'50%', overflow:'hidden', border:'1.5px solid '+lv.aura, background:'#1a2a1a', flexShrink:0 }}>
-                      <img src={getAvatarUrl(s.pid)} width={28} height={28} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
+                      <img src={p.profile_pic || getAvatarUrl(s.pid)} width={28} height={28} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>{ e.target.src=getAvatarUrl(s.pid) }}/>
                     </div>
                     <span style={{ flex:1, fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color: s.pid===currentUserId?'#4ade80':'#f1f5f9' }}>{p.display_name}{s.pid===currentUserId?' 👈':''}</span>
                     <span style={{ fontSize:12, color:'#4ade80', fontWeight:700 }}>{s.wins}W</span>
@@ -1133,7 +1147,7 @@ export default function Dashboard({ onOpenProfile }) {
         </div>
         {me && (
           <div onClick={() => onOpenProfile && onOpenProfile(currentUser.id)} style={{ cursor:'pointer' }}>
-            <Av id={currentUser.id} size={34} aura={getLevel(me.total_wins||0).aura} style={{ border:`2px solid ${getLevel(me.total_wins||0).aura}` }}/>
+            <Av id={currentUser.id} size={34} aura={getLevel(me.total_wins||0).aura} profilePic={me?.profile_pic} style={{ border:`2px solid ${getLevel(me.total_wins||0).aura}` }}/>
           </div>
         )}
       </div>

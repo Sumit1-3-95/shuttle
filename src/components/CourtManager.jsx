@@ -12,12 +12,13 @@ function getLevel(wins) {
   return            { aura:'#94a3b8', emoji:'🎯' }
 }
 
-function Av({ id, size=40, aura='#4ade8055' }) {
+function Av({ id, size=40, aura='#4ade8055', profilePic=null }) {
   const [err, setErr] = useState(false)
+  const src = profilePic && !err ? profilePic : getAvatarUrl(id)
   return (
     <div style={{ width:size, height:size, borderRadius:'50%', overflow:'hidden', border:`1.5px solid ${aura}`, background:'#1a2a1a', flexShrink:0 }}>
       {!err
-        ? <img src={getAvatarUrl(id)} width={size} height={size} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={()=>setErr(true)}/>
+        ? <img src={src} width={size} height={size} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={()=>setErr(true)}/>
         : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:size*0.4,color:aura}}>?</div>
       }
     </div>
@@ -103,7 +104,7 @@ function CourtDetail({ court, allPlayers, onBack, onUpdated }) {
                   const lv = getLevel(p.total_wins||0)
                   return (
                     <div key={p.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'8px 10px', marginBottom:6, background:'rgba(255,255,255,0.02)', borderRadius:10, border:'1px solid rgba(255,255,255,0.06)' }}>
-                      <Av id={p.id} size={34} aura={lv.aura}/>
+                      <Av id={p.id} size={34} aura={lv.aura} profilePic={p.profile_pic}/>
                       <div style={{ flex:1 }}>
                         <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, letterSpacing:1, color:'#f1f5f9' }}>{p.display_name}</div>
                         <div style={{ fontSize:10, color:lv.aura, fontFamily:"'Rajdhani',sans-serif" }}>{lv.emoji} {p.total_wins||0}W</div>
@@ -138,7 +139,7 @@ function CourtDetail({ court, allPlayers, onBack, onUpdated }) {
           const lv = getLevel(p.total_wins||0)
           return (
             <div key={p.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'11px 12px', marginBottom:8, background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:14 }}>
-              <Av id={p.id} size={42} aura={lv.aura}/>
+              <Av id={p.id} size={42} aura={lv.aura} profilePic={p.profile_pic}/>
               <div style={{ flex:1 }}>
                 <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, letterSpacing:1, color:'#f1f5f9', lineHeight:1 }}>{p.display_name}</div>
                 <div style={{ fontSize:11, color:lv.aura, fontFamily:"'Rajdhani',sans-serif", marginTop:2 }}>{lv.emoji} {p.total_wins||0}W · {p.total_games||0} games</div>
