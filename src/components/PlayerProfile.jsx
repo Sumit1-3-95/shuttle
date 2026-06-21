@@ -1,6 +1,7 @@
 // src/components/PlayerProfile.jsx — v3
 // Fixed back button, smooth tabs, standardised layout, skills/flaws section
 import { useState } from 'react'
+import { supabase } from '../supabaseClient'
 import { usePlayerProfile } from '../hooks/usePlayerProfile'
 import { getAvatarUrl, getCharacterName } from '../utils/avatars'
 
@@ -124,6 +125,29 @@ function Toast({ toast }) {
 
 export default function PlayerProfile({ playerId, groupId, onBack }) {
   const { player, games, allPlayers, skills, loading, refreshing, toast, hasNewGame, refresh } = usePlayerProfile(playerId, groupId)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [photoToast, setPhotoToast]         = useState(null)
+
+  async function handlePhotoUpload(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    setUploadingPhoto(true)
+    try {
+      const ext  = file.name.split('.').pop()
+      const path = `avatars/${player.username}_${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from('avatars').upload(path, file)
+      if (upErr) throw upErr
+      const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
+      await supabase.from('players').update({ profile_pic: urlData.publicUrl }).eq('id', playerId)
+      setPhotoToast('✅ Photo updated!')
+      setTimeout(() => setPhotoToast(null), 3000)
+      refresh()
+    } catch (err) {
+      setPhotoToast('❌ Upload failed: ' + err.message)
+      setTimeout(() => setPhotoToast(null), 3000)
+    }
+    setUploadingPhoto(false)
+  }
   const [tab, setTab] = useState('overview')
 
   // Show court scope label if viewing court-specific stats

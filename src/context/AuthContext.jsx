@@ -1,4 +1,5 @@
-// src/context/AuthContext.jsx — v2 with isAdmin
+// src/context/AuthContext.jsx — v4
+// Login by phone number OR username, + PIN
 import { createContext, useContext, useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import bcrypt from 'bcryptjs'
@@ -17,14 +18,33 @@ export function AuthProvider({ children }) {
     setLoading(false)
   }, [])
 
-  async function login(username, pin) {
-    const { data: player, error } = await supabase
-      .from('players')
-      .select('*')
-      .eq('username', username.toLowerCase().trim())
-      .single()
+  async function login(identifier, pin) {
+    const query = identifier.trim()
+    let player = null
 
-    if (error || !player) return { success: false, message: 'Player not found' }
+    // 1. Try phone number (digits only)
+    const digitsOnly = query.replace(/\D/g, '')
+    if (digitsOnly.length >= 10) {
+      const { data } = await supabase
+        .from('players').select('*').eq('phone', digitsOnly).single()
+      if (data) player = data
+    }
+
+    // 2. Try username
+    if (!player) {
+      const { data } = await supabase
+        .from('players').select('*').eq('username', query.toLowerCase()).single()
+      if (data) player = data
+    }
+
+    // 3. Try display name (fallback)
+    if (!player) {
+      const { data } = await supabase
+        .from('players').select('*').ilike('display_name', query).single()
+      if (data) player = data
+    }
+
+    if (!player) return { success: false, message: 'Player not found' }
 
     const match = await bcrypt.compare(pin, player.pin_hash)
     if (!match) return { success: false, message: 'Wrong PIN' }
