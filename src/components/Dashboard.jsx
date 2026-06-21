@@ -59,7 +59,7 @@ function TabLoader() {
 }
 
 // ── Hamburger menu ─────────────────────────────────────────────
-function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup, onOpenCourtManager, onOpenMyCourts, onCreateCourt }) {
+function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup, onOpenCourtManager, onOpenMyCourts, onCreateCourt, onJoinCourt }) {
   const level = getLevel(currentPlayer?.total_wins || 0)
   const [showCreate, setShowCreate] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
@@ -129,33 +129,34 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
 
           {/* All courts — admin only */}
           {(currentUser.isAdmin || currentUser.role === 'admin') && (
-          <div style={{ padding:'0 16px 8px' }}>
-            <div style={{ fontSize:10, color:'#475569', letterSpacing:2, textTransform:'uppercase', fontWeight:700, marginBottom:10, fontFamily:"'Rajdhani',sans-serif" }}>All Courts</div>
-            {groups.map(g => (
-              <div key={g.id} onClick={() => handleGroupClick(g.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', marginBottom:6, background:activeGroup===g.id?'rgba(74,222,128,0.08)':'rgba(255,255,255,0.02)', border:`1px solid ${activeGroup===g.id?'rgba(74,222,128,0.25)':'rgba(255,255,255,0.06)'}`, borderRadius:10, cursor:'pointer' }}>
-                <span style={{ fontSize:16 }}>🏟️</span>
-                <span style={{ fontSize:14, color:activeGroup===g.id?'#4ade80':'#94a3b8', fontFamily:"'Rajdhani',sans-serif", fontWeight:600 }}>{g.name}</span>
-                {activeGroup===g.id && <span style={{ marginLeft:'auto', fontSize:10, color:'#4ade80' }}>●</span>}
-              </div>
-            ))}
-          </div>
+            <div style={{ padding:'0 16px 8px' }}>
+              <div style={{ fontSize:10, color:'#475569', letterSpacing:2, textTransform:'uppercase', fontWeight:700, marginBottom:10, fontFamily:"'Rajdhani',sans-serif" }}>All Courts</div>
+              {groups.map(g => (
+                <div key={g.id} onClick={() => handleGroupClick(g.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', marginBottom:6, background:activeGroup===g.id?'rgba(74,222,128,0.08)':'rgba(255,255,255,0.02)', border:`1px solid ${activeGroup===g.id?'rgba(74,222,128,0.25)':'rgba(255,255,255,0.06)'}`, borderRadius:10, cursor:'pointer' }}>
+                  <span style={{ fontSize:16 }}>🏟️</span>
+                  <span style={{ fontSize:14, color:activeGroup===g.id?'#4ade80':'#94a3b8', fontFamily:"'Rajdhani',sans-serif", fontWeight:600 }}>{g.name}</span>
+                  {activeGroup===g.id && <span style={{ marginLeft:'auto', fontSize:10, color:'#4ade80' }}>●</span>}
+                </div>
+              ))}
+            </div>
           )}
+
           <div style={{ height:1, background:'rgba(255,255,255,0.05)', margin:'4px 16px 12px' }}/>
 
-          {/* Create group */}
-                    {/* Court actions — all users */}
+          {/* Court actions — all users */}
           <div style={{ padding:'0 16px', marginBottom:8 }}>
             <div style={{ fontSize:10, color:'#475569', letterSpacing:2, textTransform:'uppercase', fontWeight:700, marginBottom:10, fontFamily:"'Rajdhani',sans-serif" }}>Courts</div>
             <button onClick={() => { onCreateCourt && onCreateCourt(); onClose() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', marginBottom:8, background:'rgba(74,222,128,0.06)', border:'1px solid rgba(74,222,128,0.2)', borderRadius:10, cursor:'pointer', color:'#4ade80', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
               <span>🏟️</span> Create a Court
             </button>
-            <button onClick={() => { onOpenMyCourts && onOpenMyCourts(); onClose() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', background:'rgba(96,165,250,0.06)', border:'1px solid rgba(96,165,250,0.2)', borderRadius:10, cursor:'pointer', color:'#60a5fa', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
+            <button onClick={() => { onJoinCourt && onJoinCourt(); onClose() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', background:'rgba(96,165,250,0.06)', border:'1px solid rgba(96,165,250,0.2)', borderRadius:10, cursor:'pointer', color:'#60a5fa', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
               <span>🔍</span> Join a Court
             </button>
           </div>
 
           <div style={{ height:1, background:'rgba(255,255,255,0.05)', margin:'4px 16px 12px' }}/>
 
+          {/* Create group */}
           {(currentUser.isAdmin || currentUser.role === 'admin') && (
           <div style={{ padding:'0 16px' }}>
             <div style={{ fontSize:10, color:'#475569', letterSpacing:2, textTransform:'uppercase', fontWeight:700, marginBottom:10, fontFamily:"'Rajdhani',sans-serif" }}>Admin</div>
@@ -1051,6 +1052,8 @@ export default function Dashboard({ onOpenProfile }) {
   const [editGame, setEditGame]         = useState(null)
   const [joinGroup, setJoinGroup]       = useState(null)
   const [showCourtManager, setShowCourtManager] = useState(false)
+  const [courtManagerView, setCourtManagerView] = useState('list')
+  const [myCourtsView, setMyCourtsView]         = useState('my')
   const [showMyCourts, setShowMyCourts]         = useState(false)
   const [openTeam, setOpenTeam]               = useState(null) // {p1, p2}
 
@@ -1158,7 +1161,6 @@ export default function Dashboard({ onOpenProfile }) {
           onJoinGroup={(g) => { setJoinGroup(g); setShowMenu(false) }}
           onOpenCourtManager={() => { setShowCourtManager(true); setShowMenu(false) }}
           onOpenMyCourts={() => { setShowMyCourts(true); setShowMenu(false) }}
-          onCreateCourt={() => { setShowCourtManager(true); setShowMenu(false) }}
         />
       )}
 
@@ -1242,13 +1244,16 @@ export default function Dashboard({ onOpenProfile }) {
       {showMyCourts && (
         <MyCourts
           currentUser={currentUser}
-          onClose={() => { setShowMyCourts(false); loadGroups() }}
+          onClose={() => { setShowMyCourts(false); setMyCourtsView('my'); loadGroups() }}
+          initialView={myCourtsView}
+          onCreateCourt={() => { setShowMyCourts(false); setCourtManagerView('create'); setShowCourtManager(true) }}
         />
       )}
       {showCourtManager && (
         <CourtManager
-          onClose={(newCourtId) => { setShowCourtManager(false); loadGroups(); if(newCourtId){ setActiveGroup(newCourtId); setTab('games') } }}
+          onClose={(newCourtId) => { setShowCourtManager(false); setCourtManagerView('list'); loadGroups(); if(newCourtId){ setActiveGroup(newCourtId); setTab('games') } }}
           currentUserId={currentUser.id}
+          initialView={courtManagerView}
         />
       )}
       {joinGroup && (

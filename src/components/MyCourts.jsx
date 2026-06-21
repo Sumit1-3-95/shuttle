@@ -12,7 +12,7 @@ function getLevel(wins) {
   return            { aura:'#94a3b8' }
 }
 
-export default function MyCourts({ currentUser, onClose }) {
+export default function MyCourts({ currentUser, onClose, initialView='my', onCreateCourt }) {
   const [myCourts, setMyCourts]       = useState([])
   const [allCourts, setAllCourts]     = useState([])
   const [loading, setLoading]         = useState(true)
@@ -117,7 +117,7 @@ export default function MyCourts({ currentUser, onClose }) {
       {/* Tabs */}
       <div style={{ display:'flex', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
         {[{id:'my',label:'My Courts'},{id:'join',label:'Join a Court'},{id:'create',label:'Create Court'}].map(t => (
-          <button key={t.id} onClick={()=>setView(t.id)} style={{
+          <button key={t.id} onClick={()=>{ if(t.id==='create'&&onCreateCourt){ onCreateCourt(); return } setView(t.id) }} style={{
             flex:1, padding:'12px', background:'none', border:'none',
             borderBottom:`2px solid ${view===t.id?'#4ade80':'transparent'}`,
             color:view===t.id?'#4ade80':'#475569',
@@ -206,6 +206,7 @@ export default function MyCourts({ currentUser, onClose }) {
         )}
 
         {/* ── CREATE COURT ── */}
+        {view === 'create' && onCreateCourt && !onCreateCourt() && null}
         {view === 'create' && (
           <div>
             <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:16, padding:'20px' }}>
