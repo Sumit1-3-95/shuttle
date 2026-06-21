@@ -1161,6 +1161,8 @@ export default function Dashboard({ onOpenProfile }) {
           onJoinGroup={(g) => { setJoinGroup(g); setShowMenu(false) }}
           onOpenCourtManager={() => { setShowCourtManager(true); setShowMenu(false) }}
           onOpenMyCourts={() => { setShowMyCourts(true); setShowMenu(false) }}
+          onCreateCourt={() => { setCourtManagerView('create'); setShowCourtManager(true); setShowMenu(false) }}
+          onJoinCourt={() => { setMyCourtsView('join'); setShowMyCourts(true); setShowMenu(false) }}
         />
       )}
 
