@@ -55,7 +55,7 @@ export default function LoginScreen({ onRegister }) {
             onKeyDown={e => e.key === 'Enter' && handleLogin()}
             placeholder="e.g. 9876543210 or sumit"
             type="text"
-            inputMode="numeric"
+            inputMode="text"
             style={inp}
           />
         </div>
