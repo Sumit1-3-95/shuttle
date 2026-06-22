@@ -370,13 +370,7 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
                     fontFamily:"'Rajdhani',sans-serif", fontSize:12, fontWeight:700, whiteSpace:'nowrap', transition:'all 0.15s',
                   }}>🏸 {g.name}</button>
                 ))}
-                <button onClick={()=>setCourtFilter('all')} style={{
-                  padding:'5px 12px', borderRadius:20, cursor:'pointer', flexShrink:0,
-                  border: courtFilter==='all' ? '1px solid rgba(255,255,255,0.3)' : '1px solid rgba(255,255,255,0.08)',
-                  background: courtFilter==='all' ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.03)',
-                  color: courtFilter==='all' ? '#f1f5f9' : '#475569',
-                  fontFamily:"'Rajdhani',sans-serif", fontSize:12, fontWeight:700, transition:'all 0.15s',
-                }}>All</button>
+
               </div>
             )}
 

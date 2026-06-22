@@ -149,8 +149,11 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
             <button onClick={() => { onCreateCourt && onCreateCourt(); onClose() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', marginBottom:8, background:'rgba(74,222,128,0.06)', border:'1px solid rgba(74,222,128,0.2)', borderRadius:10, cursor:'pointer', color:'#4ade80', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
               <span>🏟️</span> Create a Court
             </button>
-            <button onClick={() => { onJoinCourt && onJoinCourt(); onClose() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', background:'rgba(96,165,250,0.06)', border:'1px solid rgba(96,165,250,0.2)', borderRadius:10, cursor:'pointer', color:'#60a5fa', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
+            <button onClick={() => { onJoinCourt && onJoinCourt(); onClose() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', marginBottom:8, background:'rgba(96,165,250,0.06)', border:'1px solid rgba(96,165,250,0.2)', borderRadius:10, cursor:'pointer', color:'#60a5fa', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
               <span>🔍</span> Join a Court
+            </button>
+            <button onClick={() => { onOpenMyCourts && onOpenMyCourts(); onClose() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', background:'rgba(148,163,184,0.06)', border:'1px solid rgba(148,163,184,0.2)', borderRadius:10, cursor:'pointer', color:'#94a3b8', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
+              <span>🏸</span> Manage My Courts
             </button>
           </div>
 
@@ -1231,7 +1234,7 @@ export default function Dashboard({ onOpenProfile }) {
 
       {/* FAB */}
       <div style={{ position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)', zIndex:50, width:'100%', maxWidth:480, padding:'10px 16px 24px', background:'linear-gradient(to top,rgba(6,13,20,1) 65%,transparent)', pointerEvents:'none' }}>
-        <button onClick={()=>setShowLogGame(true)} style={{ display:'block', width:'100%', background:'linear-gradient(135deg,#14532d,#166534)', border:'1.5px solid #4ade80', color:'#4ade80', fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:4, padding:'15px', borderRadius:50, cursor:'pointer', animation:'fab-pulse 2.5s ease-in-out infinite', pointerEvents:'all' }}>
+        <button onClick={()=>setShowLogGame(true)} style={{ display:'block', width:'92%', margin:'0 auto', background:'linear-gradient(135deg,#14532d,#166534)', border:'1.5px solid #4ade80', color:'#4ade80', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:3, padding:'13px', borderRadius:50, cursor:'pointer', animation:'fab-pulse 2.5s ease-in-out infinite', pointerEvents:'all' }}>
           + ADD GAME
         </button>
       </div>
