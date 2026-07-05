@@ -584,11 +584,27 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
 
 
 // ── Report Tab ─────────────────────────────────────────────────
+const WITTY_DEFEAT = [
+  "They didn't lose, they just ran out of points 💀",
+  "That wasn't a match, that was a mercy killing 🪦",
+  "The score was so bad, the shuttlecock filed for asylum 🏸",
+  "Even the net felt sorry for them 😬",
+  "A moment of silence for their dignity 🕯️",
+  "They should've stayed home and practiced breathing 😮‍💨",
+]
+const WITTY_DOMINATION = [
+  "is absolutely HAUNTING on court 👻",
+  "has made this their personal highlight reel 🎬",
+  "needs to stop bullying people and get therapy 😤",
+  "is collecting souls like it's a hobby 😈",
+  "should be reported to the badminton police 🚔",
+]
+
 function ReportTab({ players, currentUserId }) {
   const [allGames, setAllGames]   = useState([])
   const [loading, setLoading]     = useState(true)
-  const [period, setPeriod]       = useState('today') // 'today'|'week'|'month'
-  const [view, setView]           = useState('overview') // 'overview'|'mycard'
+  const [period, setPeriod]       = useState('today')
+  const [view, setView]           = useState('overview')
   const allowedIds = new Set((players||[]).map(p=>p.id))
 
   useEffect(() => {
@@ -608,292 +624,354 @@ function ReportTab({ players, currentUserId }) {
 
   function getDateRange() {
     const now = new Date()
-    if (period === 'today') {
-      const s = new Date(now); s.setHours(0,0,0,0)
-      return { start: s, label: now.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'}) }
-    }
-    if (period === 'week') {
-      const s = new Date(now); s.setDate(now.getDate() - ((now.getDay()+6)%7)); s.setHours(0,0,0,0)
-      return { start: s, label: 'This Week' }
-    }
-    const s = new Date(now.getFullYear(), now.getMonth(), 1)
-    return { start: s, label: now.toLocaleDateString('en-IN',{month:'long',year:'numeric'}) }
+    if (period==='today') { const s=new Date(now); s.setHours(0,0,0,0); return { start:s, label:'TODAY' } }
+    if (period==='week')  { const s=new Date(now); s.setDate(now.getDate()-((now.getDay()+6)%7)); s.setHours(0,0,0,0); return { start:s, label:'THIS WEEK' } }
+    return { start: new Date(now.getFullYear(),now.getMonth(),1), label:'THIS MONTH' }
   }
 
   const { start, label } = getDateRange()
   const periodGames = allGames.filter(g => new Date(g.played_at) >= start)
 
-  // Player stats for period
-  function getPeriodPlayerStats() {
+  // ── Stats ──
+  function getPlayerStats() {
     const stats = {}
     periodGames.forEach(g => {
-      const allIds = [...(g.team_a_ids||[]), ...(g.team_b_ids||[])]
-      allIds.forEach(pid => {
-        if (!stats[pid]) stats[pid] = { wins:0, games:0, scored:0 }
+      const ids = [...(g.team_a_ids||[]),...(g.team_b_ids||[])]
+      ids.forEach(pid => {
+        if (!stats[pid]) stats[pid] = { wins:0, games:0, scored:0, conceded:0 }
         stats[pid].games++
         const inA = g.team_a_ids.includes(pid)
         if (g.winner_team===(inA?'A':'B')) stats[pid].wins++
-        stats[pid].scored += inA ? g.score_a : g.score_b
+        stats[pid].scored   += inA ? g.score_a : g.score_b
+        stats[pid].conceded += inA ? g.score_b : g.score_a
       })
     })
-    return Object.entries(stats)
-      .map(([pid,s]) => ({ pid, ...s, pct: s.games>0?Math.round((s.wins/s.games)*100):0 }))
-      .sort((a,b) => b.wins-a.wins || b.pct-a.pct)
+    return Object.entries(stats).map(([pid,s]) => ({
+      pid, ...s, pct: s.games>0?Math.round(s.wins/s.games*100):0
+    })).sort((a,b)=>b.wins-a.wins||b.pct-a.pct)
   }
-  const playerStats = getPeriodPlayerStats()
+  const playerStats = getPlayerStats()
 
-  // Best duo for period
-  function getBestDuo() {
+  // ── Best Duo ──
+  function getDuos() {
     const ts = {}
     periodGames.forEach(g => {
       [{ids:[...g.team_a_ids].sort(),won:g.winner_team==='A'},{ids:[...g.team_b_ids].sort(),won:g.winner_team==='B'}].forEach(({ids,won})=>{
-        const k=ids.join('|')
-        if(!ts[k]) ts[k]={ids,wins:0,games:0}
+        const k=ids.join('|'); if(!ts[k]) ts[k]={ids,wins:0,games:0}
         ts[k].games++; if(won) ts[k].wins++
       })
     })
-    return Object.values(ts).sort((a,b)=>b.wins-a.wins||b.games-a.games)[0]||null
+    return Object.values(ts).filter(t=>t.games>=1).sort((a,b)=>b.wins-a.wins||b.games-a.games)
   }
-  const bestDuo = getBestDuo()
+  const duos = getDuos()
+  const bestDuo = duos[0]||null
+  const runnerDuo = duos[1]||null
 
-  // Insights
-  function getInsights() {
-    const ins = []
+  // ── Unbeaten Team ──
+  const unbeatenDuo = duos.find(d=>d.games>=2&&d.wins===d.games)||null
+
+  // ── Heavy Defeat (biggest blowout) ──
+  const blowouts = periodGames.filter(g=>Math.abs(g.score_a-g.score_b)>=10)
+    .sort((a,b)=>Math.abs(b.score_a-b.score_b)-Math.abs(a.score_a-a.score_b))
+  const worstBlowout = blowouts[0]||null
+
+  // ── Domination (one player vs another) ──
+  function getDomination() {
+    const h2h = {}
     periodGames.forEach(g => {
-      const margin = Math.abs(g.score_a - g.score_b)
-      const tA = g.team_a_ids.map(id=>playerMap[id]?.display_name||'?').join(' + ')
-      const tB = g.team_b_ids.map(id=>playerMap[id]?.display_name||'?').join(' + ')
-      if (margin <= 3) ins.push({ icon:'😱', color:'#ffd700', bg:'rgba(255,215,0,0.08)', border:'rgba(255,215,0,0.2)', text:`Nail-biter! ${tA} vs ${tB} — won by just ${margin} point${margin!==1?'s':''}!` })
-      if (margin >= 10) {
-        const w = g.winner_team==='A'?tA:tB, l = g.winner_team==='A'?tB:tA
-        ins.push({ icon:'💥', color:'#f87171', bg:'rgba(248,113,113,0.08)', border:'rgba(248,113,113,0.2)', text:`${w} demolished ${l} by ${margin} points!` })
-      }
+      const wIds = g.winner_team==='A'?g.team_a_ids:g.team_b_ids
+      const lIds = g.winner_team==='A'?g.team_b_ids:g.team_a_ids
+      wIds.forEach(w => lIds.forEach(l => {
+        const k=`${w}>${l}`; if(!h2h[k]) h2h[k]={w,l,wins:0}
+        h2h[k].wins++
+      }))
     })
-    return ins.slice(0,3)
+    return Object.values(h2h).sort((a,b)=>b.wins-a.wins)[0]||null
   }
-  const insights = getInsights()
+  const domination = getDomination()
 
   // My stats
-  const myGames = periodGames.filter(g => g.team_a_ids.includes(currentUserId)||g.team_b_ids.includes(currentUserId))
-  const myWins  = myGames.filter(g=>{ const inA=g.team_a_ids.includes(currentUserId); return g.winner_team===(inA?'A':'B') }).length
-  const myLosses = myGames.length - myWins
-  const myPct = myGames.length>0?Math.round((myWins/myGames.length)*100):0
-  const myScored = myGames.reduce((acc,g)=>acc+(g.team_a_ids.includes(currentUserId)?g.score_a:g.score_b),0)
-  const myConceded = myGames.reduce((acc,g)=>acc+(g.team_a_ids.includes(currentUserId)?g.score_b:g.score_a),0)
-  const me = playerMap[currentUserId]
-  const myLevel = me?getLevel(me.total_wins||0):{aura:'#94a3b8',bg:'#111827',name:'ROOKIE'}
+  const myGames   = periodGames.filter(g=>g.team_a_ids.includes(currentUserId)||g.team_b_ids.includes(currentUserId))
+  const myWins    = myGames.filter(g=>{ const inA=g.team_a_ids.includes(currentUserId); return g.winner_team===(inA?'A':'B') }).length
+  const myLosses  = myGames.length-myWins
+  const myPct     = myGames.length>0?Math.round(myWins/myGames.length*100):0
+  const myScored  = myGames.reduce((a,g)=>a+(g.team_a_ids.includes(currentUserId)?g.score_a:g.score_b),0)
+  const myConceded= myGames.reduce((a,g)=>a+(g.team_a_ids.includes(currentUserId)?g.score_b:g.score_a),0)
+  const me        = playerMap[currentUserId]
+  const myLevel   = me?getLevel(me.total_wins||0):{aura:'#94a3b8',name:'ROOKIE'}
 
-  // Win rate bar width for chart
-  const maxGames = Math.max(...playerStats.map(s=>s.games), 1)
+  const pName = id => playerMap[id]?.display_name?.split(' ')[0]||'?'
 
-  if (loading) return <div style={{textAlign:'center',color:'#475569',padding:40,fontFamily:"'Rajdhani',sans-serif"}}>Loading...</div>
+  if (loading) return <div style={{textAlign:'center',color:'#475569',padding:40,fontFamily:"'Rajdhani',sans-serif"}}>Loading stats...</div>
 
   return (
     <div style={{ fontFamily:"'Rajdhani',sans-serif", color:'#f1f5f9' }}>
+      <style>{`
+        @keyframes pulse-border{0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,0.4)}50%{box-shadow:0 0 0 6px rgba(74,222,128,0)}}
+        @keyframes fire{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.08)}}
+        @keyframes float-up{0%{transform:translateY(0)}50%{transform:translateY(-4px)}100%{transform:translateY(0)}}
+      `}</style>
 
       {/* View toggle */}
-      <div style={{ display:'flex', gap:8, marginBottom:16 }}>
-        <button onClick={()=>setView('overview')} style={{ flex:1, padding:'10px', borderRadius:12, cursor:'pointer', border: view==='overview'?'1px solid rgba(74,222,128,0.5)':'1px solid rgba(255,255,255,0.1)', background: view==='overview'?'rgba(74,222,128,0.12)':'rgba(255,255,255,0.03)', color: view==='overview'?'#4ade80':'#64748b', fontFamily:"'Bebas Neue',sans-serif", fontSize:14, letterSpacing:1 }}>📊 Overview</button>
-        <button onClick={()=>setView('mycard')} style={{ flex:1, padding:'10px', borderRadius:12, cursor:'pointer', border: view==='mycard'?'1px solid rgba(96,165,250,0.5)':'1px solid rgba(255,255,255,0.1)', background: view==='mycard'?'rgba(96,165,250,0.12)':'rgba(255,255,255,0.03)', color: view==='mycard'?'#60a5fa':'#64748b', fontFamily:"'Bebas Neue',sans-serif", fontSize:14, letterSpacing:1 }}>🎴 My Card</button>
-      </div>
-
-      {/* Period chips */}
-      <div style={{ display:'flex', gap:8, marginBottom:18 }}>
-        {[{id:'today',label:'Today'},{id:'week',label:'This Week'},{id:'month',label:'This Month'}].map(p => (
-          <button key={p.id} onClick={()=>setPeriod(p.id)} style={{
-            flex:1, padding:'8px', borderRadius:20, cursor:'pointer',
-            border: period===p.id?'1px solid rgba(74,222,128,0.5)':'1px solid rgba(255,255,255,0.08)',
-            background: period===p.id?'rgba(74,222,128,0.12)':'rgba(255,255,255,0.03)',
-            color: period===p.id?'#4ade80':'#64748b',
-            fontFamily:"'Rajdhani',sans-serif", fontSize:13, fontWeight:700,
-          }}>{p.label}</button>
+      <div style={{ display:'flex', gap:8, marginBottom:14 }}>
+        {[{id:'overview',icon:'📊',label:'Overview'},{id:'mycard',icon:'🎴',label:'My Card'}].map(v=>(
+          <button key={v.id} onClick={()=>setView(v.id)} style={{ flex:1, padding:'10px', borderRadius:12, cursor:'pointer', border: view===v.id?'1px solid rgba(74,222,128,0.5)':'1px solid rgba(255,255,255,0.08)', background: view===v.id?'rgba(74,222,128,0.1)':'rgba(255,255,255,0.03)', color: view===v.id?'#4ade80':'#64748b', fontFamily:"'Bebas Neue',sans-serif", fontSize:14, letterSpacing:1 }}>{v.icon} {v.label}</button>
         ))}
       </div>
 
-      {/* ── OVERVIEW ── */}
-      {view === 'overview' && (
-        <div>
-          {/* Hero stats card */}
-          <div style={{ position:'relative', background:'linear-gradient(135deg,#0a1628,#060d14)', border:'1.5px solid rgba(74,222,128,0.2)', borderRadius:20, padding:'18px 16px', marginBottom:16, overflow:'hidden' }}>
-            <svg width="100%" height="100%" viewBox="0 0 400 160" preserveAspectRatio="xMidYMid slice" style={{ position:'absolute', inset:0, opacity:0.07 }} aria-hidden="true">
-              <rect x="10" y="10" width="380" height="140" fill="none" stroke="#4ade80" strokeWidth="1.5"/>
-              <line x1="200" y1="10" x2="200" y2="150" stroke="#4ade80" strokeWidth="1.5"/>
-              <line x1="10" y1="80" x2="390" y2="80" stroke="#4ade80" strokeWidth="1"/>
-            </svg>
-            <div style={{ position:'relative', zIndex:1 }}>
-              <div style={{ fontSize:11, color:'#4ade80', letterSpacing:2, fontWeight:700, marginBottom:4 }}>{label.toUpperCase()}</div>
-              <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, marginBottom:12 }}>
-                {[{v:periodGames.length,l:'MATCHES',c:'#4ade80'},{v:playerStats.length,l:'PLAYERS',c:'#60a5fa'},{v:periodGames.reduce((a,g)=>a+g.score_a+g.score_b,0),l:'POINTS',c:'#ffd700'}].map(s=>(
-                  <div key={s.l} style={{ textAlign:'center', background:'rgba(0,0,0,0.35)', borderRadius:12, padding:'10px 4px' }}>
-                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:32, color:s.c, lineHeight:1 }}>{s.v}</div>
-                    <div style={{ fontSize:10, color:'#64748b', letterSpacing:1, marginTop:2 }}>{s.l}</div>
-                  </div>
-                ))}
+      {/* Period chips */}
+      <div style={{ display:'flex', gap:6, marginBottom:18 }}>
+        {[{id:'today',label:'Today'},{id:'week',label:'This Week'},{id:'month',label:'This Month'}].map(p=>(
+          <button key={p.id} onClick={()=>setPeriod(p.id)} style={{ flex:1, padding:'8px', borderRadius:20, cursor:'pointer', border: period===p.id?'1px solid rgba(74,222,128,0.5)':'1px solid rgba(255,255,255,0.08)', background: period===p.id?'rgba(74,222,128,0.12)':'rgba(255,255,255,0.03)', color: period===p.id?'#4ade80':'#64748b', fontFamily:"'Rajdhani',sans-serif", fontSize:13, fontWeight:700 }}>{p.label}</button>
+        ))}
+      </div>
+
+      {view==='overview' && (
+        <>
+        {periodGames.length===0 ? (
+          <div style={{ textAlign:'center', padding:40, color:'#334155' }}>
+            <div style={{ fontSize:40, marginBottom:12 }}>🏸</div>
+            <div style={{ fontSize:15 }}>No games played {label.toLowerCase()}</div>
+            <div style={{ fontSize:12, marginTop:6, color:'#1e293b' }}>Go play some badminton!</div>
+          </div>
+        ) : (
+          <>
+          {/* ── STAT TRIO ── */}
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8, marginBottom:14 }}>
+            {[
+              { v:periodGames.length, l:'MATCHES', emoji:'🎮', color:'#4ade80', bg:'rgba(74,222,128,0.08)', border:'rgba(74,222,128,0.2)' },
+              { v:playerStats.length, l:'WARRIORS', emoji:'⚔️', color:'#60a5fa', bg:'rgba(96,165,250,0.08)', border:'rgba(96,165,250,0.2)' },
+              { v:periodGames.reduce((a,g)=>a+g.score_a+g.score_b,0), l:'POINTS', emoji:'🔥', color:'#fb923c', bg:'rgba(251,146,60,0.08)', border:'rgba(251,146,60,0.2)' },
+            ].map(s=>(
+              <div key={s.l} style={{ background:s.bg, border:`1px solid ${s.border}`, borderRadius:14, padding:'12px 6px', textAlign:'center' }}>
+                <div style={{ fontSize:20, marginBottom:4 }}>{s.emoji}</div>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, color:s.color, lineHeight:1 }}>{s.v}</div>
+                <div style={{ fontSize:10, color:'#475569', letterSpacing:1.5, fontWeight:700, marginTop:3 }}>{s.l}</div>
               </div>
-              {/* Activity bar */}
-              {periodGames.length > 0 && (()=>{
-                const byDay = {}
-                periodGames.forEach(g => {
-                  const d = new Date(g.played_at).toLocaleDateString('en-IN',{weekday:'short'})
-                  byDay[d] = (byDay[d]||0) + 1
-                })
-                const days = Object.entries(byDay).slice(-7)
-                const max = Math.max(...days.map(d=>d[1]),1)
-                return (
-                  <div>
-                    <div style={{ fontSize:10, color:'#334155', letterSpacing:1, marginBottom:6 }}>MATCH ACTIVITY</div>
-                    <div style={{ display:'flex', gap:4, alignItems:'flex-end', height:36 }}>
-                      {days.map(([d,n],i) => (
-                        <div key={i} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3 }}>
-                          <div style={{ width:'100%', background:'rgba(74,222,128,0.7)', borderRadius:3, height:Math.round((n/max)*32) }}/>
-                          <div style={{ fontSize:8, color:'#334155' }}>{d}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })()}
-            </div>
+            ))}
           </div>
 
-          {/* Best duo */}
+          {/* ── BEST DUO PODIUM ── */}
           {bestDuo && (()=>{
-            const p1=playerMap[bestDuo.ids[0]], p2=playerMap[bestDuo.ids[1]]
+            const [p1,p2]=[playerMap[bestDuo.ids[0]],playerMap[bestDuo.ids[1]]]
             if(!p1||!p2) return null
-            const pct=bestDuo.games>0?Math.round((bestDuo.wins/bestDuo.games)*100):0
+            const pct=bestDuo.games>0?Math.round(bestDuo.wins/bestDuo.games*100):0
             return (
-              <div style={{ background:'rgba(255,215,0,0.06)', border:'1px solid rgba(255,215,0,0.2)', borderRadius:16, padding:'14px', marginBottom:16 }}>
-                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'#ffd700', letterSpacing:2, marginBottom:10 }}>🏆 BEST DUO · {label.toUpperCase()}</div>
+              <div style={{ background:'linear-gradient(135deg,rgba(255,215,0,0.1),rgba(255,215,0,0.04))', border:'1.5px solid rgba(255,215,0,0.3)', borderRadius:18, padding:'16px', marginBottom:12, position:'relative', overflow:'hidden' }}>
+                <div style={{ position:'absolute', top:8, right:12, fontSize:28, opacity:0.15 }}>🏆</div>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:12, color:'#ffd700', letterSpacing:3, marginBottom:12 }}>🏆 DYNAMIC DUO · {label}</div>
                 <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                  <div style={{ display:'flex' }}>
+                  {/* Stacked avatars */}
+                  <div style={{ position:'relative', width:64, height:44, flexShrink:0 }}>
                     {[p1,p2].map((p,i)=>(
-                      <div key={p.id} style={{ width:40, height:40, borderRadius:'50%', overflow:'hidden', border:'2px solid #ffd700', marginLeft:i>0?-10:0, background:'#1a2a1a' }}>
-                        <img src={getAvatarUrl(p.id)} width={40} height={40} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
+                      <div key={p.id} style={{ position:'absolute', left:i*22, top:0, width:40, height:40, borderRadius:'50%', overflow:'hidden', border:'2.5px solid #ffd700', background:'#1a2a1a', animation:'float-up 3s ease-in-out infinite', animationDelay:`${i*0.4}s` }}>
+                        <img src={p.profile_pic||getAvatarUrl(p.id)} width={40} height={40} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.src=getAvatarUrl(p.id)}/>
                       </div>
                     ))}
                   </div>
                   <div style={{ flex:1 }}>
-                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'#f1f5f9', letterSpacing:1 }}>{p1.display_name} + {p2.display_name}</div>
-                    <div style={{ fontSize:11, color:'#94a3b8' }}>{bestDuo.wins}W · {bestDuo.games} games</div>
+                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'#f1f5f9', letterSpacing:1, lineHeight:1 }}>{p1.display_name.split(' ')[0]} + {p2.display_name.split(' ')[0]}</div>
+                    <div style={{ display:'flex', gap:8, marginTop:4, alignItems:'center' }}>
+                      <span style={{ fontSize:12, color:'#4ade80', fontWeight:700 }}>{bestDuo.wins}W — {bestDuo.games-bestDuo.wins}L</span>
+                      <span style={{ fontSize:10, color:'#475569' }}>·</span>
+                      <span style={{ fontSize:12, color:'#94a3b8' }}>{bestDuo.games} matches</span>
+                    </div>
+                    {runnerDuo && (() => {
+                      const [r1,r2]=[playerMap[runnerDuo.ids[0]],playerMap[runnerDuo.ids[1]]]
+                      if(!r1||!r2) return null
+                      return <div style={{ fontSize:11, color:'#475569', marginTop:3 }}>🥈 {r1.display_name.split(' ')[0]} + {r2.display_name.split(' ')[0]} ({runnerDuo.wins}W)</div>
+                    })()}
                   </div>
-                  <div style={{ textAlign:'center' }}>
-                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, color:'#ffd700' }}>{pct}%</div>
-                    <div style={{ fontSize:9, color:'#64748b' }}>WIN RATE</div>
+                  <div style={{ textAlign:'center', flexShrink:0 }}>
+                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:34, color:'#ffd700', lineHeight:1, textShadow:'0 0 20px rgba(255,215,0,0.5)' }}>{pct}%</div>
+                    <div style={{ fontSize:9, color:'#64748b', letterSpacing:1 }}>WIN RATE</div>
                   </div>
                 </div>
               </div>
             )
           })()}
 
-          {/* Insights */}
-          {insights.length > 0 && (
-            <div style={{ marginBottom:16 }}>
-              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'#f1f5f9', letterSpacing:2, marginBottom:10 }}>⚡ HIGHLIGHTS</div>
-              {insights.map((ins,i) => (
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', marginBottom:8, borderRadius:12, background:ins.bg, border:`1px solid ${ins.border}` }}>
-                  <span style={{ fontSize:20, flexShrink:0 }}>{ins.icon}</span>
-                  <div style={{ fontSize:13, color:'#e2e8f0', fontWeight:600, lineHeight:1.3 }}>{ins.text}</div>
+          {/* ── UNBEATEN TEAM ── */}
+          {unbeatenDuo && (()=>{
+            const [u1,u2]=[playerMap[unbeatenDuo.ids[0]],playerMap[unbeatenDuo.ids[1]]]
+            if(!u1||!u2) return null
+            return (
+              <div style={{ background:'linear-gradient(135deg,rgba(192,132,252,0.1),rgba(192,132,252,0.04))', border:'1.5px solid rgba(192,132,252,0.3)', borderRadius:18, padding:'14px 16px', marginBottom:12, display:'flex', alignItems:'center', gap:12 }}>
+                <div style={{ fontSize:32, flexShrink:0, animation:'fire 2s ease-in-out infinite' }}>🔥</div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:12, color:'#c084fc', letterSpacing:2, marginBottom:4 }}>UNBEATEN STREAK</div>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'#f1f5f9', letterSpacing:1 }}>{u1.display_name.split(' ')[0]} + {u2.display_name.split(' ')[0]}</div>
+                  <div style={{ fontSize:12, color:'#c084fc', marginTop:2 }}>{unbeatenDuo.games} matches · {unbeatenDuo.wins} wins · STILL STANDING 💪</div>
                 </div>
-              ))}
-            </div>
-          )}
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:30, color:'#c084fc', flexShrink:0 }}>{unbeatenDuo.wins}-0</div>
+              </div>
+            )
+          })()}
 
-          {/* Player leaderboard with bar chart */}
-          <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:16, padding:'14px', marginBottom:16 }}>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'#f1f5f9', letterSpacing:2, marginBottom:12 }}>👤 PLAYER LEADERBOARD</div>
-            {playerStats.length===0 && <div style={{ textAlign:'center', color:'#334155', padding:20, fontSize:13 }}>No games in this period</div>}
-            {playerStats.slice(0,5).map((s,i) => {
+          {/* ── HEAVY DEFEAT ── */}
+          {worstBlowout && (()=>{
+            const margin=Math.abs(worstBlowout.score_a-worstBlowout.score_b)
+            const winners = worstBlowout.winner_team==='A'?worstBlowout.team_a_ids:worstBlowout.team_b_ids
+            const losers  = worstBlowout.winner_team==='A'?worstBlowout.team_b_ids:worstBlowout.team_a_ids
+            const winScore= worstBlowout.winner_team==='A'?worstBlowout.score_a:worstBlowout.score_b
+            const loseScore=worstBlowout.winner_team==='A'?worstBlowout.score_b:worstBlowout.score_a
+            const witty = WITTY_DEFEAT[Math.floor(Math.random()*WITTY_DEFEAT.length)]
+            return (
+              <div style={{ background:'linear-gradient(135deg,rgba(248,113,113,0.1),rgba(248,113,113,0.03))', border:'1.5px solid rgba(248,113,113,0.3)', borderRadius:18, padding:'14px 16px', marginBottom:12 }}>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:12, color:'#f87171', letterSpacing:2, marginBottom:10 }}>💀 HEAVY DEFEAT — {margin} POINT MASSACRE</div>
+                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
+                  {/* Winners */}
+                  <div style={{ flex:1, background:'rgba(74,222,128,0.1)', border:'1px solid rgba(74,222,128,0.25)', borderRadius:12, padding:'8px 10px' }}>
+                    <div style={{ fontSize:9, color:'#4ade80', letterSpacing:1.5, fontWeight:700, marginBottom:6 }}>VICTORS 🏆</div>
+                    {winners.map(id=>(
+                      <div key={id} style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4 }}>
+                        <div style={{ width:24, height:24, borderRadius:'50%', overflow:'hidden', border:'1.5px solid #4ade80', flexShrink:0 }}>
+                          <img src={playerMap[id]?.profile_pic||getAvatarUrl(id)} width={24} height={24} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.src=getAvatarUrl(id)}/>
+                        </div>
+                        <span style={{ fontSize:13, color:'#4ade80', fontWeight:700 }}>{pName(id)}</span>
+                      </div>
+                    ))}
+                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#4ade80', marginTop:4 }}>{winScore}</div>
+                  </div>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'#334155' }}>VS</div>
+                  {/* Losers */}
+                  <div style={{ flex:1, background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.2)', borderRadius:12, padding:'8px 10px' }}>
+                    <div style={{ fontSize:9, color:'#f87171', letterSpacing:1.5, fontWeight:700, marginBottom:6 }}>VICTIMS 💀</div>
+                    {losers.map(id=>(
+                      <div key={id} style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4 }}>
+                        <div style={{ width:24, height:24, borderRadius:'50%', overflow:'hidden', border:'1.5px solid #f87171', flexShrink:0, filter:'grayscale(0.5)' }}>
+                          <img src={playerMap[id]?.profile_pic||getAvatarUrl(id)} width={24} height={24} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.src=getAvatarUrl(id)}/>
+                        </div>
+                        <span style={{ fontSize:13, color:'#f87171', fontWeight:700 }}>{pName(id)}</span>
+                      </div>
+                    ))}
+                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#f87171', marginTop:4 }}>{loseScore}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize:12, color:'#64748b', fontStyle:'italic', textAlign:'center' }}>"{witty}"</div>
+              </div>
+            )
+          })()}
+
+          {/* ── DOMINATION ── */}
+          {domination && domination.wins >= 2 && (()=>{
+            const w=playerMap[domination.w], l=playerMap[domination.l]
+            if(!w||!l) return null
+            const witty = WITTY_DOMINATION[Math.floor(Math.random()*WITTY_DOMINATION.length)]
+            const lv=getLevel(w.total_wins||0)
+            return (
+              <div style={{ background:'linear-gradient(135deg,rgba(251,146,60,0.1),rgba(251,146,60,0.03))', border:'1.5px solid rgba(251,146,60,0.3)', borderRadius:18, padding:'14px 16px', marginBottom:12 }}>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:12, color:'#fb923c', letterSpacing:2, marginBottom:10 }}>😈 PERSONAL DOMINATION</div>
+                <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
+                  <div style={{ textAlign:'center', flexShrink:0 }}>
+                    <div style={{ width:48, height:48, borderRadius:'50%', overflow:'hidden', border:`2.5px solid ${lv.aura}`, background:'#1a2a1a', margin:'0 auto 4px' }}>
+                      <img src={w.profile_pic||getAvatarUrl(w.id)} width={48} height={48} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.src=getAvatarUrl(w.id)}/>
+                    </div>
+                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'#fb923c' }}>{w.display_name.split(' ')[0]}</div>
+                  </div>
+                  <div style={{ flex:1, textAlign:'center' }}>
+                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, color:'#fb923c' }}>{domination.wins}</div>
+                    <div style={{ fontSize:10, color:'#64748b', letterSpacing:1 }}>WINS OVER</div>
+                  </div>
+                  <div style={{ textAlign:'center', flexShrink:0 }}>
+                    <div style={{ width:48, height:48, borderRadius:'50%', overflow:'hidden', border:'2.5px solid #334155', background:'#1a2a1a', margin:'0 auto 4px', filter:'grayscale(0.6)' }}>
+                      <img src={l.profile_pic||getAvatarUrl(l.id)} width={48} height={48} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.src=getAvatarUrl(l.id)}/>
+                    </div>
+                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'#475569' }}>{l.display_name.split(' ')[0]}</div>
+                  </div>
+                </div>
+                <div style={{ fontSize:12, color:'#64748b', fontStyle:'italic', textAlign:'center' }}>"{w.display_name.split(' ')[0]} {witty}"</div>
+              </div>
+            )
+          })()}
+
+          {/* ── INDIVIDUAL LEADERBOARD ── */}
+          <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:18, padding:'14px', marginBottom:8 }}>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'#f1f5f9', letterSpacing:2, marginBottom:12 }}>⚔️ WARRIOR LEADERBOARD · {label}</div>
+            {playerStats.length===0 && <div style={{ textAlign:'center', color:'#334155', padding:16 }}>No players yet</div>}
+            {playerStats.slice(0,8).map((s,i)=>{
               const p=playerMap[s.pid]; if(!p) return null
               const lv=getLevel(p.total_wins||0)
-              const medals=['🥇','🥈','🥉','','']
+              const medals=['🥇','🥈','🥉']
+              const barW=s.games>0?Math.round(s.pct):0
+              const isMe=s.pid===currentUserId
               return (
-                <div key={s.pid} style={{ marginBottom:10 }}>
+                <div key={s.pid} style={{ marginBottom:10, background:isMe?'rgba(74,222,128,0.06)':'transparent', borderRadius:10, padding:isMe?'6px 8px':'0 4px', border:isMe?'1px solid rgba(74,222,128,0.15)':'none' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                    <span style={{ fontSize:16, width:24, flexShrink:0 }}>{medals[i]||`#${i+1}`}</span>
-                    <div style={{ width:28, height:28, borderRadius:'50%', overflow:'hidden', border:'1.5px solid '+lv.aura, background:'#1a2a1a', flexShrink:0 }}>
-                      <img src={p.profile_pic || getAvatarUrl(s.pid)} width={28} height={28} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>{ e.target.src=getAvatarUrl(s.pid) }}/>
+                    <span style={{ fontSize:14, width:24, textAlign:'center', flexShrink:0 }}>{medals[i]||<span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:'#334155'}}>#{i+1}</span>}</span>
+                    <div style={{ width:30, height:30, borderRadius:'50%', overflow:'hidden', border:`1.5px solid ${lv.aura}`, background:'#1a2a1a', flexShrink:0 }}>
+                      <img src={p.profile_pic||getAvatarUrl(s.pid)} width={30} height={30} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.src=getAvatarUrl(s.pid)}/>
                     </div>
-                    <span style={{ flex:1, fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color: s.pid===currentUserId?'#4ade80':'#f1f5f9' }}>{p.display_name}{s.pid===currentUserId?' 👈':''}</span>
-                    <span style={{ fontSize:12, color:'#4ade80', fontWeight:700 }}>{s.wins}W</span>
-                    <span style={{ fontSize:12, color:'#64748b' }}>{s.pct}%</span>
+                    <span style={{ flex:1, fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:isMe?'#4ade80':'#f1f5f9', letterSpacing:0.5 }}>{p.display_name}{isMe?' 👈':''}</span>
+                    <span style={{ fontSize:13, color:'#4ade80', fontWeight:700, flexShrink:0 }}>{s.wins}W</span>
+                    <span style={{ fontSize:11, color:'#475569', width:32, textAlign:'right', flexShrink:0 }}>{s.pct}%</span>
                   </div>
-                  <div style={{ height:5, background:'rgba(255,255,255,0.06)', borderRadius:3, overflow:'hidden', marginLeft:56 }}>
-                    <div style={{ height:'100%', width:(s.games/maxGames*100)+'%', background:`linear-gradient(90deg,${lv.aura}88,${lv.aura})`, borderRadius:3 }}/>
+                  <div style={{ height:4, background:'rgba(255,255,255,0.05)', borderRadius:2, overflow:'hidden', marginLeft:62 }}>
+                    <div style={{ height:'100%', width:barW+'%', background:`linear-gradient(90deg,${lv.aura}66,${lv.aura})`, borderRadius:2, transition:'width 0.6s' }}/>
                   </div>
                 </div>
               )
             })}
           </div>
-        </div>
+          </>
+        )}
+        </>
       )}
 
-      {/* ── MY CARD (shareable) ── */}
-      {view === 'mycard' && (
+      {/* ── MY CARD ── */}
+      {view==='mycard' && (
         <div>
-          {/* Shareable card */}
-          <div id="share-card" style={{ background:`linear-gradient(160deg,${myLevel.bg||'#111827'},#060d14)`, border:`1.5px solid ${myLevel.aura}44`, borderRadius:20, padding:'20px 16px', marginBottom:16, position:'relative', overflow:'hidden' }}>
-            {/* Court lines bg */}
-            <svg width="100%" height="100%" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" style={{ position:'absolute', inset:0, opacity:0.07 }} aria-hidden="true">
-              <rect x="10" y="10" width="380" height="280" fill="none" stroke={myLevel.aura} strokeWidth="1.5"/>
-              <line x1="200" y1="10" x2="200" y2="290" stroke={myLevel.aura} strokeWidth="1.5"/>
-              <line x1="10" y1="150" x2="390" y2="150" stroke={myLevel.aura} strokeWidth="1"/>
-              <line x1="10" y1="60" x2="390" y2="60" stroke={myLevel.aura} strokeWidth="0.8" opacity="0.5"/>
-              <line x1="10" y1="240" x2="390" y2="240" stroke={myLevel.aura} strokeWidth="0.8" opacity="0.5"/>
+          <div id="share-card" style={{ background:`linear-gradient(160deg,${myLevel.bg||'#0d1f14'},#060d14)`, border:`1.5px solid ${myLevel.aura}33`, borderRadius:22, padding:'20px 16px', marginBottom:12, position:'relative', overflow:'hidden' }}>
+            <svg width="100%" height="100%" viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice" style={{ position:'absolute', inset:0, opacity:0.06 }} aria-hidden="true">
+              <rect x="10" y="10" width="380" height="300" fill="none" stroke={myLevel.aura} strokeWidth="1.5"/>
+              <line x1="200" y1="10" x2="200" y2="310" stroke={myLevel.aura} strokeWidth="1.5"/>
+              <line x1="10" y1="160" x2="390" y2="160" stroke={myLevel.aura} strokeWidth="1"/>
+              <ellipse cx="200" cy="160" rx="80" ry="80" fill="none" stroke={myLevel.aura} strokeWidth="1" opacity="0.5"/>
             </svg>
             <div style={{ position:'relative', zIndex:1 }}>
-              {/* Header */}
               <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
-                <div style={{ width:56, height:56, borderRadius:'50%', overflow:'hidden', border:`2.5px solid ${myLevel.aura}`, background:'#1a2a1a', flexShrink:0 }}>
-                  {me && <img src={getAvatarUrl(currentUserId)} width={56} height={56} style={{width:'100%',height:'100%',objectFit:'cover'}}/>}
+                <div style={{ width:60, height:60, borderRadius:'50%', overflow:'hidden', border:`2.5px solid ${myLevel.aura}`, background:'#1a2a1a', flexShrink:0, boxShadow:`0 0 16px ${myLevel.aura}44` }}>
+                  {me && <img src={me.profile_pic||getAvatarUrl(currentUserId)} width={60} height={60} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.src=getAvatarUrl(currentUserId)}/>}
                 </div>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:24, color:'#f1f5f9', letterSpacing:2, lineHeight:1 }}>{me?.display_name||'Player'}</div>
-                  <div style={{ fontSize:11, color:myLevel.aura, marginTop:3, fontWeight:700, letterSpacing:1 }}>{myLevel.emoji} {myLevel.name}</div>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#f1f5f9', letterSpacing:2, lineHeight:1 }}>{me?.display_name||'Player'}</div>
+                  <div style={{ fontSize:11, color:myLevel.aura, marginTop:3, fontWeight:700, letterSpacing:1 }}>{myLevel.emoji||'⭐'} {myLevel.name||'PLAYER'}</div>
                 </div>
                 <div style={{ textAlign:'right' }}>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:11, color:'#334155', letterSpacing:2 }}>🏸 SHUTTLE</div>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:10, color:'#334155', letterSpacing:2 }}>🏸 SHUTTLE</div>
                   <div style={{ fontSize:10, color:'#334155', marginTop:2 }}>{label}</div>
                 </div>
               </div>
 
-              {myGames.length === 0 ? (
-                <div style={{ textAlign:'center', color:'#334155', padding:24, fontSize:14 }}>No games in this period</div>
+              {myGames.length===0 ? (
+                <div style={{ textAlign:'center', color:'#334155', padding:24 }}>No games {label.toLowerCase()}</div>
               ) : (
                 <>
-                  {/* Big win rate */}
                   <div style={{ textAlign:'center', marginBottom:16 }}>
-                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:72, color:myLevel.aura, lineHeight:1, textShadow:`0 0 30px ${myLevel.aura}55` }}>{myPct}%</div>
-                    <div style={{ fontSize:13, color:'#64748b', letterSpacing:2, fontWeight:700 }}>WIN RATE</div>
+                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:76, color:myLevel.aura, lineHeight:1, textShadow:`0 0 40px ${myLevel.aura}44` }}>{myPct}%</div>
+                    <div style={{ fontSize:11, color:'#64748b', letterSpacing:3, fontWeight:700 }}>WIN RATE</div>
                     <div style={{ height:6, background:'rgba(255,255,255,0.07)', borderRadius:3, overflow:'hidden', margin:'10px 0' }}>
-                      <div style={{ height:'100%', width:myPct+'%', background:`linear-gradient(90deg,${myLevel.aura}66,${myLevel.aura})`, borderRadius:3 }}/>
+                      <div style={{ height:'100%', width:myPct+'%', background:`linear-gradient(90deg,${myLevel.aura}55,${myLevel.aura})`, borderRadius:3 }}/>
                     </div>
                   </div>
-
-                  {/* Stats grid */}
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:14 }}>
-                    {[{v:myGames.length,l:'PLAYED',c:'#93c5fd'},{v:myWins,l:'WON',c:'#4ade80'},{v:myLosses,l:'LOST',c:'#f87171'},{v:myScored,l:'PTS',c:myLevel.aura}].map(s=>(
+                    {[{v:myGames.length,l:'PLAYED',c:'#93c5fd'},{v:myWins,l:'WON',c:'#4ade80'},{v:myLosses,l:'LOST',c:'#f87171'},{v:myScored,l:'SCORED',c:myLevel.aura}].map(s=>(
                       <div key={s.l} style={{ background:'rgba(0,0,0,0.4)', borderRadius:12, padding:'10px 4px', textAlign:'center' }}>
                         <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, color:s.c, lineHeight:1 }}>{s.v}</div>
                         <div style={{ fontSize:9, color:'#64748b', letterSpacing:1, marginTop:2 }}>{s.l}</div>
                       </div>
                     ))}
                   </div>
-
-                  {/* W/L form dots */}
                   <div>
                     <div style={{ fontSize:10, color:'#334155', letterSpacing:1, marginBottom:6 }}>RECENT FORM</div>
                     <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-                      {myGames.slice(0,10).map((g,i) => {
+                      {myGames.slice(0,10).map((g,i)=>{
                         const inA=g.team_a_ids.includes(currentUserId)
                         const won=g.winner_team===(inA?'A':'B')
-                        return (
-                          <div key={i} style={{ width:28, height:28, borderRadius:'50%', background:won?'rgba(74,222,128,0.15)':'rgba(248,113,113,0.15)', border:`1px solid ${won?'#4ade80':'#f87171'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, fontFamily:"'Bebas Neue',sans-serif", color:won?'#4ade80':'#f87171' }}>{won?'W':'L'}</div>
-                        )
+                        return <div key={i} style={{ width:28, height:28, borderRadius:'50%', background:won?'rgba(74,222,128,0.15)':'rgba(248,113,113,0.15)', border:`1px solid ${won?'#4ade80':'#f87171'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, fontFamily:"'Bebas Neue',sans-serif", color:won?'#4ade80':'#f87171' }}>{won?'W':'L'}</div>
                       })}
                     </div>
                   </div>
-
-                  {/* Scoring */}
                   <div style={{ marginTop:12, display:'flex', gap:8 }}>
                     <div style={{ flex:1, background:'rgba(74,222,128,0.06)', borderRadius:10, padding:'8px', textAlign:'center' }}>
                       <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:'#4ade80' }}>{myScored}</div>
@@ -912,10 +990,7 @@ function ReportTab({ players, currentUserId }) {
               )}
             </div>
           </div>
-
-          <div style={{ textAlign:'center', fontSize:12, color:'#334155', fontFamily:"'Rajdhani',sans-serif" }}>
-            📸 Screenshot this card to share your stats
-          </div>
+          <div style={{ textAlign:'center', fontSize:12, color:'#334155' }}>📸 Screenshot to flex on your court</div>
         </div>
       )}
     </div>
