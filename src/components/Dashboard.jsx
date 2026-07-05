@@ -1,5 +1,5 @@
 // src/components/Dashboard.jsx — v14
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useRealtimeDashboard } from '../hooks/useRealtimeDashboard'
 import { useCourtData } from '../hooks/useCourtData'
@@ -1099,6 +1099,9 @@ export default function Dashboard({ onOpenProfile }) {
   const [courtManagerView, setCourtManagerView] = useState('list')
   const [myCourtsView, setMyCourtsView]         = useState('my')
   const [showMyCourts, setShowMyCourts]         = useState(false)
+  const [chipsVisible, setChipsVisible]         = useState(true)
+  const chipsShownOnce                          = useRef(false)
+  const scrollRef                               = useRef(null)
   const [openTeam, setOpenTeam]               = useState(null) // {p1, p2}
 
   const isAdmin = currentUser.isAdmin || currentUser.role === 'admin'
@@ -1137,7 +1140,7 @@ export default function Dashboard({ onOpenProfile }) {
     }
     el.addEventListener('scroll', onScroll, { passive: true })
     return () => el.removeEventListener('scroll', onScroll)
-  }, [scrollRef.current])
+  }, [])
 
   useEffect(() => {
     if (activeGroup === 'player_default' && myGroupIds.length > 0) {
