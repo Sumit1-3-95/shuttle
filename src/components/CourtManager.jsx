@@ -431,8 +431,8 @@ function CourtList({ courts, allPlayers, memberCounts, onSelectCourt, onCreateCo
 }
 
 // ── Main CourtManager ──────────────────────────────────────────
-export default function CourtManager({ onClose, currentUserId }) {
-  const [view, setView]             = useState('list') // 'list'|'create'|'detail'
+export default function CourtManager({ onClose, currentUserId, initialView='list' }) {
+  const [view, setView]             = useState(initialView) // 'list'|'create'|'detail'
   const [courts, setCourts]         = useState([])
   const [allPlayers, setAllPlayers] = useState([])
   const [memberCounts, setMemberCounts] = useState({})

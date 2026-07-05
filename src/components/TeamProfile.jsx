@@ -11,12 +11,13 @@ function getLevel(wins) {
   return            { name:'ROOKIE',     aura:'#94a3b8', bg:'#111827', glow:'rgba(148,163,184,0.2)', emoji:'🎯' }
 }
 
-function Av({ id, size=48, aura='#4ade8055' }) {
+function Av({ id, size=48, aura='#4ade8055', profilePic=null }) {
   const [err, setErr] = useState(false)
+  const src = profilePic && !err ? profilePic : getAvatarUrl(id)
   return (
     <div style={{ width:size, height:size, borderRadius:'50%', overflow:'hidden', border:'2px solid '+aura, background:'#1a2a1a', flexShrink:0 }}>
       {!err
-        ? <img src={getAvatarUrl(id)} width={size} height={size} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={()=>setErr(true)}/>
+        ? <img src={src} width={size} height={size} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={()=>setErr(true)}/>
         : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:size*0.4,color:aura}}>?</div>
       }
     </div>
@@ -114,8 +115,7 @@ export default function TeamProfile({ p1, p2, onBack }) {
   }, 0)
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:80, background:'#060d14', color:'#f1f5f9', width:'100%', overflowY:'auto', fontFamily:"'Rajdhani',sans-serif" }}>
-        
+    <div style={{ minHeight:'100vh', background:'#060d14', color:'#f1f5f9', width:'100%', fontFamily:"'Rajdhani',sans-serif" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;500;600;700&display=swap');`}</style>
 
       {/* Header */}
@@ -140,7 +140,7 @@ export default function TeamProfile({ p1, p2, onBack }) {
             {/* Two players */}
             <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:20, marginBottom:16 }}>
               <div style={{ textAlign:'center' }}>
-                <Av id={p1.id} size={64} aura={l1.aura}/>
+                <Av id={p1.id} size={64} aura={l1.aura} profilePic={p1.profile_pic}/>
                 <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:1, marginTop:6, color:'#f1f5f9' }}>{p1.display_name}</div>
                 <div style={{ fontSize:10, color:l1.aura, fontFamily:"'Rajdhani',sans-serif" }}>{l1.emoji} {l1.name}</div>
               </div>
@@ -152,7 +152,7 @@ export default function TeamProfile({ p1, p2, onBack }) {
               </div>
 
               <div style={{ textAlign:'center' }}>
-                <Av id={p2.id} size={64} aura={l2.aura}/>
+                <Av id={p2.id} size={64} aura={l2.aura} profilePic={p2.profile_pic}/>
                 <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:1, marginTop:6, color:'#f1f5f9' }}>{p2.display_name}</div>
                 <div style={{ fontSize:10, color:l2.aura, fontFamily:"'Rajdhani',sans-serif" }}>{l2.emoji} {l2.name}</div>
               </div>
@@ -254,4 +254,4 @@ export default function TeamProfile({ p1, p2, onBack }) {
       </div>
     </div>
   )
-} 
+}
