@@ -82,6 +82,7 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
   }
 
   function handleGroupClick(id) { onGroupSelect(id); onClose() }
+  // Expose chip visibility toggle via callback handled in Dashboard
 
   return (
     <>
@@ -587,410 +588,375 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
 const WITTY_DEFEAT = [
   "They didn't lose, they just ran out of points 💀",
   "That wasn't a match, that was a mercy killing 🪦",
-  "The score was so bad, the shuttlecock filed for asylum 🏸",
   "Even the net felt sorry for them 😬",
   "A moment of silence for their dignity 🕯️",
   "They should've stayed home and practiced breathing 😮‍💨",
 ]
-const WITTY_DOMINATION = [
+const WITTY_DOM = [
   "is absolutely HAUNTING on court 👻",
   "has made this their personal highlight reel 🎬",
-  "needs to stop bullying people and get therapy 😤",
+  "needs to stop bullying people 😤",
   "is collecting souls like it's a hobby 😈",
   "should be reported to the badminton police 🚔",
 ]
 
+function SmallAvatar({ p, size=28, border='#4ade80' }) {
+  const [err,setErr] = useState(false)
+  if (!p) return null
+  return (
+    <div style={{ width:size, height:size, borderRadius:'50%', overflow:'hidden', border:`1.5px solid ${border}`, background:'#1a2a1a', flexShrink:0 }}>
+      <img src={(!err&&p.profile_pic)||getAvatarUrl(p.id)} width={size} height={size}
+        style={{width:'100%',height:'100%',objectFit:'cover'}}
+        onError={e=>{e.target.onerror=null;setErr(true);e.target.src=getAvatarUrl(p.id)}}/>
+    </div>
+  )
+}
+
+function StatChip({ emoji, value, label, color }) {
+  return (
+    <div style={{ flex:1, textAlign:'center', padding:'8px 4px', background:'rgba(255,255,255,0.03)', borderRadius:10, border:'1px solid rgba(255,255,255,0.07)' }}>
+      <div style={{ fontSize:16 }}>{emoji}</div>
+      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color, lineHeight:1.1 }}>{value}</div>
+      <div style={{ fontSize:9, color:'#475569', letterSpacing:1.2, fontWeight:700, marginTop:1 }}>{label}</div>
+    </div>
+  )
+}
+
+function SectionHeader({ children }) {
+  return (
+    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:11, color:'#475569', letterSpacing:3, marginBottom:6, marginTop:14 }}>
+      {children}
+    </div>
+  )
+}
+
 function ReportTab({ players, currentUserId }) {
-  const [allGames, setAllGames]   = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [period, setPeriod]       = useState('today')
-  const [view, setView]           = useState('overview')
+  const [allGames,setAllGames] = useState([])
+  const [loading,setLoading]   = useState(true)
+  const [period,setPeriod]     = useState('today')
+  const [view,setView]         = useState('overview')
   const allowedIds = new Set((players||[]).map(p=>p.id))
 
   useEffect(() => {
-    async function load() {
-      const { data } = await supabase.from('games').select('*').eq('is_reverted',false).order('played_at',{ascending:false})
-      const scoped = (data||[]).filter(g => {
-        const ids = [...(g.team_a_ids||[]), ...(g.team_b_ids||[])]
-        return ids.every(id => allowedIds.has(id))
+    supabase.from('games').select('*').eq('is_reverted',false).order('played_at',{ascending:false})
+      .then(({data}) => {
+        setAllGames((data||[]).filter(g=>[...(g.team_a_ids||[]),...(g.team_b_ids||[])].every(id=>allowedIds.has(id))))
+        setLoading(false)
       })
-      setAllGames(scoped)
-      setLoading(false)
-    }
-    load()
   }, [players])
 
-  const playerMap = Object.fromEntries((players||[]).map(p=>[p.id,p]))
+  const pm = Object.fromEntries((players||[]).map(p=>[p.id,p]))
+  const pn = id => pm[id]?.display_name?.split(' ')[0]||'?'
 
-  function getDateRange() {
+  const { start, label } = (() => {
     const now = new Date()
-    if (period==='today') { const s=new Date(now); s.setHours(0,0,0,0); return { start:s, label:'TODAY' } }
-    if (period==='week')  { const s=new Date(now); s.setDate(now.getDate()-((now.getDay()+6)%7)); s.setHours(0,0,0,0); return { start:s, label:'THIS WEEK' } }
-    return { start: new Date(now.getFullYear(),now.getMonth(),1), label:'THIS MONTH' }
-  }
+    if (period==='today') { const s=new Date(now); s.setHours(0,0,0,0); return {start:s,label:'TODAY'} }
+    if (period==='week')  { const s=new Date(now); s.setDate(now.getDate()-((now.getDay()+6)%7)); s.setHours(0,0,0,0); return {start:s,label:'THIS WEEK'} }
+    return {start:new Date(now.getFullYear(),now.getMonth(),1),label:'THIS MONTH'}
+  })()
 
-  const { start, label } = getDateRange()
-  const periodGames = allGames.filter(g => new Date(g.played_at) >= start)
+  const pg = allGames.filter(g=>new Date(g.played_at)>=start)
 
-  // ── Stats ──
-  function getPlayerStats() {
-    const stats = {}
-    periodGames.forEach(g => {
-      const ids = [...(g.team_a_ids||[]),...(g.team_b_ids||[])]
-      ids.forEach(pid => {
-        if (!stats[pid]) stats[pid] = { wins:0, games:0, scored:0, conceded:0 }
-        stats[pid].games++
-        const inA = g.team_a_ids.includes(pid)
-        if (g.winner_team===(inA?'A':'B')) stats[pid].wins++
-        stats[pid].scored   += inA ? g.score_a : g.score_b
-        stats[pid].conceded += inA ? g.score_b : g.score_a
+  // Player stats
+  const pStats = (() => {
+    const s = {}
+    pg.forEach(g=>{
+      [...g.team_a_ids,...g.team_b_ids].forEach(pid=>{
+        if(!s[pid]) s[pid]={wins:0,games:0,scored:0,conceded:0}
+        const inA=g.team_a_ids.includes(pid)
+        s[pid].games++
+        if(g.winner_team===(inA?'A':'B')) s[pid].wins++
+        s[pid].scored   += inA?g.score_a:g.score_b
+        s[pid].conceded += inA?g.score_b:g.score_a
       })
     })
-    return Object.entries(stats).map(([pid,s]) => ({
-      pid, ...s, pct: s.games>0?Math.round(s.wins/s.games*100):0
-    })).sort((a,b)=>b.wins-a.wins||b.pct-a.pct)
-  }
-  const playerStats = getPlayerStats()
+    return Object.entries(s).map(([pid,d])=>({pid,...d,pct:d.games>0?Math.round(d.wins/d.games*100):0}))
+      .sort((a,b)=>b.wins-a.wins||b.pct-a.pct)
+  })()
 
-  // ── Best Duo ──
-  function getDuos() {
-    const ts = {}
-    periodGames.forEach(g => {
+  // Duos — sorted by wins only
+  const duos = (() => {
+    const t={}
+    pg.forEach(g=>{
       [{ids:[...g.team_a_ids].sort(),won:g.winner_team==='A'},{ids:[...g.team_b_ids].sort(),won:g.winner_team==='B'}].forEach(({ids,won})=>{
-        const k=ids.join('|'); if(!ts[k]) ts[k]={ids,wins:0,games:0}
-        ts[k].games++; if(won) ts[k].wins++
+        const k=ids.join('|'); if(!t[k]) t[k]={ids,wins:0,games:0}
+        t[k].games++; if(won) t[k].wins++
       })
     })
-    return Object.values(ts).filter(t=>t.games>=1).sort((a,b)=>b.wins-a.wins||b.games-a.games)
-  }
-  const duos = getDuos()
-  const bestDuo = duos[0]||null
+    return Object.values(t).sort((a,b)=>b.wins-a.wins) // sort by wins only
+  })()
+  const bestDuo   = duos[0]||null
   const runnerDuo = duos[1]||null
+  const unbeaten  = duos.find(d=>d.games>=2&&d.wins===d.games)||null
 
-  // ── Unbeaten Team ──
-  const unbeatenDuo = duos.find(d=>d.games>=2&&d.wins===d.games)||null
-
-  // ── Heavy Defeat (biggest blowout) ──
-  const blowouts = periodGames.filter(g=>Math.abs(g.score_a-g.score_b)>=10)
+  // Worst blowout
+  const blowouts = [...pg].filter(g=>Math.abs(g.score_a-g.score_b)>=10)
     .sort((a,b)=>Math.abs(b.score_a-b.score_b)-Math.abs(a.score_a-a.score_b))
-  const worstBlowout = blowouts[0]||null
+  const worst = blowouts[0]||null
 
-  // ── Domination (one player vs another) ──
-  function getDomination() {
-    const h2h = {}
-    periodGames.forEach(g => {
-      const wIds = g.winner_team==='A'?g.team_a_ids:g.team_b_ids
-      const lIds = g.winner_team==='A'?g.team_b_ids:g.team_a_ids
-      wIds.forEach(w => lIds.forEach(l => {
-        const k=`${w}>${l}`; if(!h2h[k]) h2h[k]={w,l,wins:0}
-        h2h[k].wins++
-      }))
+  // Domination
+  const dom = (() => {
+    const h={}
+    pg.forEach(g=>{
+      const w=g.winner_team==='A'?g.team_a_ids:g.team_b_ids
+      const l=g.winner_team==='A'?g.team_b_ids:g.team_a_ids
+      w.forEach(wi=>l.forEach(li=>{ const k=`${wi}>${li}`; if(!h[k]) h[k]={w:wi,l:li,wins:0}; h[k].wins++ }))
     })
-    return Object.values(h2h).sort((a,b)=>b.wins-a.wins)[0]||null
-  }
-  const domination = getDomination()
+    return Object.values(h).sort((a,b)=>b.wins-a.wins)[0]||null
+  })()
 
   // My stats
-  const myGames   = periodGames.filter(g=>g.team_a_ids.includes(currentUserId)||g.team_b_ids.includes(currentUserId))
-  const myWins    = myGames.filter(g=>{ const inA=g.team_a_ids.includes(currentUserId); return g.winner_team===(inA?'A':'B') }).length
-  const myLosses  = myGames.length-myWins
-  const myPct     = myGames.length>0?Math.round(myWins/myGames.length*100):0
-  const myScored  = myGames.reduce((a,g)=>a+(g.team_a_ids.includes(currentUserId)?g.score_a:g.score_b),0)
-  const myConceded= myGames.reduce((a,g)=>a+(g.team_a_ids.includes(currentUserId)?g.score_b:g.score_a),0)
-  const me        = playerMap[currentUserId]
-  const myLevel   = me?getLevel(me.total_wins||0):{aura:'#94a3b8',name:'ROOKIE'}
+  const myG   = pg.filter(g=>g.team_a_ids.includes(currentUserId)||g.team_b_ids.includes(currentUserId))
+  const myW   = myG.filter(g=>{ const inA=g.team_a_ids.includes(currentUserId); return g.winner_team===(inA?'A':'B') }).length
+  const myL   = myG.length-myW
+  const myPct = myG.length>0?Math.round(myW/myG.length*100):0
+  const myScored   = myG.reduce((a,g)=>a+(g.team_a_ids.includes(currentUserId)?g.score_a:g.score_b),0)
+  const myConceded = myG.reduce((a,g)=>a+(g.team_a_ids.includes(currentUserId)?g.score_b:g.score_a),0)
+  const me    = pm[currentUserId]
+  const myLv  = getLevel(me?.total_wins||0)
 
-  const pName = id => playerMap[id]?.display_name?.split(' ')[0]||'?'
-
-  if (loading) return <div style={{textAlign:'center',color:'#475569',padding:40,fontFamily:"'Rajdhani',sans-serif"}}>Loading stats...</div>
+  if (loading) return <div style={{textAlign:'center',color:'#475569',padding:32,fontFamily:"'Rajdhani',sans-serif",fontSize:14}}>Loading stats...</div>
 
   return (
-    <div style={{ fontFamily:"'Rajdhani',sans-serif", color:'#f1f5f9' }}>
-      <style>{`
-        @keyframes pulse-border{0%,100%{box-shadow:0 0 0 0 rgba(74,222,128,0.4)}50%{box-shadow:0 0 0 6px rgba(74,222,128,0)}}
-        @keyframes fire{0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.08)}}
-        @keyframes float-up{0%{transform:translateY(0)}50%{transform:translateY(-4px)}100%{transform:translateY(0)}}
-      `}</style>
+    <div style={{ fontFamily:"'Rajdhani',sans-serif", color:'#f1f5f9', fontSize:13 }}>
 
-      {/* View toggle */}
-      <div style={{ display:'flex', gap:8, marginBottom:14 }}>
-        {[{id:'overview',icon:'📊',label:'Overview'},{id:'mycard',icon:'🎴',label:'My Card'}].map(v=>(
-          <button key={v.id} onClick={()=>setView(v.id)} style={{ flex:1, padding:'10px', borderRadius:12, cursor:'pointer', border: view===v.id?'1px solid rgba(74,222,128,0.5)':'1px solid rgba(255,255,255,0.08)', background: view===v.id?'rgba(74,222,128,0.1)':'rgba(255,255,255,0.03)', color: view===v.id?'#4ade80':'#64748b', fontFamily:"'Bebas Neue',sans-serif", fontSize:14, letterSpacing:1 }}>{v.icon} {v.label}</button>
+      {/* View + Period row */}
+      <div style={{ display:'flex', gap:6, marginBottom:10 }}>
+        {[{id:'overview',label:'📊 Overview'},{id:'mycard',label:'🎴 My Card'}].map(v=>(
+          <button key={v.id} onClick={()=>setView(v.id)} style={{ flex:1, padding:'8px 4px', borderRadius:10, cursor:'pointer', border: view===v.id?'1px solid rgba(74,222,128,0.4)':'1px solid rgba(255,255,255,0.08)', background: view===v.id?'rgba(74,222,128,0.1)':'rgba(255,255,255,0.03)', color: view===v.id?'#4ade80':'#64748b', fontFamily:"'Bebas Neue',sans-serif", fontSize:13, letterSpacing:1 }}>{v.label}</button>
+        ))}
+      </div>
+      <div style={{ display:'flex', gap:6, marginBottom:14 }}>
+        {[{id:'today',label:'Today'},{id:'week',label:'Week'},{id:'month',label:'Month'}].map(p=>(
+          <button key={p.id} onClick={()=>setPeriod(p.id)} style={{ flex:1, padding:'7px 4px', borderRadius:20, cursor:'pointer', border: period===p.id?'1px solid rgba(74,222,128,0.4)':'1px solid rgba(255,255,255,0.07)', background: period===p.id?'rgba(74,222,128,0.1)':'transparent', color: period===p.id?'#4ade80':'#64748b', fontFamily:"'Rajdhani',sans-serif", fontSize:12, fontWeight:700 }}>{p.label}</button>
         ))}
       </div>
 
-      {/* Period chips */}
-      <div style={{ display:'flex', gap:6, marginBottom:18 }}>
-        {[{id:'today',label:'Today'},{id:'week',label:'This Week'},{id:'month',label:'This Month'}].map(p=>(
-          <button key={p.id} onClick={()=>setPeriod(p.id)} style={{ flex:1, padding:'8px', borderRadius:20, cursor:'pointer', border: period===p.id?'1px solid rgba(74,222,128,0.5)':'1px solid rgba(255,255,255,0.08)', background: period===p.id?'rgba(74,222,128,0.12)':'rgba(255,255,255,0.03)', color: period===p.id?'#4ade80':'#64748b', fontFamily:"'Rajdhani',sans-serif", fontSize:13, fontWeight:700 }}>{p.label}</button>
-        ))}
-      </div>
-
+      {/* ── OVERVIEW ── */}
       {view==='overview' && (
-        <>
-        {periodGames.length===0 ? (
-          <div style={{ textAlign:'center', padding:40, color:'#334155' }}>
-            <div style={{ fontSize:40, marginBottom:12 }}>🏸</div>
-            <div style={{ fontSize:15 }}>No games played {label.toLowerCase()}</div>
-            <div style={{ fontSize:12, marginTop:6, color:'#1e293b' }}>Go play some badminton!</div>
-          </div>
-        ) : (
-          <>
-          {/* ── STAT TRIO ── */}
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:8, marginBottom:14 }}>
-            {[
-              { v:periodGames.length, l:'MATCHES', emoji:'🎮', color:'#4ade80', bg:'rgba(74,222,128,0.08)', border:'rgba(74,222,128,0.2)' },
-              { v:playerStats.length, l:'WARRIORS', emoji:'⚔️', color:'#60a5fa', bg:'rgba(96,165,250,0.08)', border:'rgba(96,165,250,0.2)' },
-              { v:periodGames.reduce((a,g)=>a+g.score_a+g.score_b,0), l:'POINTS', emoji:'🔥', color:'#fb923c', bg:'rgba(251,146,60,0.08)', border:'rgba(251,146,60,0.2)' },
-            ].map(s=>(
-              <div key={s.l} style={{ background:s.bg, border:`1px solid ${s.border}`, borderRadius:14, padding:'12px 6px', textAlign:'center' }}>
-                <div style={{ fontSize:20, marginBottom:4 }}>{s.emoji}</div>
-                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, color:s.color, lineHeight:1 }}>{s.v}</div>
-                <div style={{ fontSize:10, color:'#475569', letterSpacing:1.5, fontWeight:700, marginTop:3 }}>{s.l}</div>
+        pg.length===0
+          ? <div style={{ textAlign:'center', padding:40, color:'#334155' }}>
+              <div style={{ fontSize:36 }}>🏸</div>
+              <div style={{ marginTop:10, fontSize:14 }}>No games {label.toLowerCase()}</div>
+            </div>
+          : <div>
+              {/* STAT ROW */}
+              <div style={{ display:'flex', gap:6, marginBottom:2 }}>
+                <StatChip emoji="🎮" value={pg.length} label="MATCHES" color="#4ade80"/>
+                <StatChip emoji="⚔️" value={pStats.length} label="WARRIORS" color="#60a5fa"/>
+                <StatChip emoji="🔥" value={pg.reduce((a,g)=>a+g.score_a+g.score_b,0)} label="POINTS" color="#fb923c"/>
               </div>
-            ))}
-          </div>
 
-          {/* ── BEST DUO PODIUM ── */}
-          {bestDuo && (()=>{
-            const [p1,p2]=[playerMap[bestDuo.ids[0]],playerMap[bestDuo.ids[1]]]
-            if(!p1||!p2) return null
-            const pct=bestDuo.games>0?Math.round(bestDuo.wins/bestDuo.games*100):0
-            return (
-              <div style={{ background:'linear-gradient(135deg,rgba(255,215,0,0.1),rgba(255,215,0,0.04))', border:'1.5px solid rgba(255,215,0,0.3)', borderRadius:18, padding:'16px', marginBottom:12, position:'relative', overflow:'hidden' }}>
-                <div style={{ position:'absolute', top:8, right:12, fontSize:28, opacity:0.15 }}>🏆</div>
-                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:12, color:'#ffd700', letterSpacing:3, marginBottom:12 }}>🏆 DYNAMIC DUO · {label}</div>
-                <div style={{ display:'flex', alignItems:'center', gap:12 }}>
-                  {/* Stacked avatars */}
-                  <div style={{ position:'relative', width:64, height:44, flexShrink:0 }}>
-                    {[p1,p2].map((p,i)=>(
-                      <div key={p.id} style={{ position:'absolute', left:i*22, top:0, width:40, height:40, borderRadius:'50%', overflow:'hidden', border:'2.5px solid #ffd700', background:'#1a2a1a', animation:'float-up 3s ease-in-out infinite', animationDelay:`${i*0.4}s` }}>
-                        <img src={p.profile_pic||getAvatarUrl(p.id)} width={40} height={40} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.src=getAvatarUrl(p.id)}/>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'#f1f5f9', letterSpacing:1, lineHeight:1 }}>{p1.display_name.split(' ')[0]} + {p2.display_name.split(' ')[0]}</div>
-                    <div style={{ display:'flex', gap:8, marginTop:4, alignItems:'center' }}>
-                      <span style={{ fontSize:12, color:'#4ade80', fontWeight:700 }}>{bestDuo.wins}W — {bestDuo.games-bestDuo.wins}L</span>
-                      <span style={{ fontSize:10, color:'#475569' }}>·</span>
-                      <span style={{ fontSize:12, color:'#94a3b8' }}>{bestDuo.games} matches</span>
+              {/* BEST DUO */}
+              {bestDuo && pm[bestDuo.ids[0]] && pm[bestDuo.ids[1]] && (
+                <>
+                <SectionHeader>🏆 BEST DUO · {label}</SectionHeader>
+                <div style={{ background:'rgba(255,215,0,0.07)', border:'1px solid rgba(255,215,0,0.2)', borderRadius:12, padding:'10px 12px', marginBottom:2 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <div style={{ display:'flex', gap:-4 }}>
+                      {bestDuo.ids.map((id,i)=><div key={id} style={{ marginLeft:i?-8:0, zIndex:bestDuo.ids.length-i }}><SmallAvatar p={pm[id]} size={34} border="#ffd700"/></div>)}
                     </div>
-                    {runnerDuo && (() => {
-                      const [r1,r2]=[playerMap[runnerDuo.ids[0]],playerMap[runnerDuo.ids[1]]]
-                      if(!r1||!r2) return null
-                      return <div style={{ fontSize:11, color:'#475569', marginTop:3 }}>🥈 {r1.display_name.split(' ')[0]} + {r2.display_name.split(' ')[0]} ({runnerDuo.wins}W)</div>
-                    })()}
-                  </div>
-                  <div style={{ textAlign:'center', flexShrink:0 }}>
-                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:34, color:'#ffd700', lineHeight:1, textShadow:'0 0 20px rgba(255,215,0,0.5)' }}>{pct}%</div>
-                    <div style={{ fontSize:9, color:'#64748b', letterSpacing:1 }}>WIN RATE</div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'#ffd700', letterSpacing:1, lineHeight:1 }}>{pn(bestDuo.ids[0])} + {pn(bestDuo.ids[1])}</div>
+                      {runnerDuo && pm[runnerDuo.ids[0]] && <div style={{ fontSize:10, color:'#475569', marginTop:2 }}>🥈 {pn(runnerDuo.ids[0])} + {pn(runnerDuo.ids[1])} · {runnerDuo.wins}W</div>}
+                    </div>
+                    <div style={{ textAlign:'right', flexShrink:0 }}>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, color:'#ffd700', lineHeight:1 }}>{bestDuo.wins}W</div>
+                      <div style={{ fontSize:10, color:'#64748b' }}>{bestDuo.games} played</div>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
-          })()}
+                </>
+              )}
 
-          {/* ── UNBEATEN TEAM ── */}
-          {unbeatenDuo && (()=>{
-            const [u1,u2]=[playerMap[unbeatenDuo.ids[0]],playerMap[unbeatenDuo.ids[1]]]
-            if(!u1||!u2) return null
-            return (
-              <div style={{ background:'linear-gradient(135deg,rgba(192,132,252,0.1),rgba(192,132,252,0.04))', border:'1.5px solid rgba(192,132,252,0.3)', borderRadius:18, padding:'14px 16px', marginBottom:12, display:'flex', alignItems:'center', gap:12 }}>
-                <div style={{ fontSize:32, flexShrink:0, animation:'fire 2s ease-in-out infinite' }}>🔥</div>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:12, color:'#c084fc', letterSpacing:2, marginBottom:4 }}>UNBEATEN STREAK</div>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'#f1f5f9', letterSpacing:1 }}>{u1.display_name.split(' ')[0]} + {u2.display_name.split(' ')[0]}</div>
-                  <div style={{ fontSize:12, color:'#c084fc', marginTop:2 }}>{unbeatenDuo.games} matches · {unbeatenDuo.wins} wins · STILL STANDING 💪</div>
+              {/* UNBEATEN */}
+              {unbeaten && pm[unbeaten.ids[0]] && pm[unbeaten.ids[1]] && (
+                <>
+                <SectionHeader>🔥 UNBEATEN STREAK</SectionHeader>
+                <div style={{ background:'rgba(192,132,252,0.07)', border:'1px solid rgba(192,132,252,0.2)', borderRadius:12, padding:'10px 12px', marginBottom:2 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                    <div style={{ display:'flex' }}>
+                      {unbeaten.ids.map((id,i)=><div key={id} style={{ marginLeft:i?-8:0 }}><SmallAvatar p={pm[id]} size={30} border="#c084fc"/></div>)}
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:'#c084fc', letterSpacing:1 }}>{pn(unbeaten.ids[0])} + {pn(unbeaten.ids[1])}</div>
+                      <div style={{ fontSize:10, color:'#475569' }}>Still unbeaten · {unbeaten.games} matches</div>
+                    </div>
+                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#c084fc' }}>{unbeaten.wins}-0</div>
+                  </div>
                 </div>
-                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:30, color:'#c084fc', flexShrink:0 }}>{unbeatenDuo.wins}-0</div>
-              </div>
-            )
-          })()}
+                </>
+              )}
 
-          {/* ── HEAVY DEFEAT ── */}
-          {worstBlowout && (()=>{
-            const margin=Math.abs(worstBlowout.score_a-worstBlowout.score_b)
-            const winners = worstBlowout.winner_team==='A'?worstBlowout.team_a_ids:worstBlowout.team_b_ids
-            const losers  = worstBlowout.winner_team==='A'?worstBlowout.team_b_ids:worstBlowout.team_a_ids
-            const winScore= worstBlowout.winner_team==='A'?worstBlowout.score_a:worstBlowout.score_b
-            const loseScore=worstBlowout.winner_team==='A'?worstBlowout.score_b:worstBlowout.score_a
-            const witty = WITTY_DEFEAT[Math.floor(Math.random()*WITTY_DEFEAT.length)]
-            return (
-              <div style={{ background:'linear-gradient(135deg,rgba(248,113,113,0.1),rgba(248,113,113,0.03))', border:'1.5px solid rgba(248,113,113,0.3)', borderRadius:18, padding:'14px 16px', marginBottom:12 }}>
-                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:12, color:'#f87171', letterSpacing:2, marginBottom:10 }}>💀 HEAVY DEFEAT — {margin} POINT MASSACRE</div>
-                <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
-                  {/* Winners */}
-                  <div style={{ flex:1, background:'rgba(74,222,128,0.1)', border:'1px solid rgba(74,222,128,0.25)', borderRadius:12, padding:'8px 10px' }}>
-                    <div style={{ fontSize:9, color:'#4ade80', letterSpacing:1.5, fontWeight:700, marginBottom:6 }}>VICTORS 🏆</div>
-                    {winners.map(id=>(
-                      <div key={id} style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4 }}>
-                        <div style={{ width:24, height:24, borderRadius:'50%', overflow:'hidden', border:'1.5px solid #4ade80', flexShrink:0 }}>
-                          <img src={playerMap[id]?.profile_pic||getAvatarUrl(id)} width={24} height={24} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.src=getAvatarUrl(id)}/>
+              {/* HEAVY DEFEAT */}
+              {worst && (()=>{
+                const margin = Math.abs(worst.score_a-worst.score_b)
+                const wIds = worst.winner_team==='A'?worst.team_a_ids:worst.team_b_ids
+                const lIds = worst.winner_team==='A'?worst.team_b_ids:worst.team_a_ids
+                const wS   = worst.winner_team==='A'?worst.score_a:worst.score_b
+                const lS   = worst.winner_team==='A'?worst.score_b:worst.score_a
+                const wit  = WITTY_DEFEAT[new Date(worst.played_at).getMinutes()%WITTY_DEFEAT.length]
+                return (
+                  <>
+                  <SectionHeader>💀 HEAVY DEFEAT · {margin} PT GAP</SectionHeader>
+                  <div style={{ background:'rgba(248,113,113,0.06)', border:'1px solid rgba(248,113,113,0.2)', borderRadius:12, padding:'10px 12px', marginBottom:2 }}>
+                    <div style={{ display:'flex', gap:8, alignItems:'stretch', marginBottom:8 }}>
+                      {/* Winners */}
+                      <div style={{ flex:1, background:'rgba(74,222,128,0.08)', borderRadius:8, padding:'8px' }}>
+                        <div style={{ fontSize:9, color:'#4ade80', letterSpacing:1.5, fontWeight:700, marginBottom:6 }}>VICTORS 🏆</div>
+                        {wIds.map(id=>(
+                          <div key={id} style={{ display:'flex', alignItems:'center', gap:5, marginBottom:3 }}>
+                            <SmallAvatar p={pm[id]} size={22} border="#4ade80"/>
+                            <span style={{ fontSize:12, color:'#4ade80', fontWeight:700 }}>{pn(id)}</span>
+                          </div>
+                        ))}
+                        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#4ade80', marginTop:4 }}>{wS}</div>
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', color:'#334155', fontFamily:"'Bebas Neue',sans-serif", fontSize:14 }}>VS</div>
+                      {/* Losers */}
+                      <div style={{ flex:1, background:'rgba(248,113,113,0.07)', borderRadius:8, padding:'8px' }}>
+                        <div style={{ fontSize:9, color:'#f87171', letterSpacing:1.5, fontWeight:700, marginBottom:6 }}>VICTIMS 💀</div>
+                        {lIds.map(id=>(
+                          <div key={id} style={{ display:'flex', alignItems:'center', gap:5, marginBottom:3 }}>
+                            <SmallAvatar p={pm[id]} size={22} border="#f87171"/>
+                            <span style={{ fontSize:12, color:'#f87171', fontWeight:700 }}>{pn(id)}</span>
+                          </div>
+                        ))}
+                        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#f87171', marginTop:4 }}>{lS}</div>
+                      </div>
+                    </div>
+                    <div style={{ fontSize:11, color:'#64748b', fontStyle:'italic', textAlign:'center', borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:7 }}>"{wit}"</div>
+                  </div>
+                  </>
+                )
+              })()}
+
+              {/* DOMINATION */}
+              {dom && dom.wins>=2 && pm[dom.w] && pm[dom.l] && (()=>{
+                const wit = WITTY_DOM[new Date().getMinutes()%WITTY_DOM.length]
+                const lv = getLevel(pm[dom.w].total_wins||0)
+                return (
+                  <>
+                  <SectionHeader>😈 PERSONAL DOMINATION</SectionHeader>
+                  <div style={{ background:'rgba(251,146,60,0.06)', border:'1px solid rgba(251,146,60,0.2)', borderRadius:12, padding:'10px 12px', marginBottom:2 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+                      <SmallAvatar p={pm[dom.w]} size={36} border={lv.aura}/>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:'#fb923c', letterSpacing:1 }}>{pn(dom.w)} <span style={{ color:'#334155' }}>vs</span> {pn(dom.l)}</div>
+                        <div style={{ fontSize:10, color:'#64748b', fontStyle:'italic' }}>"{pn(dom.w)} {wit}"</div>
+                      </div>
+                      <SmallAvatar p={pm[dom.l]} size={30} border="#334155"/>
+                      <div style={{ textAlign:'center', flexShrink:0, minWidth:36 }}>
+                        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, color:'#fb923c', lineHeight:1 }}>{dom.wins}×</div>
+                        <div style={{ fontSize:9, color:'#64748b' }}>WINS</div>
+                      </div>
+                    </div>
+                  </div>
+                  </>
+                )
+              })()}
+
+              {/* LEADERBOARD */}
+              <SectionHeader>⚔️ WARRIOR LEADERBOARD</SectionHeader>
+              <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, overflow:'hidden' }}>
+                {pStats.slice(0,8).map((s,i)=>{
+                  const p=pm[s.pid]; if(!p) return null
+                  const lv=getLevel(p.total_wins||0)
+                  const isMe=s.pid===currentUserId
+                  const medals=['🥇','🥈','🥉','4','5','6','7','8']
+                  return (
+                    <div key={s.pid} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderBottom:'1px solid rgba(255,255,255,0.04)', background:isMe?'rgba(74,222,128,0.05)':'transparent' }}>
+                      <span style={{ fontSize:i<3?14:10, width:20, textAlign:'center', color:'#334155', flexShrink:0 }}>{i<3?medals[i]:`#${i+1}`}</span>
+                      <SmallAvatar p={p} size={28} border={lv.aura}/>
+                      <span style={{ flex:1, fontFamily:"'Bebas Neue',sans-serif", fontSize:14, color:isMe?'#4ade80':'#f1f5f9', letterSpacing:0.5, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.display_name}{isMe?' 👈':''}</span>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
+                        <span style={{ fontSize:12, color:'#4ade80', fontWeight:700, fontFamily:"'Bebas Neue',sans-serif" }}>{s.wins}W</span>
+                        <span style={{ fontSize:10, color:'#475569', fontFamily:"'Bebas Neue',sans-serif" }}>{s.pct}%</span>
+                        <div style={{ width:40, height:3, background:'rgba(255,255,255,0.06)', borderRadius:2, overflow:'hidden' }}>
+                          <div style={{ height:'100%', width:s.pct+'%', background:lv.aura, borderRadius:2 }}/>
                         </div>
-                        <span style={{ fontSize:13, color:'#4ade80', fontWeight:700 }}>{pName(id)}</span>
                       </div>
-                    ))}
-                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#4ade80', marginTop:4 }}>{winScore}</div>
-                  </div>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'#334155' }}>VS</div>
-                  {/* Losers */}
-                  <div style={{ flex:1, background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.2)', borderRadius:12, padding:'8px 10px' }}>
-                    <div style={{ fontSize:9, color:'#f87171', letterSpacing:1.5, fontWeight:700, marginBottom:6 }}>VICTIMS 💀</div>
-                    {losers.map(id=>(
-                      <div key={id} style={{ display:'flex', alignItems:'center', gap:6, marginBottom:4 }}>
-                        <div style={{ width:24, height:24, borderRadius:'50%', overflow:'hidden', border:'1.5px solid #f87171', flexShrink:0, filter:'grayscale(0.5)' }}>
-                          <img src={playerMap[id]?.profile_pic||getAvatarUrl(id)} width={24} height={24} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.src=getAvatarUrl(id)}/>
-                        </div>
-                        <span style={{ fontSize:13, color:'#f87171', fontWeight:700 }}>{pName(id)}</span>
-                      </div>
-                    ))}
-                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#f87171', marginTop:4 }}>{loseScore}</div>
-                  </div>
-                </div>
-                <div style={{ fontSize:12, color:'#64748b', fontStyle:'italic', textAlign:'center' }}>"{witty}"</div>
+                    </div>
+                  )
+                })}
               </div>
-            )
-          })()}
-
-          {/* ── DOMINATION ── */}
-          {domination && domination.wins >= 2 && (()=>{
-            const w=playerMap[domination.w], l=playerMap[domination.l]
-            if(!w||!l) return null
-            const witty = WITTY_DOMINATION[Math.floor(Math.random()*WITTY_DOMINATION.length)]
-            const lv=getLevel(w.total_wins||0)
-            return (
-              <div style={{ background:'linear-gradient(135deg,rgba(251,146,60,0.1),rgba(251,146,60,0.03))', border:'1.5px solid rgba(251,146,60,0.3)', borderRadius:18, padding:'14px 16px', marginBottom:12 }}>
-                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:12, color:'#fb923c', letterSpacing:2, marginBottom:10 }}>😈 PERSONAL DOMINATION</div>
-                <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
-                  <div style={{ textAlign:'center', flexShrink:0 }}>
-                    <div style={{ width:48, height:48, borderRadius:'50%', overflow:'hidden', border:`2.5px solid ${lv.aura}`, background:'#1a2a1a', margin:'0 auto 4px' }}>
-                      <img src={w.profile_pic||getAvatarUrl(w.id)} width={48} height={48} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.src=getAvatarUrl(w.id)}/>
-                    </div>
-                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'#fb923c' }}>{w.display_name.split(' ')[0]}</div>
-                  </div>
-                  <div style={{ flex:1, textAlign:'center' }}>
-                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, color:'#fb923c' }}>{domination.wins}</div>
-                    <div style={{ fontSize:10, color:'#64748b', letterSpacing:1 }}>WINS OVER</div>
-                  </div>
-                  <div style={{ textAlign:'center', flexShrink:0 }}>
-                    <div style={{ width:48, height:48, borderRadius:'50%', overflow:'hidden', border:'2.5px solid #334155', background:'#1a2a1a', margin:'0 auto 4px', filter:'grayscale(0.6)' }}>
-                      <img src={l.profile_pic||getAvatarUrl(l.id)} width={48} height={48} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.src=getAvatarUrl(l.id)}/>
-                    </div>
-                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'#475569' }}>{l.display_name.split(' ')[0]}</div>
-                  </div>
-                </div>
-                <div style={{ fontSize:12, color:'#64748b', fontStyle:'italic', textAlign:'center' }}>"{w.display_name.split(' ')[0]} {witty}"</div>
-              </div>
-            )
-          })()}
-
-          {/* ── INDIVIDUAL LEADERBOARD ── */}
-          <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:18, padding:'14px', marginBottom:8 }}>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'#f1f5f9', letterSpacing:2, marginBottom:12 }}>⚔️ WARRIOR LEADERBOARD · {label}</div>
-            {playerStats.length===0 && <div style={{ textAlign:'center', color:'#334155', padding:16 }}>No players yet</div>}
-            {playerStats.slice(0,8).map((s,i)=>{
-              const p=playerMap[s.pid]; if(!p) return null
-              const lv=getLevel(p.total_wins||0)
-              const medals=['🥇','🥈','🥉']
-              const barW=s.games>0?Math.round(s.pct):0
-              const isMe=s.pid===currentUserId
-              return (
-                <div key={s.pid} style={{ marginBottom:10, background:isMe?'rgba(74,222,128,0.06)':'transparent', borderRadius:10, padding:isMe?'6px 8px':'0 4px', border:isMe?'1px solid rgba(74,222,128,0.15)':'none' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:4 }}>
-                    <span style={{ fontSize:14, width:24, textAlign:'center', flexShrink:0 }}>{medals[i]||<span style={{fontFamily:"'Bebas Neue'",fontSize:13,color:'#334155'}}>#{i+1}</span>}</span>
-                    <div style={{ width:30, height:30, borderRadius:'50%', overflow:'hidden', border:`1.5px solid ${lv.aura}`, background:'#1a2a1a', flexShrink:0 }}>
-                      <img src={p.profile_pic||getAvatarUrl(s.pid)} width={30} height={30} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.src=getAvatarUrl(s.pid)}/>
-                    </div>
-                    <span style={{ flex:1, fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:isMe?'#4ade80':'#f1f5f9', letterSpacing:0.5 }}>{p.display_name}{isMe?' 👈':''}</span>
-                    <span style={{ fontSize:13, color:'#4ade80', fontWeight:700, flexShrink:0 }}>{s.wins}W</span>
-                    <span style={{ fontSize:11, color:'#475569', width:32, textAlign:'right', flexShrink:0 }}>{s.pct}%</span>
-                  </div>
-                  <div style={{ height:4, background:'rgba(255,255,255,0.05)', borderRadius:2, overflow:'hidden', marginLeft:62 }}>
-                    <div style={{ height:'100%', width:barW+'%', background:`linear-gradient(90deg,${lv.aura}66,${lv.aura})`, borderRadius:2, transition:'width 0.6s' }}/>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-          </>
-        )}
-        </>
+            </div>
       )}
 
       {/* ── MY CARD ── */}
       {view==='mycard' && (
         <div>
-          <div id="share-card" style={{ background:`linear-gradient(160deg,${myLevel.bg||'#0d1f14'},#060d14)`, border:`1.5px solid ${myLevel.aura}33`, borderRadius:22, padding:'20px 16px', marginBottom:12, position:'relative', overflow:'hidden' }}>
-            <svg width="100%" height="100%" viewBox="0 0 400 320" preserveAspectRatio="xMidYMid slice" style={{ position:'absolute', inset:0, opacity:0.06 }} aria-hidden="true">
-              <rect x="10" y="10" width="380" height="300" fill="none" stroke={myLevel.aura} strokeWidth="1.5"/>
-              <line x1="200" y1="10" x2="200" y2="310" stroke={myLevel.aura} strokeWidth="1.5"/>
-              <line x1="10" y1="160" x2="390" y2="160" stroke={myLevel.aura} strokeWidth="1"/>
-              <ellipse cx="200" cy="160" rx="80" ry="80" fill="none" stroke={myLevel.aura} strokeWidth="1" opacity="0.5"/>
+          <div style={{ background:`linear-gradient(160deg,${myLv.bg||'#0d1f14'},#060d14)`, border:`1.5px solid ${myLv.aura}33`, borderRadius:20, padding:'16px', marginBottom:10, position:'relative', overflow:'hidden' }}>
+            <svg width="100%" height="100%" viewBox="0 0 400 280" preserveAspectRatio="xMidYMid slice" style={{ position:'absolute', inset:0, opacity:0.06 }} aria-hidden="true">
+              <rect x="8" y="8" width="384" height="264" fill="none" stroke={myLv.aura} strokeWidth="1.5"/>
+              <line x1="200" y1="8" x2="200" y2="272" stroke={myLv.aura} strokeWidth="1"/>
+              <line x1="8" y1="140" x2="392" y2="140" stroke={myLv.aura} strokeWidth="1"/>
+              <ellipse cx="200" cy="140" rx="70" ry="70" fill="none" stroke={myLv.aura} strokeWidth="0.8" opacity="0.5"/>
             </svg>
             <div style={{ position:'relative', zIndex:1 }}>
-              <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
-                <div style={{ width:60, height:60, borderRadius:'50%', overflow:'hidden', border:`2.5px solid ${myLevel.aura}`, background:'#1a2a1a', flexShrink:0, boxShadow:`0 0 16px ${myLevel.aura}44` }}>
-                  {me && <img src={me.profile_pic||getAvatarUrl(currentUserId)} width={60} height={60} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.src=getAvatarUrl(currentUserId)}/>}
+              {/* Header row */}
+              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
+                <div style={{ width:52, height:52, borderRadius:'50%', overflow:'hidden', border:`2px solid ${myLv.aura}`, background:'#1a2a1a', flexShrink:0, boxShadow:`0 0 12px ${myLv.aura}44` }}>
+                  {me && <img src={me.profile_pic||getAvatarUrl(currentUserId)} width={52} height={52} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>{e.target.onerror=null;e.target.src=getAvatarUrl(currentUserId)}}/>}
                 </div>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#f1f5f9', letterSpacing:2, lineHeight:1 }}>{me?.display_name||'Player'}</div>
-                  <div style={{ fontSize:11, color:myLevel.aura, marginTop:3, fontWeight:700, letterSpacing:1 }}>{myLevel.emoji||'⭐'} {myLevel.name||'PLAYER'}</div>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:'#f1f5f9', letterSpacing:2, lineHeight:1 }}>{me?.display_name||'Player'}</div>
+                  <div style={{ fontSize:10, color:myLv.aura, fontWeight:700, letterSpacing:1, marginTop:2 }}>{myLv.emoji||'⭐'} {myLv.name||'PLAYER'}</div>
                 </div>
                 <div style={{ textAlign:'right' }}>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:10, color:'#334155', letterSpacing:2 }}>🏸 SHUTTLE</div>
-                  <div style={{ fontSize:10, color:'#334155', marginTop:2 }}>{label}</div>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:9, color:'#334155', letterSpacing:2 }}>🏸 SHUTTLE · {label}</div>
                 </div>
               </div>
 
-              {myGames.length===0 ? (
-                <div style={{ textAlign:'center', color:'#334155', padding:24 }}>No games {label.toLowerCase()}</div>
-              ) : (
-                <>
-                  <div style={{ textAlign:'center', marginBottom:16 }}>
-                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:76, color:myLevel.aura, lineHeight:1, textShadow:`0 0 40px ${myLevel.aura}44` }}>{myPct}%</div>
-                    <div style={{ fontSize:11, color:'#64748b', letterSpacing:3, fontWeight:700 }}>WIN RATE</div>
-                    <div style={{ height:6, background:'rgba(255,255,255,0.07)', borderRadius:3, overflow:'hidden', margin:'10px 0' }}>
-                      <div style={{ height:'100%', width:myPct+'%', background:`linear-gradient(90deg,${myLevel.aura}55,${myLevel.aura})`, borderRadius:3 }}/>
+              {myG.length===0
+                ? <div style={{ textAlign:'center', color:'#334155', padding:20 }}>No games {label.toLowerCase()}</div>
+                : <>
+                  {/* Big win rate + bar */}
+                  <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:60, color:myLv.aura, lineHeight:1, textShadow:`0 0 30px ${myLv.aura}44` }}>{myPct}%</div>
+                      <div style={{ fontSize:9, color:'#64748b', letterSpacing:3, fontWeight:700 }}>WIN RATE · {label}</div>
+                      <div style={{ height:4, background:'rgba(255,255,255,0.07)', borderRadius:2, overflow:'hidden', marginTop:6 }}>
+                        <div style={{ height:'100%', width:myPct+'%', background:`linear-gradient(90deg,${myLv.aura}55,${myLv.aura})`, borderRadius:2 }}/>
+                      </div>
+                    </div>
+                    {/* Mini stat column */}
+                    <div style={{ display:'flex', flexDirection:'column', gap:4, flexShrink:0 }}>
+                      {[{v:myG.length,l:'PLAYED',c:'#93c5fd'},{v:myW,l:'WON',c:'#4ade80'},{v:myL,l:'LOST',c:'#f87171'}].map(s=>(
+                        <div key={s.l} style={{ background:'rgba(0,0,0,0.35)', borderRadius:8, padding:'4px 10px', textAlign:'center', minWidth:56 }}>
+                          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:s.c, lineHeight:1 }}>{s.v}</div>
+                          <div style={{ fontSize:8, color:'#64748b', letterSpacing:1 }}>{s.l}</div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:8, marginBottom:14 }}>
-                    {[{v:myGames.length,l:'PLAYED',c:'#93c5fd'},{v:myWins,l:'WON',c:'#4ade80'},{v:myLosses,l:'LOST',c:'#f87171'},{v:myScored,l:'SCORED',c:myLevel.aura}].map(s=>(
-                      <div key={s.l} style={{ background:'rgba(0,0,0,0.4)', borderRadius:12, padding:'10px 4px', textAlign:'center' }}>
-                        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, color:s.c, lineHeight:1 }}>{s.v}</div>
-                        <div style={{ fontSize:9, color:'#64748b', letterSpacing:1, marginTop:2 }}>{s.l}</div>
+
+                  {/* Scoring row */}
+                  <div style={{ display:'flex', gap:6, marginBottom:10 }}>
+                    {[{v:myScored,l:'SCORED',c:'#4ade80'},{v:myConceded,l:'CONCEDED',c:'#f87171'},{v:myScored-myConceded,l:'DIFF',c:myScored>myConceded?'#4ade80':'#f87171',prefix:myScored>myConceded?'+':''}].map(s=>(
+                      <div key={s.l} style={{ flex:1, background:'rgba(0,0,0,0.3)', borderRadius:8, padding:'6px 4px', textAlign:'center' }}>
+                        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:s.c, lineHeight:1 }}>{s.prefix||''}{s.v}</div>
+                        <div style={{ fontSize:8, color:'#64748b', letterSpacing:1 }}>{s.l}</div>
                       </div>
                     ))}
                   </div>
+
+                  {/* Form dots */}
                   <div>
-                    <div style={{ fontSize:10, color:'#334155', letterSpacing:1, marginBottom:6 }}>RECENT FORM</div>
-                    <div style={{ display:'flex', gap:5, flexWrap:'wrap' }}>
-                      {myGames.slice(0,10).map((g,i)=>{
+                    <div style={{ fontSize:9, color:'#334155', letterSpacing:1.5, marginBottom:5 }}>RECENT FORM</div>
+                    <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
+                      {myG.slice(0,12).map((g,i)=>{
                         const inA=g.team_a_ids.includes(currentUserId)
                         const won=g.winner_team===(inA?'A':'B')
-                        return <div key={i} style={{ width:28, height:28, borderRadius:'50%', background:won?'rgba(74,222,128,0.15)':'rgba(248,113,113,0.15)', border:`1px solid ${won?'#4ade80':'#f87171'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, fontFamily:"'Bebas Neue',sans-serif", color:won?'#4ade80':'#f87171' }}>{won?'W':'L'}</div>
+                        return <div key={i} style={{ width:24, height:24, borderRadius:'50%', background:won?'rgba(74,222,128,0.15)':'rgba(248,113,113,0.15)', border:`1px solid ${won?'#4ade80':'#f87171'}`, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'Bebas Neue',sans-serif", fontSize:11, color:won?'#4ade80':'#f87171' }}>{won?'W':'L'}</div>
                       })}
                     </div>
                   </div>
-                  <div style={{ marginTop:12, display:'flex', gap:8 }}>
-                    <div style={{ flex:1, background:'rgba(74,222,128,0.06)', borderRadius:10, padding:'8px', textAlign:'center' }}>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:'#4ade80' }}>{myScored}</div>
-                      <div style={{ fontSize:9, color:'#64748b' }}>SCORED</div>
-                    </div>
-                    <div style={{ flex:1, background:'rgba(248,113,113,0.06)', borderRadius:10, padding:'8px', textAlign:'center' }}>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:'#f87171' }}>{myConceded}</div>
-                      <div style={{ fontSize:9, color:'#64748b' }}>CONCEDED</div>
-                    </div>
-                    <div style={{ flex:1, background:'rgba(255,255,255,0.04)', borderRadius:10, padding:'8px', textAlign:'center' }}>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:myScored>myConceded?'#4ade80':'#f87171' }}>{myScored>myConceded?'+':''}{myScored-myConceded}</div>
-                      <div style={{ fontSize:9, color:'#64748b' }}>DIFF</div>
-                    </div>
-                  </div>
                 </>
-              )}
+              }
             </div>
           </div>
-          <div style={{ textAlign:'center', fontSize:12, color:'#334155' }}>📸 Screenshot to flex on your court</div>
+          <div style={{ textAlign:'center', fontSize:11, color:'#334155' }}>📸 Screenshot to flex on your court</div>
         </div>
       )}
     </div>
@@ -1159,6 +1125,20 @@ export default function Dashboard({ onOpenProfile }) {
 
   useEffect(() => { loadGroups() }, [])
 
+  // Hide chips on first scroll — show only once per session
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    function onScroll() {
+      if (el.scrollTop > 30 && !chipsShownOnce.current) {
+        chipsShownOnce.current = true
+        setChipsVisible(false)
+      }
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [scrollRef.current])
+
   useEffect(() => {
     if (activeGroup === 'player_default' && myGroupIds.length > 0) {
       setActiveGroup(myGroupIds[0])
@@ -1260,18 +1240,27 @@ export default function Dashboard({ onOpenProfile }) {
         )}
       </div>
 
-      {/* Group filter chips — only player's courts + All */}
+      {/* Group filter chips — not sticky, hides on scroll */}
       {myGroupIds.length > 0 && (
-        <div style={{ position:'sticky', top:54, zIndex:39, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', padding:'8px 16px', display:'flex', gap:8, borderBottom:'1px solid rgba(255,255,255,0.04)', overflowX:'auto' }}>
-          <button className={`group-chip${effectiveGroup==='all'?' active':''}`} onClick={()=>setActiveGroup('all')} style={{flexShrink:0}}>All</button>
-          {groups.filter(g => myGroupIds.includes(g.id)).map(g => (
-            <button key={g.id} className={`group-chip${effectiveGroup===g.id?' active':''}`} onClick={()=>setActiveGroup(g.id)} style={{flexShrink:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:130}}>{g.name}</button>
-          ))}
+        <div style={{
+          overflow:'hidden',
+          maxHeight: chipsVisible ? 52 : 0,
+          opacity: chipsVisible ? 1 : 0,
+          transition: 'max-height 0.35s ease, opacity 0.3s ease',
+          background:'rgba(6,13,20,0.97)',
+          borderBottom: chipsVisible ? '1px solid rgba(255,255,255,0.04)' : 'none',
+        }}>
+          <div style={{ padding:'8px 16px', display:'flex', gap:8, overflowX:'auto' }}>
+            <button className={`group-chip${effectiveGroup==='all'?' active':''}`} onClick={()=>setActiveGroup('all')} style={{flexShrink:0}}>All</button>
+            {groups.filter(g => myGroupIds.includes(g.id)).map(g => (
+              <button key={g.id} className={`group-chip${effectiveGroup===g.id?' active':''}`} onClick={()=>setActiveGroup(g.id)} style={{flexShrink:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:130}}>{g.name}</button>
+            ))}
+          </div>
         </div>
       )}
 
       {/* Tabs */}
-      <div style={{ position:'sticky', top:myGroupIds.length>0?98:54, zIndex:38, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', display:'flex', borderBottom:'2px solid rgba(255,255,255,0.05)' }}>
+      <div style={{ position:'sticky', top:54, zIndex:38, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', display:'flex', borderBottom:'2px solid rgba(255,255,255,0.05)' }}>
         {[{id:'players',label:'🏆 PLAYERS'},{id:'teams',label:'🔥 TEAMS'},{id:'games',label:'🏸 GAMES'},{id:'report',label:'📊 REPORT'}].map(t=>(
           <button key={t.id} className={`tab-btn${tab===t.id?' active':''}`} onClick={()=>switchTab(t.id)}>{t.label}</button>
         ))}
