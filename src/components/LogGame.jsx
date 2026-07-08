@@ -156,9 +156,10 @@ function SkillsSheet({ playerMap, teamA, teamB, winner, onSubmit, onSkip }) {
   )
 }
 
-export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembers, groups, currentUserId }) {
+export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembers, groups, currentUserId, defaultSingles=false }) {
   const { currentUser } = useAuth()
   const { getPlayers, logGame } = useGameLogger()
+  const [isSingles, setIsSingles] = useState(defaultSingles)
 
   const [players, setPlayers]           = useState([])
   const [allPlayers, setAllPlayers]     = useState([])
@@ -207,23 +208,30 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
     return ()=>clearInterval(t)
   },[step,winner])
 
+  const maxPerTeam = isSingles ? 1 : 2
+
   function togglePlayer(pid) {
     if (selectingFor==='A') {
       if (teamA.includes(pid)) { setTeamA(teamA.filter(x=>x!==pid)); return }
       if (teamB.includes(pid)) return
-      if (teamA.length<2) { const nA=[...teamA,pid]; setTeamA(nA); if(nA.length===2) setSelectingFor('B') }
+      if (teamA.length<maxPerTeam) { const nA=[...teamA,pid]; setTeamA(nA); if(nA.length===maxPerTeam) setSelectingFor('B') }
     } else {
       if (teamB.includes(pid)) { setTeamB(teamB.filter(x=>x!==pid)); return }
       if (teamA.includes(pid)) return
-      if (teamB.length<2) setTeamB([...teamB,pid])
+      if (teamB.length<maxPerTeam) setTeamB([...teamB,pid])
     }
+  }
+
+  function handleModeToggle() {
+    setIsSingles(v => !v)
+    setTeamA([]); setTeamB([]); setSelectingFor('A')
   }
 
   function handleScoreAChange(val) { if(val.length>2) return; setScoreA(val); if(val&&!scoreB) setScoreB('21') }
   function handleScoreBChange(val) { if(val.length>2) return; setScoreB(val); if(val&&!scoreA) setScoreA('21') }
 
   const playerMap = Object.fromEntries(players.map(p=>[p.id,p]))
-  const canProceed = teamA.length===2&&teamB.length===2
+  const canProceed = teamA.length===maxPerTeam&&teamB.length===maxPerTeam
   function teamLabel(team) { return team.map(pid=>playerMap[pid]?.display_name||'?').join(' · ') }
 
   function winnerLabel() {
@@ -328,6 +336,9 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
           <div style={{flex:1,position:'relative',minHeight:0}}>
             <CourtBackground style={{height:'100%'}}>
               <button onClick={onClose} style={{position:'absolute',top:12,right:12,zIndex:20,background:'rgba(0,0,0,0.6)',border:'1px solid rgba(255,255,255,0.15)',color:'#94a3b8',borderRadius:'50%',width:34,height:34,cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
+              <button onClick={handleModeToggle} style={{position:'absolute',top:12,right:54,zIndex:20,background: isSingles?'rgba(96,165,250,0.85)':'rgba(0,0,0,0.6)',border:`1px solid ${isSingles?'#60a5fa':'rgba(255,255,255,0.15)'}`,color: isSingles?'#fff':'#94a3b8',borderRadius:20,padding:'5px 12px',cursor:'pointer',fontFamily:"'Rajdhani',sans-serif",fontSize:11,fontWeight:700,letterSpacing:0.5,whiteSpace:'nowrap'}}>
+                {isSingles ? '👤 1v1' : '👥 2v2'}
+              </button>
               <div style={{position:'absolute',top:12,left:14,zIndex:5}}>
                 <div style={{background:'rgba(0,0,0,0.65)',borderRadius:10,padding:'5px 12px',border:'1px solid rgba(74,222,128,0.35)',display:'inline-block'}}>
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'#4ade80',letterSpacing:2,lineHeight:1}}>TEAM A</div>
@@ -354,8 +365,8 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
 
             {/* Team tabs */}
             <div style={{display:'flex',gap:8,marginBottom:10,flexShrink:0}}>
-              <button className={'tt'+(selectingFor==='A'?' a':'')} onClick={()=>setSelectingFor('A')}>TEAM A {teamA.length}/2{teamA.length===2?' ✓':''}</button>
-              <button className={'tt'+(selectingFor==='B'?' b':'')} onClick={()=>setSelectingFor('B')}>TEAM B {teamB.length}/2{teamB.length===2?' ✓':''}</button>
+              <button className={'tt'+(selectingFor==='A'?' a':'')} onClick={()=>setSelectingFor('A')}>TEAM A {teamA.length}/{maxPerTeam}{teamA.length===2?' ✓':''}</button>
+              <button className={'tt'+(selectingFor==='B'?' b':'')} onClick={()=>setSelectingFor('B')}>TEAM B {teamB.length}/{maxPerTeam}{teamB.length===2?' ✓':''}</button>
             </div>
 
             {/* Court filter chips */}

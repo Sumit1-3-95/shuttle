@@ -1,5 +1,5 @@
 // src/components/Dashboard.jsx — v14
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useRealtimeDashboard } from '../hooks/useRealtimeDashboard'
 import { useCourtData } from '../hooks/useCourtData'
@@ -8,6 +8,8 @@ import { supabase } from '../supabaseClient'
 import LogGame from './LogGame'
 import CourtManager from './CourtManager'
 import MyCourts from './MyCourts'
+import VideoTab from './VideoTab'
+import SettingsPage from './SettingsPage'
 import TeamProfile from './TeamProfile'
 import { useGameLogger } from '../hooks/useGameLogger'
 
@@ -59,7 +61,7 @@ function TabLoader() {
 }
 
 // ── Hamburger menu ─────────────────────────────────────────────
-function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup, onOpenCourtManager, onOpenMyCourts, onCreateCourt, onJoinCourt }) {
+function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup, onOpenCourtManager, onOpenMyCourts, onCreateCourt, onJoinCourt, onOpenSettings }) {
   const level = getLevel(currentPlayer?.total_wins || 0)
   const [showCreate, setShowCreate] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
@@ -191,6 +193,13 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
             )}
           </div>
           )}
+        </div>
+
+        {/* Settings */}
+        <div style={{ padding:'0 16px', marginBottom:8 }}>
+          <button onClick={() => { onOpenSettings && onOpenSettings(); onClose() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, cursor:'pointer', color:'#64748b', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
+            <span>⚙️</span> Settings
+          </button>
         </div>
 
         {/* Logout */}
@@ -518,6 +527,12 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
                       🏆 {winNames} WON
                     </span>
                   </div>
+                  {/* Singles/Doubles tag */}
+                  {(g.team_a_ids?.length === 1 || g.team_b_ids?.length === 1) ? (
+                    <span style={{ fontSize:10, padding:'2px 7px', borderRadius:20, background:'rgba(96,165,250,0.1)', color:'#60a5fa', border:'1px solid rgba(96,165,250,0.2)', fontFamily:"'Rajdhani',sans-serif", fontWeight:700, marginRight:4 }}>👤 SINGLES</span>
+                  ) : (
+                    <span style={{ fontSize:10, padding:'2px 7px', borderRadius:20, background:'rgba(255,255,255,0.06)', color:'#475569', border:'1px solid rgba(255,255,255,0.08)', fontFamily:"'Rajdhani',sans-serif", fontWeight:700, marginRight:4 }}>👥 DOUBLES</span>
+                  )}
                   {/* Under-10 highlight */}
                   {Math.abs(g.score_a - g.score_b) >= 10 && (
                     <div style={{display:'flex',alignItems:'center',gap:6,padding:'4px 10px',background:'rgba(251,146,60,0.1)',border:'1px solid rgba(251,146,60,0.3)',borderRadius:20,marginBottom:6,width:'fit-content'}}>
@@ -1099,7 +1114,10 @@ export default function Dashboard({ onOpenProfile }) {
   const [courtManagerView, setCourtManagerView] = useState('list')
   const [myCourtsView, setMyCourtsView]         = useState('my')
   const [showMyCourts, setShowMyCourts]         = useState(false)
+  const TAB_ORDER = ['players','teams','games','report','videos']
   const [chipsVisible, setChipsVisible]         = useState(true)
+  const [showSettings, setShowSettings]         = useState(false)
+  const [gamePreference, setGamePreference]     = useState('doubles')
   const chipsShownOnce                          = useRef(false)
   const scrollRef                               = useRef(null)
   const [openTeam, setOpenTeam]               = useState(null) // {p1, p2}
@@ -1127,20 +1145,12 @@ export default function Dashboard({ onOpenProfile }) {
   }
 
   useEffect(() => { loadGroups() }, [])
-
-  // Hide chips on first scroll — show only once per session
   useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    function onScroll() {
-      if (el.scrollTop > 30 && !chipsShownOnce.current) {
-        chipsShownOnce.current = true
-        setChipsVisible(false)
-      }
-    }
-    el.addEventListener('scroll', onScroll, { passive: true })
-    return () => el.removeEventListener('scroll', onScroll)
+    supabase.from('player_settings').select('game_preference').eq('player_id', currentUser.id).single()
+      .then(({ data }) => { if (data) setGamePreference(data.game_preference) })
   }, [])
+
+
 
   useEffect(() => {
     if (activeGroup === 'player_default' && myGroupIds.length > 0) {
@@ -1175,6 +1185,29 @@ export default function Dashboard({ onOpenProfile }) {
     setTabLoading(true)
     setTimeout(() => setTabLoading(false), 350)
     setTab(id)
+    // Scroll content to top on tab change
+    if (scrollRef.current) scrollRef.current.scrollTop = 0
+  }
+
+  function handleContentScroll(e) {
+    // Hide chips on first scroll
+    if (e.target.scrollTop > 30 && !chipsShownOnce.current) {
+      chipsShownOnce.current = true
+      setChipsVisible(false)
+    }
+    // Infinite scroll to next tab — only on Players, Teams tabs
+    const scrollableToNext = ['players','teams']
+    if (!scrollableToNext.includes(tab)) return
+    const el = e.target
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
+    if (nearBottom) {
+      const currentIdx = TAB_ORDER.indexOf(tab)
+      const nextTab = TAB_ORDER[currentIdx + 1]
+      if (nextTab) {
+        setTabLoading(true)
+        setTimeout(() => { setTabLoading(false); setTab(nextTab); el.scrollTop = 0 }, 400)
+      }
+    }
   }
 
   function handleGameLogged() {
@@ -1193,7 +1226,8 @@ export default function Dashboard({ onOpenProfile }) {
         @keyframes drawer-in { from{transform:translateX(-100%)} to{transform:translateX(0)} }
         @keyframes shuttle-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         @keyframes tab-loader-in { from{opacity:0} to{opacity:1} }
-        .tab-btn { background:none; border:none; color:#64748b; font-family:'Bebas Neue',sans-serif; font-size:17px; letter-spacing:2px; padding:14px 0; cursor:pointer; border-bottom:3px solid transparent; transition:all 0.2s; flex:1; text-align:center; }
+        @keyframes reel-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(1.4)} }
+        .tab-btn { background:none; border:none; color:#64748b; font-family:'Bebas Neue',sans-serif; font-size:15px; letter-spacing:1.5px; padding:12px 14px; cursor:pointer; border-bottom:3px solid transparent; transition:all 0.2s; flex:0 0 auto; text-align:center; white-space:nowrap; }
         .tab-btn.active { color:#4ade80; border-bottom-color:#4ade80; }
         .group-chip { padding:8px 16px; border-radius:20px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#64748b; font-family:'Rajdhani',sans-serif; font-size:14px; font-weight:700; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
         .group-chip.active { background:rgba(74,222,128,0.15); border-color:rgba(74,222,128,0.5); color:#4ade80; }
@@ -1224,6 +1258,7 @@ export default function Dashboard({ onOpenProfile }) {
           onOpenMyCourts={() => { setShowMyCourts(true); setShowMenu(false) }}
           onCreateCourt={() => { setCourtManagerView('create'); setShowCourtManager(true); setShowMenu(false) }}
           onJoinCourt={() => { setMyCourtsView('join'); setShowMyCourts(true); setShowMenu(false) }}
+          onOpenSettings={() => { setShowSettings(true); setShowMenu(false) }}
         />
       )}
 
@@ -1263,9 +1298,21 @@ export default function Dashboard({ onOpenProfile }) {
       )}
 
       {/* Tabs */}
-      <div style={{ position:'sticky', top:54, zIndex:38, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', display:'flex', borderBottom:'2px solid rgba(255,255,255,0.05)' }}>
-        {[{id:'players',label:'🏆 PLAYERS'},{id:'teams',label:'🔥 TEAMS'},{id:'games',label:'🏸 GAMES'},{id:'report',label:'📊 REPORT'}].map(t=>(
-          <button key={t.id} className={`tab-btn${tab===t.id?' active':''}`} onClick={()=>switchTab(t.id)}>{t.label}</button>
+      <div style={{ position:'sticky', top:54, zIndex:38, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', display:'flex', borderBottom:'2px solid rgba(255,255,255,0.05)', overflowX:'auto' }}>
+        {[{id:'players',label:'PLAYERS'},{id:'teams',label:'TEAMS'},{id:'games',label:'GAMES'},{id:'report',label:'REPORT'},{id:'videos',label:'DEUCE'}].map(t=>(
+          <button key={t.id} className={`tab-btn${tab===t.id?' active':''}`} onClick={()=>switchTab(t.id)} style={t.id==='videos' ? {
+            color: tab==='videos' ? '#fb923c' : '#f97316',
+            borderBottomColor: tab==='videos' ? '#fb923c' : 'transparent',
+            position: 'relative',
+            background: tab==='videos' ? 'rgba(251,146,60,0.12)' : 'rgba(251,146,60,0.05)',
+            borderRadius: '8px 8px 0 0',
+            marginTop: 2,
+          } : {}}>
+            {t.label}
+            {t.id==='videos' && tab!=='videos' && (
+              <span style={{ position:'absolute', top:8, right:6, width:5, height:5, borderRadius:'50%', background:'#fb923c', animation:'reel-pulse 2s ease-in-out 3' }}/>
+            )}
+          </button>
         ))}
       </div>
 
@@ -1282,9 +1329,19 @@ export default function Dashboard({ onOpenProfile }) {
             ))}
           </div>
         )}
+        {tab==='players' && (
+          <div style={{ textAlign:'center', padding:'32px 16px 16px', color:'#1e293b', fontFamily:"'Rajdhani',sans-serif", fontSize:12, letterSpacing:1, fontWeight:700 }}>
+            ↓ KEEP SCROLLING FOR TEAMS
+          </div>
+        )}
         {tab === 'teams' && (
           <div style={{ animation:'card-in 0.3s ease-out' }}>
             <TeamsTab allPlayers={filteredPlayers} currentUserId={currentUser.id} onOpenTeam={(p1,p2)=>setOpenTeam({p1,p2})}/>
+          </div>
+        )}
+        {tab==='teams' && (
+          <div style={{ textAlign:'center', padding:'32px 16px 16px', color:'#1e293b', fontFamily:"'Rajdhani',sans-serif", fontSize:12, letterSpacing:1, fontWeight:700 }}>
+            ↓ KEEP SCROLLING FOR GAMES
           </div>
         )}
         {tab === 'games' && (
@@ -1295,6 +1352,11 @@ export default function Dashboard({ onOpenProfile }) {
         {tab === 'report' && (
           <div style={{ animation:'card-in 0.3s ease-out' }}>
             <ReportTab players={filteredPlayers} currentUserId={currentUser.id}/>
+          </div>
+        )}
+        {tab === 'videos' && (
+          <div style={{ padding:'16px', animation:'card-in 0.3s ease-out' }}>
+            <VideoTab currentUserId={currentUser.id}/>
           </div>
         )}
       </div>
@@ -1311,6 +1373,12 @@ export default function Dashboard({ onOpenProfile }) {
           p1={openTeam.p1}
           p2={openTeam.p2}
           onBack={() => setOpenTeam(null)}
+        />
+      )}
+      {showSettings && (
+        <SettingsPage
+          currentUser={currentUser}
+          onClose={() => setShowSettings(false)}
         />
       )}
       {showMyCourts && (
@@ -1348,7 +1416,7 @@ export default function Dashboard({ onOpenProfile }) {
           }}
         />
       )}
-      {showLogGame && <LogGame onClose={()=>setShowLogGame(false)} onGameLogged={handleGameLogged} activeGroup={effectiveGroup} groupMembers={groupMembers} groups={groups} currentUserId={currentUser.id}/>}
+      {showLogGame && <LogGame onClose={()=>setShowLogGame(false)} onGameLogged={handleGameLogged} activeGroup={effectiveGroup} groupMembers={groupMembers} groups={groups} currentUserId={currentUser.id} defaultSingles={gamePreference==='singles'}/>}
     </div>
   )
 }
