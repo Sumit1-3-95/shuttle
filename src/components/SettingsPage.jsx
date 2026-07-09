@@ -1,16 +1,43 @@
 // src/components/SettingsPage.jsx
 import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
+import bcrypt from 'bcryptjs'
 
 export default function SettingsPage({ currentUser, onClose }) {
   const [gamePreference, setGamePreference] = useState('doubles')
   const [saving, setSaving]                 = useState(false)
   const [saved, setSaved]                   = useState(false)
+  // PIN change
+  const [currentPin, setCurrentPin]         = useState('')
+  const [newPin, setNewPin]                 = useState('')
+  const [confirmPin, setConfirmPin]         = useState('')
+  const [pinError, setPinError]             = useState('')
+  const [pinSuccess, setPinSuccess]         = useState('')
+  const [savingPin, setSavingPin]           = useState(false)
 
   useEffect(() => {
     supabase.from('player_settings').select('*').eq('player_id', currentUser.id).single()
       .then(({ data }) => { if (data) setGamePreference(data.game_preference) })
   }, [])
+
+  async function changePin() {
+    setPinError(''); setPinSuccess('')
+    if (!/^\d{4}$/.test(currentPin)) { setPinError('Enter your current 4-digit PIN'); return }
+    if (!/^\d{4}$/.test(newPin))     { setPinError('New PIN must be 4 digits'); return }
+    if (newPin !== confirmPin)         { setPinError('New PINs do not match'); return }
+    setSavingPin(true)
+    // Verify current PIN
+    const { data: player } = await supabase.from('players').select('pin_hash').eq('id', currentUser.id).single()
+    const match = await bcrypt.compare(currentPin, player.pin_hash)
+    if (!match) { setPinError('Current PIN is incorrect'); setSavingPin(false); return }
+    // Update PIN
+    const newHash = await bcrypt.hash(newPin, 10)
+    await supabase.from('players').update({ pin_hash: newHash }).eq('id', currentUser.id)
+    setCurrentPin(''); setNewPin(''); setConfirmPin('')
+    setPinSuccess('PIN updated successfully!')
+    setTimeout(() => setPinSuccess(''), 3000)
+    setSavingPin(false)
+  }
 
   async function save(pref) {
     setGamePreference(pref)
@@ -56,6 +83,34 @@ export default function SettingsPage({ currentUser, onClose }) {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Change PIN */}
+        <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:14, padding:'14px 16px', marginBottom:16 }}>
+          <div style={{ fontSize:11, color:'#64748b', letterSpacing:2, fontWeight:700, textTransform:'uppercase', marginBottom:14 }}>Change PIN</div>
+          {[
+            { label:'Current PIN', value:currentPin, set:setCurrentPin, ph:'Enter current PIN' },
+            { label:'New PIN',     value:newPin,     set:setNewPin,     ph:'Enter new PIN' },
+            { label:'Confirm PIN', value:confirmPin, set:setConfirmPin, ph:'Confirm new PIN',
+              borderColor: confirmPin.length===4?(newPin===confirmPin?'rgba(74,222,128,0.5)':'rgba(248,113,113,0.5)'):'rgba(255,255,255,0.1)' },
+          ].map(f => (
+            <div key={f.label} style={{ marginBottom:10 }}>
+              <div style={{ fontSize:10, color:'#64748b', letterSpacing:1, fontWeight:700, marginBottom:5, textTransform:'uppercase' }}>{f.label}</div>
+              <input
+                value={f.value}
+                onChange={e=>{ if(/^\d{0,4}$/.test(e.target.value)) { f.set(e.target.value); setPinError('') } }}
+                type="password" inputMode="numeric" maxLength={4}
+                placeholder="••••"
+                style={{ width:'100%', boxSizing:'border-box', background:'rgba(0,0,0,0.4)', border:`1.5px solid ${f.borderColor||'rgba(255,255,255,0.1)'}`, borderRadius:10, padding:'11px 14px', color:'#f1f5f9', fontSize:18, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:6, outline:'none', textAlign:'center' }}
+              />
+            </div>
+          ))}
+          {pinError   && <div style={{ fontSize:12, color:'#f87171', marginBottom:8, fontFamily:"'Rajdhani',sans-serif" }}>⚠ {pinError}</div>}
+          {pinSuccess && <div style={{ fontSize:12, color:'#4ade80', marginBottom:8, fontFamily:"'Rajdhani',sans-serif" }}>✓ {pinSuccess}</div>}
+          <button onClick={changePin} disabled={savingPin||!currentPin||!newPin||!confirmPin}
+            style={{ width:'100%', background: (currentPin&&newPin&&confirmPin)?'linear-gradient(135deg,#14532d,#166534)':'rgba(255,255,255,0.05)', border:`1.5px solid ${(currentPin&&newPin&&confirmPin)?'#4ade80':'rgba(255,255,255,0.1)'}`, color:(currentPin&&newPin&&confirmPin)?'#4ade80':'#475569', borderRadius:50, padding:'12px', cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:2, opacity:savingPin?0.6:1 }}>
+            {savingPin ? 'UPDATING...' : 'UPDATE PIN'}
+          </button>
         </div>
 
         {/* Account info */}

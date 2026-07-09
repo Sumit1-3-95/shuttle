@@ -31,7 +31,7 @@ function PAv({ player, size=60, float=false, dim=false }) {
       <div style={{ position:'relative', width:size, height:size, margin:'0 auto 4px' }}>
         <div style={{ width:size, height:size, borderRadius:'50%', overflow:'hidden', border:'2.5px solid '+level.aura, boxShadow:'0 0 14px '+level.glow, background:'#1a2a1a' }}>
           {!err
-            ? <img src={getAvatarUrl(player.id)} width={size} height={size} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={()=>setErr(true)}/>
+            ? <img src={player.profile_pic||getAvatarUrl(player.id)} width={size} height={size} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={()=>setErr(true)}/>
             : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:size*0.4,color:level.aura}}>{player.display_name.charAt(0)}</div>
           }
         </div>
@@ -80,7 +80,7 @@ function SkillsSheet({ playerMap, teamA, teamB, winner, onSubmit, onSkip }) {
               return (
                 <div key={pid} style={{ flex:1, background:'rgba(74,222,128,0.04)', border:'1px solid rgba(74,222,128,0.15)', borderRadius:12, padding:'10px 8px', display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
                   <div style={{ width:48, height:48, borderRadius:'50%', overflow:'hidden', border:'1.5px solid '+level.aura, background:'#1a2a1a', flexShrink:0 }}>
-                    <img src={getAvatarUrl(pid)} width={48} height={48} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
+                    <img src={playerMap[pid]?.profile_pic||getAvatarUrl(pid)} width={48} height={48} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>{ e.target.onerror=null; e.target.src=getAvatarUrl(pid) }}/>
                   </div>
                   <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:'#4ade80', letterSpacing:0.5, lineHeight:1, textAlign:'center' }}>{p.display_name}</div>
                   <div style={{ height:1, background:'rgba(255,255,255,0.05)', width:'100%' }}/>
@@ -119,7 +119,7 @@ function SkillsSheet({ playerMap, teamA, teamB, winner, onSubmit, onSkip }) {
               return (
                 <div key={pid} style={{ flex:1, background:'rgba(96,165,250,0.04)', border:'1px solid rgba(96,165,250,0.15)', borderRadius:12, padding:'10px 8px', display:'flex', flexDirection:'column', alignItems:'center', gap:6 }}>
                   <div style={{ width:48, height:48, borderRadius:'50%', overflow:'hidden', border:'1.5px solid '+level.aura, background:'#1a2a1a', flexShrink:0 }}>
-                    <img src={getAvatarUrl(pid)} width={48} height={48} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
+                    <img src={playerMap[pid]?.profile_pic||getAvatarUrl(pid)} width={48} height={48} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>{ e.target.onerror=null; e.target.src=getAvatarUrl(pid) }}/>
                   </div>
                   <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:'#60a5fa', letterSpacing:0.5, lineHeight:1, textAlign:'center' }}>{p.display_name}</div>
                   <div style={{ height:1, background:'rgba(255,255,255,0.05)', width:'100%' }}/>
@@ -208,17 +208,16 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
     return ()=>clearInterval(t)
   },[step,winner])
 
-  const maxPerTeam = isSingles ? 1 : 2
-
   function togglePlayer(pid) {
     if (selectingFor==='A') {
       if (teamA.includes(pid)) { setTeamA(teamA.filter(x=>x!==pid)); return }
       if (teamB.includes(pid)) return
-      if (teamA.length<maxPerTeam) { const nA=[...teamA,pid]; setTeamA(nA); if(nA.length===maxPerTeam) setSelectingFor('B') }
+      if (teamA.length<2) { const nA=[...teamA,pid]; setTeamA(nA); if(nA.length===2) setSelectingFor('B') }
+      else setSelectingFor('B') // auto-switch to B after 2 selected
     } else {
       if (teamB.includes(pid)) { setTeamB(teamB.filter(x=>x!==pid)); return }
       if (teamA.includes(pid)) return
-      if (teamB.length<maxPerTeam) setTeamB([...teamB,pid])
+      if (teamB.length<2) setTeamB([...teamB,pid])
     }
   }
 
@@ -231,7 +230,9 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
   function handleScoreBChange(val) { if(val.length>2) return; setScoreB(val); if(val&&!scoreA) setScoreA('21') }
 
   const playerMap = Object.fromEntries(players.map(p=>[p.id,p]))
-  const canProceed = teamA.length===maxPerTeam&&teamB.length===maxPerTeam
+  const isDoublesReady = teamA.length===2 && teamB.length===2
+  const isSinglesReady = teamA.length===1 && teamB.length===1
+  const canProceed = isDoublesReady || isSinglesReady
   function teamLabel(team) { return team.map(pid=>playerMap[pid]?.display_name||'?').join(' · ') }
 
   function winnerLabel() {
@@ -336,9 +337,7 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
           <div style={{flex:1,position:'relative',minHeight:0}}>
             <CourtBackground style={{height:'100%'}}>
               <button onClick={onClose} style={{position:'absolute',top:12,right:12,zIndex:20,background:'rgba(0,0,0,0.6)',border:'1px solid rgba(255,255,255,0.15)',color:'#94a3b8',borderRadius:'50%',width:34,height:34,cursor:'pointer',fontSize:16,display:'flex',alignItems:'center',justifyContent:'center'}}>✕</button>
-              <button onClick={handleModeToggle} style={{position:'absolute',top:12,right:54,zIndex:20,background: isSingles?'rgba(96,165,250,0.85)':'rgba(0,0,0,0.6)',border:`1px solid ${isSingles?'#60a5fa':'rgba(255,255,255,0.15)'}`,color: isSingles?'#fff':'#94a3b8',borderRadius:20,padding:'5px 12px',cursor:'pointer',fontFamily:"'Rajdhani',sans-serif",fontSize:11,fontWeight:700,letterSpacing:0.5,whiteSpace:'nowrap'}}>
-                {isSingles ? '👤 1v1' : '👥 2v2'}
-              </button>
+
               <div style={{position:'absolute',top:12,left:14,zIndex:5}}>
                 <div style={{background:'rgba(0,0,0,0.65)',borderRadius:10,padding:'5px 12px',border:'1px solid rgba(74,222,128,0.35)',display:'inline-block'}}>
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'#4ade80',letterSpacing:2,lineHeight:1}}>TEAM A</div>
@@ -365,8 +364,8 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
 
             {/* Team tabs */}
             <div style={{display:'flex',gap:8,marginBottom:10,flexShrink:0}}>
-              <button className={'tt'+(selectingFor==='A'?' a':'')} onClick={()=>setSelectingFor('A')}>TEAM A {teamA.length}/{maxPerTeam}{teamA.length===2?' ✓':''}</button>
-              <button className={'tt'+(selectingFor==='B'?' b':'')} onClick={()=>setSelectingFor('B')}>TEAM B {teamB.length}/{maxPerTeam}{teamB.length===2?' ✓':''}</button>
+              <button className={'tt'+(selectingFor==='A'?' a':'')} onClick={()=>setSelectingFor('A')}>TEAM A {teamA.length}/2{teamA.length===2?' ✓':''}</button>
+              <button className={'tt'+(selectingFor==='B'?' b':'')} onClick={()=>setSelectingFor('B')}>TEAM B {teamB.length}/2{teamB.length===2?' ✓':''}</button>
             </div>
 
             {/* Court filter chips */}
@@ -394,22 +393,29 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
                   const level=getLevel(p.total_wins||0)
                   return(
                     <div key={p.id} className={'pc'+(inA?' a':inB?' b':'')+(disabled?' d':'')} onClick={()=>!disabled&&togglePlayer(p.id)}>
-                      <div style={{width:42,height:42,borderRadius:'50%',overflow:'hidden',border:'2px solid '+(inA||inB?level.aura:level.aura+'44'),margin:'0 auto 5px',background:'#1a2a1a',position:'relative'}}>
-                        <img src={getAvatarUrl(p.id)} width={42} height={42} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.style.display='none'}/>
-                        <div style={{position:'absolute',bottom:0,left:0,right:0,height:2.5,background:'rgba(0,0,0,0.5)'}}>
-                          <div style={{height:'100%',width:level.power+'%',background:level.aura}}/>
-                        </div>
+                      <div style={{width:44,height:44,borderRadius:'50%',overflow:'hidden',border:'2px solid '+(inA||inB?level.aura:level.aura+'44'),margin:'0 auto 5px',background:'#1a2a1a'}}>
+                        <img src={p.profile_pic||getAvatarUrl(p.id)} width={44} height={44} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>{ e.target.onerror=null; e.target.src=getAvatarUrl(p.id) }}/>
                       </div>
-                      <div style={{fontSize:12,fontWeight:700,color:inA?'#4ade80':inB?'#60a5fa':'#94a3b8',fontFamily:"'Rajdhani',sans-serif"}}>{p.display_name}</div>
-                      <div style={{fontSize:9,color:level.aura}}>{p.total_games||0}🏸</div>
+                      <div style={{fontSize:13,fontWeight:700,color:inA?'#4ade80':inB?'#60a5fa':'#e2e8f0',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:0.5,lineHeight:1.1,wordBreak:'break-word'}}>{p.display_name}</div>
                     </div>
                   )
                 })}
               </div>
             </div>
 
-            <button className="cb" style={{flexShrink:0}} disabled={!canProceed} onClick={()=>setStep(2)}>
-              {canProceed ? 'ENTER SCORE →' : 'SELECT '+(2-teamA.length+2-teamB.length)+' MORE PLAYERS'}
+            <button className="cb" style={{flexShrink:0,
+              background: !canProceed ? 'rgba(255,255,255,0.04)' : isSinglesReady ? 'linear-gradient(135deg,#1e3a5f,#1e40af)' : 'linear-gradient(135deg,#14532d,#166534)',
+              borderColor: !canProceed ? 'rgba(255,255,255,0.1)' : isSinglesReady ? '#60a5fa' : '#4ade80',
+              color: !canProceed ? '#334155' : isSinglesReady ? '#60a5fa' : '#4ade80',
+            }} disabled={!canProceed} onClick={()=>setStep(2)}>
+              {!canProceed
+                ? (teamA.length===0&&teamB.length===0 ? 'SELECT PLAYERS'
+                  : teamA.length>0&&teamB.length===0 ? 'NOW SELECT TEAM B'
+                  : teamA.length===0&&teamB.length>0 ? 'NOW SELECT TEAM A'
+                  : 'SELECT MORE PLAYERS')
+                : isSinglesReady ? '👤 LOG SINGLES GAME →'
+                : '👥 LOG DOUBLES GAME →'
+              }
             </button>
           </div>
         </div>

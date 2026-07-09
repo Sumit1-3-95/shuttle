@@ -130,20 +130,6 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
 
           <div style={{ height:1, background:'rgba(255,255,255,0.05)', margin:'4px 16px 12px' }}/>
 
-          {/* All courts — admin only */}
-          {(currentUser.isAdmin || currentUser.role === 'admin') && (
-            <div style={{ padding:'0 16px 8px' }}>
-              <div style={{ fontSize:10, color:'#475569', letterSpacing:2, textTransform:'uppercase', fontWeight:700, marginBottom:10, fontFamily:"'Rajdhani',sans-serif" }}>All Courts</div>
-              {groups.map(g => (
-                <div key={g.id} onClick={() => handleGroupClick(g.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', marginBottom:6, background:activeGroup===g.id?'rgba(74,222,128,0.08)':'rgba(255,255,255,0.02)', border:`1px solid ${activeGroup===g.id?'rgba(74,222,128,0.25)':'rgba(255,255,255,0.06)'}`, borderRadius:10, cursor:'pointer' }}>
-                  <span style={{ fontSize:16 }}>🏟️</span>
-                  <span style={{ fontSize:14, color:activeGroup===g.id?'#4ade80':'#94a3b8', fontFamily:"'Rajdhani',sans-serif", fontWeight:600 }}>{g.name}</span>
-                  {activeGroup===g.id && <span style={{ marginLeft:'auto', fontSize:10, color:'#4ade80' }}>●</span>}
-                </div>
-              ))}
-            </div>
-          )}
-
           <div style={{ height:1, background:'rgba(255,255,255,0.05)', margin:'4px 16px 12px' }}/>
 
           {/* Court actions — all users */}
@@ -514,42 +500,22 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
               const time=new Date(g.played_at).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})
               return (
                 <div key={g.id} style={{background:'rgba(255,255,255,0.02)',border:'1px solid rgba(255,255,255,0.07)',borderRadius:14,padding:'10px 12px',marginBottom:8}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
-                    <div style={{display:'flex',alignItems:'center',gap:6}}>
-                      <span style={{fontSize:12,color:'#475569',fontFamily:"'Rajdhani',sans-serif",fontWeight:600}}>{time}</span>
-                      {g.group_id && groups.find(gr=>gr.id===g.group_id) && (
-                        <span style={{fontSize:10,padding:'2px 7px',borderRadius:20,background:'rgba(96,165,250,0.1)',color:'#60a5fa',border:'1px solid rgba(96,165,250,0.2)',fontFamily:"'Rajdhani',sans-serif",fontWeight:700,whiteSpace:'nowrap'}}>
-                          🏟️ {groups.find(gr=>gr.id===g.group_id)?.name}
-                        </span>
-                      )}
-                    </div>
-                    <span style={{fontSize:10,fontWeight:700,padding:'3px 8px',borderRadius:20,background:'rgba(74,222,128,0.1)',color:'#4ade80',border:'1px solid rgba(74,222,128,0.2)',fontFamily:"'Rajdhani',sans-serif",maxWidth:140,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
-                      🏆 {winNames} WON
-                    </span>
+                  {/* Compact header row: time + tags + winner */}
+                  <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:8,flexWrap:'wrap'}}>
+                    <span style={{fontSize:11,color:'#334155',fontFamily:"'Rajdhani',sans-serif",fontWeight:600}}>{time}</span>
+                    {(g.team_a_ids?.length===1||g.team_b_ids?.length===1)
+                      ? <span style={{fontSize:9,padding:'1px 6px',borderRadius:20,background:'rgba(96,165,250,0.1)',color:'#60a5fa',border:'1px solid rgba(96,165,250,0.2)',fontFamily:"'Rajdhani',sans-serif",fontWeight:700}}>1v1</span>
+                      : <span style={{fontSize:9,padding:'1px 6px',borderRadius:20,background:'rgba(255,255,255,0.05)',color:'#334155',border:'1px solid rgba(255,255,255,0.07)',fontFamily:"'Rajdhani',sans-serif",fontWeight:700}}>2v2</span>
+                    }
+                    {Math.abs(g.score_a-g.score_b)>=10 && <span style={{fontSize:9,padding:'1px 6px',borderRadius:20,background:'rgba(251,146,60,0.1)',color:'#fb923c',border:'1px solid rgba(251,146,60,0.2)',fontFamily:"'Rajdhani',sans-serif",fontWeight:700}}>💥 DOM</span>}
+                    {Math.abs(g.score_a-g.score_b)<=3 && <span style={{fontSize:9,padding:'1px 6px',borderRadius:20,background:'rgba(255,215,0,0.1)',color:'#ffd700',border:'1px solid rgba(255,215,0,0.2)',fontFamily:"'Rajdhani',sans-serif",fontWeight:700}}>😱 CLOSE</span>}
+                    <span style={{marginLeft:'auto',fontSize:10,fontWeight:700,color:'#4ade80',fontFamily:"'Rajdhani',sans-serif",maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>🏆 {winNames}</span>
                   </div>
-                  {/* Singles/Doubles tag */}
-                  {(g.team_a_ids?.length === 1 || g.team_b_ids?.length === 1) ? (
-                    <span style={{ fontSize:10, padding:'2px 7px', borderRadius:20, background:'rgba(96,165,250,0.1)', color:'#60a5fa', border:'1px solid rgba(96,165,250,0.2)', fontFamily:"'Rajdhani',sans-serif", fontWeight:700, marginRight:4 }}>👤 SINGLES</span>
-                  ) : (
-                    <span style={{ fontSize:10, padding:'2px 7px', borderRadius:20, background:'rgba(255,255,255,0.06)', color:'#475569', border:'1px solid rgba(255,255,255,0.08)', fontFamily:"'Rajdhani',sans-serif", fontWeight:700, marginRight:4 }}>👥 DOUBLES</span>
-                  )}
-                  {/* Under-10 highlight */}
-                  {Math.abs(g.score_a - g.score_b) >= 10 && (
-                    <div style={{display:'flex',alignItems:'center',gap:6,padding:'4px 10px',background:'rgba(251,146,60,0.1)',border:'1px solid rgba(251,146,60,0.3)',borderRadius:20,marginBottom:6,width:'fit-content'}}>
-                      <span style={{fontSize:12}}>💥</span>
-                      <span style={{fontSize:11,color:'#fb923c',fontWeight:700,fontFamily:"'Rajdhani',sans-serif"}}>DOMINATED — Won by {Math.abs(g.score_a-g.score_b)} pts!</span>
-                    </div>
-                  )}
-                  {Math.abs(g.score_a - g.score_b) <= 3 && (
-                    <div style={{display:'flex',alignItems:'center',gap:6,padding:'4px 10px',background:'rgba(255,215,0,0.1)',border:'1px solid rgba(255,215,0,0.3)',borderRadius:20,marginBottom:6,width:'fit-content'}}>
-                      <span style={{fontSize:12}}>😱</span>
-                      <span style={{fontSize:11,color:'#ffd700',fontWeight:700,fontFamily:"'Rajdhani',sans-serif"}}>NAIL-BITER — {Math.abs(g.score_a-g.score_b)} pt margin!</span>
-                    </div>
-                  )}
-                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
-                    <span style={{fontSize:12,fontWeight:700,color:g.winner_team==='A'?'#4ade80':'#475569',fontFamily:"'Rajdhani',sans-serif"}}>Team A</span>
-                    <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'#f1f5f9',letterSpacing:4}}>{g.score_a} — {g.score_b}</span>
-                    <span style={{fontSize:12,fontWeight:700,color:g.winner_team==='B'?'#4ade80':'#475569',fontFamily:"'Rajdhani',sans-serif"}}>Team B</span>
+                  {/* Score row */}
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
+                    <span style={{fontSize:11,fontWeight:700,color:g.winner_team==='A'?'#4ade80':'#475569',fontFamily:"'Rajdhani',sans-serif"}}>Team A</span>
+                    <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'#f1f5f9',letterSpacing:3}}>{g.score_a} — {g.score_b}</span>
+                    <span style={{fontSize:11,fontWeight:700,color:g.winner_team==='B'?'#4ade80':'#475569',fontFamily:"'Rajdhani',sans-serif"}}>Team B</span>
                   </div>
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
                     <div style={{display:'flex',gap:6}}>

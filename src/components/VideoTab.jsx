@@ -39,7 +39,7 @@ function getThumbnail(url) {
 
 function getEmbed(url) {
   const id = getYouTubeId(url)
-  return id ? `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1` : null
+  return id ? `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0&modestbranding=1&playsinline=1&enablejsapi=1&fs=1` : null
 }
 
 // ── Video Card ─────────────────────────────────────────────────
@@ -83,7 +83,7 @@ function VideoCard({ video, watched, isPlaying, onPlay, onPause }) {
             ref={iframeRef}
             src={embed}
             title={video.title}
-            allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             allowFullScreen
             style={{ position:'absolute', inset:0, width:'100%', height:'100%', border:'none' }}
           />
