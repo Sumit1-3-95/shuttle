@@ -142,6 +142,7 @@ export default function OnboardingScreen({ onComplete }) {
 
   // Profiling
   const [expertise, setExpertise]   = useState(null)
+  const [isCompetitive, setIsCompetitive] = useState(null)
   const [frequency, setFrequency]   = useState(null)
   const [duration, setDuration]     = useState(null)
 
@@ -186,14 +187,24 @@ export default function OnboardingScreen({ onComplete }) {
   }
 
   async function handleStep2() {
-    // Save profile preferences if filled
-    if (expertise || frequency || duration) {
-      await supabase.from('player_settings').upsert({
-        player_id: newPlayerId,
-        game_preference: 'doubles',
-      })
-      // Store in players metadata or a profile table — use display name note for now
-    }
+    // Save profile + set initial rating
+    const { getInitialRating } = await import('../utils/ratingEngine')
+    const initialRating = getInitialRating({
+      skillLevel: expertise || 'beginner',
+      isCompetitive: isCompetitive === true,
+      frequency: frequency || 'once',
+    })
+    // Update player with profile data + initial rating
+    await supabase.from('players').update({
+      skill_level: expertise || 'beginner',
+      is_competitive: isCompetitive === true,
+      play_frequency: frequency || 'once',
+      rating_doubles: initialRating,
+      rating_singles: initialRating,
+    }).eq('id', newPlayerId)
+    await supabase.from('player_settings').upsert({
+      player_id: newPlayerId, game_preference: 'doubles',
+    })
     const { data: courts } = await supabase.from('groups').select('*').order('name')
     setAllCourts(courts||[])
     setStep(3)
@@ -323,6 +334,16 @@ export default function OnboardingScreen({ onComplete }) {
                 </div>
               </div>
 
+              {/* Competitive */}
+              <div style={{ marginBottom:20 }}>
+                <Label>Have you played competitive badminton?</Label>
+                <div style={{ display:'flex', gap:8 }}>
+                  {[{id:true,label:'Yes',desc:'Tournaments / Academy'},{id:false,label:'No',desc:'Recreational only'}].map(o=>(
+                    <OptionCard key={String(o.id)} label={o.label} desc={o.desc} selected={isCompetitive===o.id} onClick={()=>setIsCompetitive(o.id)}/>
+                  ))}
+                </div>
+              </div>
+
               {/* Frequency */}
               <div style={{ marginBottom:20 }}>
                 <Label>How often do you play?</Label>
@@ -351,7 +372,7 @@ export default function OnboardingScreen({ onComplete }) {
 
               <button onClick={handleStep2}
                 style={{ width:'100%', background:'linear-gradient(135deg,#14532d,#166534)', border:'1.5px solid #4ade80', color:'#4ade80', borderRadius:50, padding:'14px', fontFamily:"'Bebas Neue',sans-serif", fontSize:17, letterSpacing:2, cursor:'pointer' }}>
-                {expertise&&frequency&&duration ? 'NEXT: FIND YOUR COURT →' : 'SKIP →'}
+                {(expertise&&frequency&&duration&&isCompetitive!==null) ? 'NEXT: FIND YOUR COURT →' : 'SKIP →'}
               </button>
             </div>
           )}

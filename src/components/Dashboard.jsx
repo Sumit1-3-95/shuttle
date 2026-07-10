@@ -1,5 +1,6 @@
 // src/components/Dashboard.jsx — v14
 import { useState, useEffect, useRef } from 'react'
+import { getRatingTier, isCalibrating } from '../utils/ratingEngine'
 import { useAuth } from '../context/AuthContext'
 import { useRealtimeDashboard } from '../hooks/useRealtimeDashboard'
 import { useCourtData } from '../hooks/useCourtData'
@@ -10,6 +11,7 @@ import CourtManager from './CourtManager'
 import MyCourts from './MyCourts'
 import VideoTab from './VideoTab'
 import SettingsPage from './SettingsPage'
+import HowRatingWorks from './HowRatingWorks'
 import TeamProfile from './TeamProfile'
 import { useGameLogger } from '../hooks/useGameLogger'
 
@@ -61,7 +63,7 @@ function TabLoader() {
 }
 
 // ── Hamburger menu ─────────────────────────────────────────────
-function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup, onOpenCourtManager, onOpenMyCourts, onCreateCourt, onJoinCourt, onOpenSettings }) {
+function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup, onOpenCourtManager, onOpenMyCourts, onCreateCourt, onJoinCourt, onOpenSettings, onOpenRatingInfo }) {
   const level = getLevel(currentPlayer?.total_wins || 0)
   const [showCreate, setShowCreate] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
@@ -183,6 +185,9 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
 
         {/* Settings */}
         <div style={{ padding:'0 16px', marginBottom:8 }}>
+          <button onClick={() => { onOpenRatingInfo && onOpenRatingInfo(); onClose() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', marginBottom:8, background:'rgba(74,222,128,0.06)', border:'1px solid rgba(74,222,128,0.15)', borderRadius:10, cursor:'pointer', color:'#4ade80', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
+            <span>📊</span> How Rating Works
+          </button>
           <button onClick={() => { onOpenSettings && onOpenSettings(); onClose() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, cursor:'pointer', color:'#64748b', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
             <span>⚙️</span> Settings
           </button>
@@ -199,53 +204,59 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
 
 // ── Hero card ──────────────────────────────────────────────────
 function HeroCard({ player, isCurrentUser, onClick }) {
-  const level = getLevel(player.total_wins || 0)
-  const winPct = player.total_games > 0 ? Math.round((player.total_wins / player.total_games) * 100) : 0
+  const level   = getLevel(player.total_wins || 0)
+  const winPct  = player.total_games > 0 ? Math.round((player.total_wins / player.total_games) * 100) : 0
+  const rating  = player.rating_doubles || 1000
+  const rGames  = player.rating_doubles_games || 0
+  const tier    = getRatingTier(rating)
+  const calib   = isCalibrating(rGames)
+
   return (
-    <div onClick={onClick} style={{ position:'relative', borderRadius:22, overflow:'hidden', background:`linear-gradient(160deg,${level.bg} 0%,#060d14 100%)`, border:`1.5px solid ${level.aura}44`, padding:'0 0 16px', marginBottom:20, cursor:'pointer', boxShadow:`0 8px 40px ${level.glow}` }}>
-      <svg width="100%" height="100%" viewBox="0 0 420 200" preserveAspectRatio="xMidYMid slice" style={{ position:'absolute', inset:0, opacity:0.13 }} aria-hidden="true">
-        <rect x="12" y="10" width="396" height="180" fill="none" stroke={level.aura} strokeWidth="1.5" rx="2"/>
-        <line x1="44" y1="10" x2="44" y2="190" stroke={level.aura} strokeWidth="1"/>
-        <line x1="376" y1="10" x2="376" y2="190" stroke={level.aura} strokeWidth="1"/>
-        <line x1="210" y1="10" x2="210" y2="190" stroke={level.aura} strokeWidth="2"/>
-        <line x1="12" y1="64" x2="408" y2="64" stroke={level.aura} strokeWidth="1"/>
-        <line x1="12" y1="136" x2="408" y2="136" stroke={level.aura} strokeWidth="1"/>
-        <line x1="210" y1="64" x2="210" y2="136" stroke={level.aura} strokeWidth="1"/>
-        <line x1="12" y1="34" x2="408" y2="34" stroke={level.aura} strokeWidth="0.8" opacity="0.5"/>
-        <line x1="12" y1="166" x2="408" y2="166" stroke={level.aura} strokeWidth="0.8" opacity="0.5"/>
+    <div onClick={onClick} style={{ position:'relative', borderRadius:18, overflow:'hidden', background:`linear-gradient(160deg,${level.bg} 0%,#060d14 100%)`, border:`1.5px solid ${level.aura}33`, padding:'14px 16px', marginBottom:16, cursor:'pointer' }}>
+      {/* Subtle court lines */}
+      <svg width="100%" height="100%" viewBox="0 0 400 120" preserveAspectRatio="xMidYMid slice" style={{ position:'absolute', inset:0, opacity:0.08 }} aria-hidden="true">
+        <rect x="10" y="8" width="380" height="104" fill="none" stroke={level.aura} strokeWidth="1.2"/>
+        <line x1="200" y1="8" x2="200" y2="112" stroke={level.aura} strokeWidth="1.2"/>
+        <line x1="10" y1="60" x2="390" y2="60" stroke={level.aura} strokeWidth="0.8"/>
       </svg>
-      <div style={{ position:'relative', zIndex:1, padding:'18px 18px 14px' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:16 }}>
+
+      <div style={{ position:'relative', zIndex:1 }}>
+        {/* Top row: avatar + name + rating tag */}
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
           <div style={{ position:'relative', flexShrink:0 }}>
-            <Av id={player.id} size={72} aura={level.aura} profilePic={player.profile_pic} style={{ border:`3px solid ${level.aura}`, boxShadow:`0 0 24px ${level.glow}` }}/>
-            {level.tier >= 4 && <div style={{ position:'absolute', inset:-5, borderRadius:'50%', border:`1.5px solid ${level.aura}`, borderTopColor:'transparent', borderRightColor:'transparent', animation:'spin-ring 3s linear infinite' }}/>}
+            <Av id={player.id} size={52} aura={level.aura} profilePic={player.profile_pic} style={{ border:`2.5px solid ${level.aura}`, boxShadow:`0 0 16px ${level.glow}` }}/>
           </div>
-          <div style={{ flex:1 }}>
-            {isCurrentUser && <div style={{ fontSize:10, color:level.aura, letterSpacing:2, fontWeight:700, fontFamily:"'Rajdhani',sans-serif", marginBottom:4 }}>YOUR PROFILE</div>}
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:30, letterSpacing:2, color:'#ffffff', lineHeight:1, marginBottom:8, textShadow:`0 0 20px ${level.aura}44` }}>{player.display_name}</div>
-            <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap' }}>
-              <span style={{ fontSize:12, fontWeight:700, padding:'5px 12px', borderRadius:20, background:`${level.aura}25`, color:level.aura, border:`1.5px solid ${level.aura}66`, fontFamily:"'Rajdhani',sans-serif", letterSpacing:1 }}>{level.emoji} {level.name}</span>
-              {(player.current_streak||0) >= 3 && <span style={{ fontSize:12, fontWeight:700, padding:'5px 10px', borderRadius:20, background:'rgba(249,115,22,0.15)', border:'1px solid rgba(249,115,22,0.35)', color:'#fb923c', fontFamily:"'Rajdhani',sans-serif" }}>🔥 {player.current_streak}</span>}
+          <div style={{ flex:1, minWidth:0 }}>
+            {isCurrentUser && <div style={{ fontSize:9, color:level.aura, letterSpacing:2, fontWeight:700, fontFamily:"'Rajdhani',sans-serif", marginBottom:2 }}>YOUR PROFILE</div>}
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:24, letterSpacing:1.5, color:'#fff', lineHeight:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{player.display_name}</div>
+            <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:4, flexWrap:'wrap' }}>
+              <span style={{ fontSize:11, fontWeight:700, padding:'3px 9px', borderRadius:20, background:`${level.aura}20`, color:level.aura, border:`1px solid ${level.aura}55`, fontFamily:"'Rajdhani',sans-serif" }}>{level.emoji} {level.name}</span>
+              {(player.current_streak||0)>=3 && <span style={{ fontSize:11, padding:'3px 8px', borderRadius:20, background:'rgba(249,115,22,0.12)', border:'1px solid rgba(249,115,22,0.3)', color:'#fb923c', fontFamily:"'Rajdhani',sans-serif", fontWeight:700 }}>🔥 {player.current_streak}</span>}
+              {/* Rating tag — inline, simple */}
+              <span style={{ fontSize:11, padding:'3px 9px', borderRadius:20, background:`${tier.color}15`, border:`1px solid ${tier.color}40`, color:tier.color, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1 }}>
+                {calib ? '📡 calibrating' : `${tier.emoji} ${rating}`}
+              </span>
             </div>
           </div>
+          {/* Win rate */}
           <div style={{ textAlign:'center', flexShrink:0 }}>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:38, color:level.aura, lineHeight:1, textShadow:`0 0 16px ${level.glow}` }}>{winPct}%</div>
-            <div style={{ fontSize:11, color:'#94a3b8', fontFamily:"'Rajdhani',sans-serif", letterSpacing:1, fontWeight:600 }}>WIN RATE</div>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:30, color:level.aura, lineHeight:1 }}>{winPct}%</div>
+            <div style={{ fontSize:9, color:'#475569', letterSpacing:1, fontFamily:"'Rajdhani',sans-serif", fontWeight:700 }}>WIN RATE</div>
           </div>
         </div>
-        <div style={{ height:1, background:`linear-gradient(90deg,transparent,${level.aura}44,transparent)`, marginBottom:14 }}/>
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:10, marginBottom:14 }}>
-          {[{label:'GAMES',val:player.total_games||0,color:'#93c5fd'},{label:'WINS',val:player.total_wins||0,color:'#4ade80'},{label:'LOSSES',val:player.total_losses||0,color:'#f87171'},{label:'BEST 🔥',val:player.best_streak||0,color:'#fb923c'}].map(s=>(
-            <div key={s.label} style={{ background:'rgba(0,0,0,0.45)', borderRadius:12, padding:'10px 4px', textAlign:'center', border:'1px solid rgba(255,255,255,0.07)' }}>
-              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, color:s.color, lineHeight:1 }}>{s.val}</div>
-              <div style={{ fontSize:10, color:'#94a3b8', fontFamily:"'Rajdhani',sans-serif", letterSpacing:1, fontWeight:600, marginTop:2 }}>{s.label}</div>
+
+        {/* Divider */}
+        <div style={{ height:1, background:`linear-gradient(90deg,transparent,${level.aura}33,transparent)`, marginBottom:10 }}/>
+
+        {/* Stats row */}
+        <div style={{ display:'flex', gap:0 }}>
+          {[{label:'GAMES',val:player.total_games||0,c:'#93c5fd'},{label:'WINS',val:player.total_wins||0,c:'#4ade80'},{label:'BEST STREAK',val:`🔥${player.best_streak||0}`,c:'#fb923c'}].map((s,i)=>(
+            <div key={s.label} style={{ flex:1, textAlign:'center', borderLeft: i>0?'1px solid rgba(255,255,255,0.06)':'' }}>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:s.c, lineHeight:1 }}>{s.val}</div>
+              <div style={{ fontSize:9, color:'#475569', fontFamily:"'Rajdhani',sans-serif", letterSpacing:1, marginTop:2 }}>{s.label}</div>
             </div>
           ))}
         </div>
-        <div style={{ height:5, background:'rgba(255,255,255,0.08)', borderRadius:3, overflow:'hidden', marginBottom:8 }}>
-          <div style={{ height:'100%', width:`${winPct}%`, background:`linear-gradient(90deg,${level.aura}66,${level.aura})`, borderRadius:3 }}/>
-        </div>
-        <div style={{ fontSize:11, color:'#475569', textAlign:'right', fontFamily:"'Rajdhani',sans-serif" }}>Tap for full profile →</div>
       </div>
     </div>
   )
@@ -275,14 +286,19 @@ function LeaderRow({ player, rank, isCurrentUser, onClick }) {
           <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:10, background:`${level.aura}15`, color:level.aura, border:`1px solid ${level.aura}30`, fontFamily:"'Rajdhani',sans-serif" }}>{level.emoji} {level.name}</span>
         </div>
       </div>
-      <div style={{ display:'flex', gap:4, flexShrink:0 }}>
-        {[{v:player.total_wins||0,l:'W',c:'#4ade80',bg:'rgba(74,222,128,0.08)'},{v:player.total_losses||0,l:'L',c:'#f87171',bg:'rgba(248,113,113,0.08)'},{v:`${winPct}%`,l:'WIN',c:level.aura,bg:'rgba(255,255,255,0.05)'}].map(s=>(
-          <div key={s.l} style={{ textAlign:'center', background:s.bg, borderRadius:7, padding:'4px 6px', minWidth:30 }}>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'#ffffff', fontWeight:700, lineHeight:1 }}>{s.v}</div>
-            <div style={{ fontSize:9, color:'#94a3b8', fontFamily:"'Rajdhani',sans-serif" }}>{s.l}</div>
+      {(()=>{
+        const rating  = player.rating_doubles || 1000
+        const rGames  = player.rating_doubles_games || 0
+        const tier    = getRatingTier(rating)
+        const calib   = isCalibrating(rGames)
+        return (
+          <div style={{ textAlign:'right', flexShrink:0 }}>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, color:tier.color, lineHeight:1 }}>{calib?'?':rating}</div>
+            <div style={{ fontSize:9, color:'#64748b', letterSpacing:1 }}>{calib?'📡 CALIBRATING':tier.name}</div>
+            <div style={{ fontSize:10, color:'#475569', marginTop:2 }}>{winPct}% WR</div>
           </div>
-        ))}
-      </div>
+        )
+      })()}
     </div>
   )
 }
@@ -513,9 +529,15 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
                   </div>
                   {/* Score row */}
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
-                    <span style={{fontSize:11,fontWeight:700,color:g.winner_team==='A'?'#4ade80':'#475569',fontFamily:"'Rajdhani',sans-serif"}}>Team A</span>
+                    <div style={{textAlign:'left'}}>
+                      <span style={{fontSize:11,fontWeight:700,color:g.winner_team==='A'?'#4ade80':'#475569',fontFamily:"'Rajdhani',sans-serif",display:'block'}}>Team A</span>
+                      {g.rating_delta_a!=null&&<span style={{fontSize:10,color:g.winner_team==='A'?'#4ade80':'#f87171',fontFamily:"'Bebas Neue',sans-serif",fontWeight:700}}>{g.winner_team==='A'?'+':''}{g.rating_delta_a}</span>}
+                    </div>
                     <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'#f1f5f9',letterSpacing:3}}>{g.score_a} — {g.score_b}</span>
-                    <span style={{fontSize:11,fontWeight:700,color:g.winner_team==='B'?'#4ade80':'#475569',fontFamily:"'Rajdhani',sans-serif"}}>Team B</span>
+                    <div style={{textAlign:'right'}}>
+                      <span style={{fontSize:11,fontWeight:700,color:g.winner_team==='B'?'#4ade80':'#475569',fontFamily:"'Rajdhani',sans-serif",display:'block'}}>Team B</span>
+                      {g.rating_delta_b!=null&&<span style={{fontSize:10,color:g.winner_team==='B'?'#4ade80':'#f87171',fontFamily:"'Bebas Neue',sans-serif",fontWeight:700}}>{g.winner_team==='B'?'+':''}{g.rating_delta_b}</span>}
+                    </div>
                   </div>
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
                     <div style={{display:'flex',gap:6}}>
@@ -1083,6 +1105,7 @@ export default function Dashboard({ onOpenProfile }) {
   const TAB_ORDER = ['players','teams','games','report','videos']
   const [chipsVisible, setChipsVisible]         = useState(true)
   const [showSettings, setShowSettings]         = useState(false)
+  const [showRatingInfo, setShowRatingInfo]     = useState(false)
   const [gamePreference, setGamePreference]     = useState('doubles')
   const chipsShownOnce                          = useRef(false)
   const scrollRef                               = useRef(null)
@@ -1225,6 +1248,7 @@ export default function Dashboard({ onOpenProfile }) {
           onCreateCourt={() => { setCourtManagerView('create'); setShowCourtManager(true); setShowMenu(false) }}
           onJoinCourt={() => { setMyCourtsView('join'); setShowMyCourts(true); setShowMenu(false) }}
           onOpenSettings={() => { setShowSettings(true); setShowMenu(false) }}
+          onOpenRatingInfo={() => { setShowRatingInfo(true); setShowMenu(false) }}
         />
       )}
 
@@ -1341,6 +1365,7 @@ export default function Dashboard({ onOpenProfile }) {
           onBack={() => setOpenTeam(null)}
         />
       )}
+      {showRatingInfo && <HowRatingWorks onClose={()=>setShowRatingInfo(false)}/>}
       {showSettings && (
         <SettingsPage
           currentUser={currentUser}

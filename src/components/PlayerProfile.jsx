@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { usePlayerProfile } from '../hooks/usePlayerProfile'
+import { getRatingTier, isCalibrating } from '../utils/ratingEngine'
 import { getAvatarUrl, getCharacterName } from '../utils/avatars'
 
 const FONTS = `@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;500;600;700&display=swap');`
@@ -335,6 +336,24 @@ export default function PlayerProfile({ playerId, groupId, onBack }) {
           ))}
         </div>
       </div>
+
+      {/* ── Rating Cards ── */}
+      {(()=>{
+        const dR = player.rating_doubles||1000, sR = player.rating_singles||1000
+        const dG = player.rating_doubles_games||0, sG = player.rating_singles_games||0
+        const dT = getRatingTier(dR), sT = getRatingTier(sR)
+        return (
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, padding:'12px 14px' }}>
+            {[{label:'DOUBLES RATING',r:dR,g:dG,t:dT},{label:'SINGLES RATING',r:sR,g:sG,t:sT}].map(x=>(
+              <div key={x.label} style={{ background:'rgba(0,0,0,0.4)', borderRadius:12, padding:'10px 12px', border:`1px solid ${x.t.color}25` }}>
+                <div style={{ fontSize:9, color:'#475569', letterSpacing:1.5, fontWeight:700, marginBottom:3, fontFamily:"'Rajdhani',sans-serif" }}>{x.label}</div>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, color:x.t.color, lineHeight:1 }}>{isCalibrating(x.g)?'?':x.r}</div>
+                <div style={{ fontSize:10, color:x.t.color, marginTop:3 }}>{x.t.emoji} {x.t.name}{isCalibrating(x.g)?' · 📡 calibrating':''}</div>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
 
       {/* ── Tabs ── */}
       <div style={{ position:'sticky', top:0, zIndex:30, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', display:'flex', borderBottom:'2px solid rgba(255,255,255,0.06)' }}>
