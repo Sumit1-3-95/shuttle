@@ -48,6 +48,13 @@ function CourtDetail({ court, currentUser, onBack, onUpdated }) {
     setLoading(false)
   }
 
+  async function removePlayer(pid) {
+    if (!window.confirm('Remove this player from the court? Their game history stays.')) return
+    await supabase.from('group_members').delete().eq('group_id', court.id).eq('player_id', pid)
+    await loadMembers()
+    onUpdated && onUpdated()
+  }
+
   function updatePlayer(i, field, val) {
     setPlayers(prev => prev.map((p,idx) => idx===i ? {...p,[field]:val} : p))
   }
@@ -163,6 +170,12 @@ function CourtDetail({ court, currentUser, onBack, onUpdated }) {
                 <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:'#f1f5f9', letterSpacing:1 }}>{m.display_name}</div>
                 <div style={{ fontSize:11, color:'#475569' }}>{m.phone ? `📱 ${m.phone}` : m.username}</div>
               </div>
+              {m.id !== currentUser.id && (
+                <button onClick={()=>removePlayer(m.id)}
+                  style={{ background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.2)', color:'#f87171', borderRadius:20, padding:'4px 12px', cursor:'pointer', fontFamily:"'Rajdhani',sans-serif", fontSize:11, fontWeight:700, flexShrink:0 }}>
+                  Remove
+                </button>
+              )}
             </div>
           )
         })}
