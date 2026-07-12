@@ -160,6 +160,7 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
   const { currentUser } = useAuth()
   const { getPlayers, logGame } = useGameLogger()
   const [isSingles, setIsSingles] = useState(defaultSingles)
+  const [showFatality, setShowFatality] = useState(false)
 
   const [players, setPlayers]           = useState([])
   const [allPlayers, setAllPlayers]     = useState([])
@@ -217,7 +218,14 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
     } else {
       if (teamB.includes(pid)) { setTeamB(teamB.filter(x=>x!==pid)); return }
       if (teamA.includes(pid)) return
-      if (teamB.length<2) setTeamB([...teamB,pid])
+      if (teamB.length<2) {
+        const nB = [...teamB, pid]
+        setTeamB(nB)
+        // Auto-advance when doubles complete (4 players total)
+        if (teamA.length===2 && nB.length===2) {
+          setTimeout(() => setStep(2), 150)
+        }
+      }
     }
   }
 
@@ -448,28 +456,40 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
           </div>
           <div style={{background:'rgba(6,13,20,0.98)',borderTop:'1px solid rgba(74,222,128,0.15)',borderRadius:'22px 22px 0 0',padding:'18px 16px 28px',animation:'panel-up 0.3s ease-out'}}>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:'#64748b',letterSpacing:3,textAlign:'center',marginBottom:14}}>FINAL SCORE</div>
-            <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:12,marginBottom:10}}>
-              <div style={{textAlign:'center'}}>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:12,color:'#4ade80',letterSpacing:2,marginBottom:6}}>TEAM A</div>
-                <input className="sb" type="number" inputMode="numeric" pattern="[0-9]*" min="0" max="99"
-                  value={scoreA} placeholder="–"
-                  onChange={e=>handleScoreAChange(e.target.value)}
-                  onFocus={e=>{ e.target.select(); e.target.style.borderColor='#4ade80' }}
-                  onBlur={e=>e.target.style.borderColor=scoreA?'rgba(74,222,128,0.4)':'rgba(255,255,255,0.1)'}
-                  style={{borderColor:scoreA?'rgba(74,222,128,0.4)':'rgba(255,255,255,0.1)',color:scoreA?'#f1f5f9':'#1e3a2f'}}
-                  autoFocus/>
-              </div>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:36,color:'#1e3a2f',marginTop:20}}>—</div>
-              <div style={{textAlign:'center'}}>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:12,color:'#60a5fa',letterSpacing:2,marginBottom:6}}>TEAM B</div>
-                <input className="sb" type="number" inputMode="numeric" pattern="[0-9]*" min="0" max="99"
-                  value={scoreB} placeholder="–"
-                  onChange={e=>handleScoreBChange(e.target.value)}
-                  onFocus={e=>{ e.target.select(); e.target.style.borderColor='#60a5fa' }}
-                  onBlur={e=>e.target.style.borderColor=scoreB?'rgba(96,165,250,0.4)':'rgba(255,255,255,0.1)'}
-                  style={{borderColor:scoreB?'rgba(96,165,250,0.4)':'rgba(255,255,255,0.1)',color:scoreB?'#f1f5f9':'#1e3a2f'}}/>
-              </div>
-            </div>
+            {(()=>{
+              const sA=parseInt(scoreA)||0, sB=parseInt(scoreB)||0
+              const bothFilled = scoreA!=='' && scoreB!==''
+              const aWins = bothFilled && sA>sB
+              const bWins = bothFilled && sB>sA
+              const aColor = bothFilled ? (aWins?'#4ade80':'#f87171') : '#4ade80'
+              const bColor = bothFilled ? (bWins?'#4ade80':'#f87171') : '#60a5fa'
+              return (
+                <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:12,marginBottom:10}}>
+                  <div style={{textAlign:'center',flex:1}}>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:aColor,letterSpacing:2,marginBottom:2}}>TEAM A</div>
+                    <div style={{fontSize:11,color:aColor+'bb',fontFamily:"'Rajdhani',sans-serif",fontWeight:700,marginBottom:6,minHeight:14}}>{teamLabel(teamA)}</div>
+                    <input className="sb" type="number" inputMode="numeric" pattern="[0-9]*" min="0" max="99"
+                      value={scoreA} placeholder="–"
+                      onChange={e=>handleScoreAChange(e.target.value)}
+                      onFocus={e=>{ e.target.select(); e.target.style.borderColor=aColor }}
+                      onBlur={e=>e.target.style.borderColor=scoreA?aColor+'66':'rgba(255,255,255,0.1)'}
+                      style={{borderColor:scoreA?aColor+'66':'rgba(255,255,255,0.1)',color:scoreA?'#f1f5f9':'#1e3a2f'}}
+                      autoFocus/>
+                  </div>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:32,color:'#1e3a2f',marginTop:24}}>—</div>
+                  <div style={{textAlign:'center',flex:1}}>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:bColor,letterSpacing:2,marginBottom:2}}>TEAM B</div>
+                    <div style={{fontSize:11,color:bColor+'bb',fontFamily:"'Rajdhani',sans-serif",fontWeight:700,marginBottom:6,minHeight:14}}>{teamLabel(teamB)}</div>
+                    <input className="sb" type="number" inputMode="numeric" pattern="[0-9]*" min="0" max="99"
+                      value={scoreB} placeholder="–"
+                      onChange={e=>handleScoreBChange(e.target.value)}
+                      onFocus={e=>{ e.target.select(); e.target.style.borderColor=bColor }}
+                      onBlur={e=>e.target.style.borderColor=scoreB?bColor+'66':'rgba(255,255,255,0.1)'}
+                      style={{borderColor:scoreB?bColor+'66':'rgba(255,255,255,0.1)',color:scoreB?'#f1f5f9':'#1e3a2f'}}/>
+                  </div>
+                </div>
+              )
+            })()}
             {wLabel&&(
               <div style={{textAlign:'center',marginBottom:12,padding:'8px 12px',background:'rgba(74,222,128,0.08)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:12}}>
                 <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'#4ade80',letterSpacing:2,lineHeight:1}}>🏆 TEAM {wLabel.team} WINS</div>

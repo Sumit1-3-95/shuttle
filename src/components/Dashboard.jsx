@@ -12,6 +12,7 @@ import MyCourts from './MyCourts'
 import VideoTab from './VideoTab'
 import SettingsPage from './SettingsPage'
 import HowRatingWorks from './HowRatingWorks'
+import ReportCard from './ReportCard'
 import TeamProfile from './TeamProfile'
 import { useGameLogger } from '../hooks/useGameLogger'
 
@@ -1328,8 +1329,8 @@ export default function Dashboard({ onOpenProfile }) {
           </div>
         )}
         {tab === 'report' && (
-          <div style={{ animation:'card-in 0.3s ease-out' }}>
-            <ReportTab players={filteredPlayers} currentUserId={currentUser.id}/>
+          <div style={{ padding:'16px', animation:'card-in 0.3s ease-out' }}>
+            <ReportCard players={filteredPlayers} currentUserId={currentUser.id} groups={groups} activeGroup={effectiveGroup}/>
           </div>
         )}
         {tab === 'videos' && (
