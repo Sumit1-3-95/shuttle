@@ -1,7 +1,6 @@
 // src/components/Dashboard.jsx — v14
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { getRatingTier, isCalibrating } from '../utils/ratingEngine'
 import { useRealtimeDashboard } from '../hooks/useRealtimeDashboard'
 import { useCourtData } from '../hooks/useCourtData'
 import { getAvatarUrl, getCharacterName } from '../utils/avatars'
@@ -11,10 +10,11 @@ import CourtManager from './CourtManager'
 import MyCourts from './MyCourts'
 import VideoTab from './VideoTab'
 import SettingsPage from './SettingsPage'
-import HowRatingWorks from './HowRatingWorks'
-import ReportCard from './ReportCard'
 import TeamProfile from './TeamProfile'
 import { useGameLogger } from '../hooks/useGameLogger'
+import { getRatingTier, isCalibrating } from '../utils/ratingEngine'
+import HowRatingWorks from './HowRatingWorks'
+import ReportCard from './ReportCard'
 
 function getLevel(wins) {
   if (wins >= 50) return { name:'LEGEND',    tier:5, aura:'#ffd700', bg:'#2a1f00', glow:'rgba(255,215,0,0.4)',   emoji:'👑' }
@@ -64,7 +64,7 @@ function TabLoader() {
 }
 
 // ── Hamburger menu ─────────────────────────────────────────────
-function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup, onOpenCourtManager, onOpenMyCourts, onCreateCourt, onJoinCourt, onOpenSettings, onOpenRatingInfo }) {
+function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup, onOpenCourtManager, onOpenMyCourts, onCreateCourt, onJoinCourt, onOpenSettings }) {
   const level = getLevel(currentPlayer?.total_wins || 0)
   const [showCreate, setShowCreate] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
@@ -99,7 +99,7 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
           <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
             <div style={{ position:'relative', cursor:'pointer' }} onClick={() => { onOpenProfile(currentUser.id, activeGroup); onClose() }}>
               <Av id={currentUser.id} size={56} aura={level.aura} profilePic={currentPlayer?.profile_pic} style={{ border:`2.5px solid ${level.aura}`, boxShadow:`0 0 16px ${level.glow}` }}/>
-              {level.tier >= 4 && <div style={{ position:'absolute', inset:-3, borderRadius:'50%', border:`1px solid ${level.aura}`, borderTopColor:'transparent', animation:'spin-ring 3s linear infinite', pointerEvents:'none' }}/>}
+              {(level.tier >= 4) && <div style={{ position:'absolute', inset:-3, borderRadius:'50%', border:`1px solid ${level.aura}`, borderTopColor:'transparent', animation:'spin-ring 3s linear infinite', pointerEvents:'none' }}/>}
             </div>
             <div>
               <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#f1f5f9', letterSpacing:1, lineHeight:1 }}>{currentPlayer?.display_name || currentUser.displayName}</div>
@@ -186,14 +186,19 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
 
         {/* Settings */}
         <div style={{ padding:'0 16px', marginBottom:8 }}>
-          <button onClick={() => { onOpenRatingInfo && onOpenRatingInfo(); onClose() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', marginBottom:8, background:'rgba(74,222,128,0.06)', border:'1px solid rgba(74,222,128,0.15)', borderRadius:10, cursor:'pointer', color:'#4ade80', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
-            <span>📊</span> How Rating Works
-          </button>
           <button onClick={() => { onOpenSettings && onOpenSettings(); onClose() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, cursor:'pointer', color:'#64748b', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
             <span>⚙️</span> Settings
           </button>
         </div>
 
+        <div style={{ padding:'0 16px', marginBottom:8 }}>
+          <button onClick={() => { setShowRatingInfo(true); setShowMenu(false) }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', marginBottom:8, background:'rgba(74,222,128,0.06)', border:'1px solid rgba(74,222,128,0.15)', borderRadius:10, cursor:'pointer', color:'#4ade80', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
+            <span>📊</span> How Rating Works
+          </button>
+          <button onClick={() => { setShowSettings(true); setShowMenu(false) }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, cursor:'pointer', color:'#64748b', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
+            <span>⚙️</span> Settings
+          </button>
+        </div>
         {/* Logout */}
         <div style={{ padding:'16px 16px 40px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
           <button onClick={() => { onLogout(); onClose() }} style={{ width:'100%', background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.2)', color:'#f87171', borderRadius:10, padding:'12px', cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:2 }}>LOGOUT</button>
@@ -222,18 +227,22 @@ function HeroCard({ player, isCurrentUser, onClick }) {
       </svg>
       <div style={{ position:'relative', zIndex:1, padding:'18px 18px 14px' }}>
         <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:16 }}>
-          <div style={{ position:'relative', flexShrink:0 }}>
-            <Av id={player.id} size={72} aura={level.aura} profilePic={player.profile_pic} style={{ border:`3px solid ${level.aura}`, boxShadow:`0 0 24px ${level.glow}` }}/>
-            {level.tier >= 4 && <div style={{ position:'absolute', inset:-5, borderRadius:'50%', border:`1.5px solid ${level.aura}`, borderTopColor:'transparent', borderRightColor:'transparent', animation:'spin-ring 3s linear infinite' }}/>}
-          </div>
-          <div style={{ flex:1 }}>
-            {isCurrentUser && <div style={{ fontSize:10, color:level.aura, letterSpacing:2, fontWeight:700, fontFamily:"'Rajdhani',sans-serif", marginBottom:4 }}>YOUR PROFILE</div>}
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:30, letterSpacing:2, color:'#ffffff', lineHeight:1, marginBottom:8, textShadow:`0 0 20px ${level.aura}44` }}>{player.display_name}</div>
-            <div style={{ display:'flex', alignItems:'center', gap:7, flexWrap:'wrap' }}>
-              <span style={{ fontSize:12, fontWeight:700, padding:'5px 12px', borderRadius:20, background:`${level.aura}25`, color:level.aura, border:`1.5px solid ${level.aura}66`, fontFamily:"'Rajdhani',sans-serif", letterSpacing:1 }}>{level.emoji} {level.name}</span>
-              {(player.current_streak||0) >= 3 && <span style={{ fontSize:12, fontWeight:700, padding:'5px 10px', borderRadius:20, background:'rgba(249,115,22,0.15)', border:'1px solid rgba(249,115,22,0.35)', color:'#fb923c', fontFamily:"'Rajdhani',sans-serif" }}>🔥 {player.current_streak}</span>}
-              {(()=>{ const r=player.rating_doubles||1000; const t=getRatingTier(r); const c=isCalibrating(player.rating_doubles_games||0); return <span style={{ fontSize:12, fontWeight:700, padding:'5px 10px', borderRadius:20, background:`${t.color}15`, border:`1px solid ${t.color}40`, color:t.color, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1 }}>{c?'📡 ?':t.emoji+' '+r}</span> })()}
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, flexShrink:0 }}>
+            <div style={{ position:'relative' }}>
+              <Av id={player.id} size={62} aura={level.aura} profilePic={player.profile_pic} style={{ border:`2.5px solid ${level.aura}`, boxShadow:`0 0 18px ${level.glow}` }}/>
+              {(level.tier >= 4) && <div style={{ position:'absolute', inset:-4, borderRadius:'50%', border:`1.5px solid ${level.aura}`, borderTopColor:'transparent', borderRightColor:'transparent', animation:'spin-ring 3s linear infinite' }}/>}
             </div>
+            <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:20, background:`${level.aura}22`, color:level.aura, border:`1px solid ${level.aura}44`, fontFamily:"'Rajdhani',sans-serif", letterSpacing:0.5, whiteSpace:'nowrap' }}>{level.emoji} {level.name}</span>
+          </div>
+          <div style={{ flex:1, minWidth:0, paddingTop:2 }}>
+            {isCurrentUser && <div style={{ fontSize:9, color:level.aura, letterSpacing:2, fontWeight:700, fontFamily:"'Rajdhani',sans-serif", marginBottom:1 }}>YOUR PROFILE</div>}
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, letterSpacing:2, color:'#fff', lineHeight:1, marginBottom:5 }}>{player.display_name}</div>
+            {(()=>{ const r=player.rating_doubles||1000; const t=getRatingTier(r); const c=isCalibrating(player.rating_doubles_games||0); return (
+              <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:6, background:`${t.color}15`, border:`1px solid ${t.color}30`, marginBottom:4 }}>
+                <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:11, color:t.color, letterSpacing:0.5 }}>{t.emoji} {c?'CALIBRATING':r+' ELO'}</span>
+              </div>
+            )})()}
+            {((player.current_streak||0) >= 3) && <div><span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:20, background:'rgba(249,115,22,0.12)', border:'1px solid rgba(249,115,22,0.3)', color:'#fb923c', fontFamily:"'Rajdhani',sans-serif" }}>🔥 {player.current_streak} streak</span></div>}
           </div>
           <div style={{ textAlign:'center', flexShrink:0 }}>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:38, color:level.aura, lineHeight:1, textShadow:`0 0 16px ${level.glow}` }}>{winPct}%</div>
@@ -263,17 +272,24 @@ function LeaderRow({ player, rank, isCurrentUser, onClick }) {
   const level  = getLevel(player.total_wins || 0)
   const winPct = player.total_games > 0 ? Math.round((player.total_wins / player.total_games) * 100) : 0
   const badge  = getRankBadge(rank)
+  const rTier  = getRatingTier(player.rating_doubles || 1000)
+  const rCalib = isCalibrating(player.rating_doubles_games || 0)
   return (
     <div onClick={onClick} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:isCurrentUser?`${level.aura}0e`:'rgba(255,255,255,0.02)', border:`1px solid ${isCurrentUser?level.aura+'44':'rgba(255,255,255,0.07)'}`, borderRadius:14, cursor:'pointer', marginBottom:8, transition:'all 0.2s' }}>
-      <div style={{ width:32, height:32, borderRadius:8, background:badge.bg, border:`1px solid ${badge.border}`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:badge.color }}>{badge.label}</span>
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, flexShrink:0 }}>
+        <div style={{ width:32, padding:'1px 0', borderRadius:4, background:`${rTier.color}12`, border:`1px solid ${rTier.color}25`, textAlign:'center' }}>
+          <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:8, color:rTier.color }}>{rCalib?'?':player.rating_doubles||1000}</span>
+        </div>
+        <div style={{ width:32, height:26, borderRadius:7, background:badge.bg, border:`1px solid ${badge.border}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:12, color:badge.color }}>{badge.label}</span>
+        </div>
       </div>
       <Av id={player.id} size={42} aura={level.aura} profilePic={player.profile_pic}/>
       <div style={{ flex:1, minWidth:0 }}>
         <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:3 }}>
           <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:1, color:isCurrentUser?level.aura:'#f1f5f9', lineHeight:1 }}>{player.display_name}</span>
           {isCurrentUser && <span style={{ fontSize:9, color:'#4ade80', fontWeight:700, background:'rgba(74,222,128,0.12)', padding:'1px 5px', borderRadius:6, fontFamily:"'Rajdhani',sans-serif", letterSpacing:1 }}>YOU</span>}
-          {(player.current_streak||0)>=3 && <span style={{ fontSize:11, color:'#f97316' }}>🔥{player.current_streak}</span>}
+          {((player.current_streak||0) >= 3) && <span style={{ fontSize:11, color:'#f97316' }}>🔥{player.current_streak}</span>}
         </div>
         <div style={{ height:3, background:'rgba(255,255,255,0.07)', borderRadius:2, overflow:'hidden', maxWidth:100 }}>
           <div style={{ height:'100%', width:`${winPct}%`, background:level.aura, borderRadius:2 }}/>
@@ -283,7 +299,7 @@ function LeaderRow({ player, rank, isCurrentUser, onClick }) {
         </div>
       </div>
       <div style={{ display:'flex', gap:4, flexShrink:0 }}>
-        {[{v:player.total_wins||0,l:'W',c:'#4ade80',bg:'rgba(74,222,128,0.08)'},{v:player.total_games||0,l:'G',c:'#93c5fd',bg:'rgba(96,165,250,0.08)'},{v:`${winPct}%`,l:'WIN',c:level.aura,bg:'rgba(255,255,255,0.05)'}].map(s=>(
+        {[{v:player.total_wins||0,l:'W',c:'#4ade80',bg:'rgba(74,222,128,0.08)'},{v:player.total_losses||0,l:'L',c:'#f87171',bg:'rgba(248,113,113,0.08)'},{v:`${winPct}%`,l:'WIN',c:level.aura,bg:'rgba(255,255,255,0.05)'}].map(s=>(
           <div key={s.l} style={{ textAlign:'center', background:s.bg, borderRadius:7, padding:'4px 6px', minWidth:30 }}>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'#ffffff', fontWeight:700, lineHeight:1 }}>{s.v}</div>
             <div style={{ fontSize:9, color:'#94a3b8', fontFamily:"'Rajdhani',sans-serif" }}>{s.l}</div>
@@ -293,9 +309,14 @@ function LeaderRow({ player, rank, isCurrentUser, onClick }) {
     </div>
   )
 }
-function TeamsTab({ allPlayers, currentUserId, onOpenTeam }) {
-  const [teams, setTeams] = useState([])
-  const [loading, setLoading] = useState(true)
+
+// ── Teams tab ──────────────────────────────────────────────────
+function TeamsTab({ allPlayers, currentUserId }) {
+  const [teams, setTeams]       = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [selected, setSelected] = useState(null) // selected team key
+  const [teamGames, setTeamGames] = useState([])
+  const statsRef = useRef(null)
   const playerMap = Object.fromEntries((allPlayers||[]).map(p=>[p.id,p]))
   const allowedIds = new Set((allPlayers||[]).map(p=>p.id))
 
@@ -303,19 +324,18 @@ function TeamsTab({ allPlayers, currentUserId, onOpenTeam }) {
     async function build() {
       const { data: rawGames } = await supabase.from('games').select('*').eq('is_reverted',false).order('played_at',{ascending:true})
       if (!rawGames) { setLoading(false); return }
-      // Scope to court: both players on both teams must be in allPlayers
       const games = rawGames.filter(g => {
         const ids = [...(g.team_a_ids||[]), ...(g.team_b_ids||[])]
         return ids.every(id => allowedIds.has(id))
       })
       const ts = {}
       games.forEach(g => {
-        [{ids:[...g.team_a_ids].sort(),won:g.winner_team==='A',sa:g.score_a,sb:g.score_b},
-         {ids:[...g.team_b_ids].sort(),won:g.winner_team==='B',sa:g.score_b,sb:g.score_a}
-        ].forEach(({ids,won,sa,sb})=>{
+        [{ids:[...g.team_a_ids].sort(),won:g.winner_team==='A',sa:g.score_a,sb:g.score_b,game:g},
+         {ids:[...g.team_b_ids].sort(),won:g.winner_team==='B',sa:g.score_b,sb:g.score_a,game:g}
+        ].forEach(({ids,won,sa,sb,game})=>{
           const k=ids.join('|')
-          if(!ts[k]) ts[k]={ids,wins:0,losses:0}
-          ts[k].wins+=won?1:0; ts[k].losses+=won?0:1
+          if(!ts[k]) ts[k]={ids,wins:0,losses:0,games:[]}
+          ts[k].wins+=won?1:0; ts[k].losses+=won?0:1; ts[k].games.push({...game,won})
         })
       })
       setTeams(Object.values(ts).sort((a,b)=>b.wins-a.wins).slice(0,10))
@@ -324,22 +344,40 @@ function TeamsTab({ allPlayers, currentUserId, onOpenTeam }) {
     build()
   },[allPlayers])
 
+  function selectTeam(t) {
+    const key = t.ids.join('|')
+    if (selected === key) {
+      setSelected(null)
+      return
+    }
+    setSelected(key)
+    setTeamGames(t.games || [])
+    // Smooth scroll to stats section after render
+    setTimeout(() => {
+      statsRef.current?.scrollIntoView({ behavior:'smooth', block:'start' })
+    }, 80)
+  }
+
   if (loading) return <div style={{textAlign:'center',color:'#475569',padding:40,fontFamily:"'Rajdhani',sans-serif",fontSize:16}}>Building team stats...</div>
   if (!teams.length) return <div style={{textAlign:'center',color:'#334155',padding:60}}><div style={{fontSize:40,marginBottom:12}}>🤝</div><div style={{fontSize:14,fontFamily:"'Rajdhani',sans-serif"}}>No team data yet</div></div>
 
   const myBest = teams.find(t=>t.ids.includes(currentUserId))
+  const selectedTeam = selected ? teams.find(t=>t.ids.join('|')===selected) : null
 
   return (
     <div>
+      {/* My Best Duo */}
       {myBest && (()=>{
         const pid=myBest.ids.find(id=>id!==currentUserId)
         const partner=playerMap[pid], me=playerMap[currentUserId]
         if(!partner||!me) return null
         const total=myBest.wins+myBest.losses, pct=total>0?Math.round((myBest.wins/total)*100):0
         const lM=getLevel(me.total_wins||0), lP=getLevel(partner.total_wins||0)
+        const key=myBest.ids.join('|')
+        const isSelected=selected===key
         return (
-          <div onClick={()=>onOpenTeam&&onOpenTeam(me,partner)} style={{background:'linear-gradient(135deg,rgba(74,222,128,0.08),rgba(96,165,250,0.06))',border:'1.5px solid rgba(74,222,128,0.25)',borderRadius:18,padding:'16px 14px',marginBottom:20,cursor:'pointer'}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:'#4ade80',letterSpacing:3,marginBottom:12}}>🤝 YOUR BEST DUO</div>
+          <div onClick={()=>selectTeam(myBest)} style={{background:isSelected?'rgba(74,222,128,0.12)':'linear-gradient(135deg,rgba(74,222,128,0.08),rgba(96,165,250,0.06))',border:`1.5px solid ${isSelected?'#4ade80':'rgba(74,222,128,0.25)'}`,borderRadius:18,padding:'16px 14px',marginBottom:20,cursor:'pointer',transition:'all 0.2s'}}>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:'#4ade80',letterSpacing:3,marginBottom:12}}>🤝 YOUR BEST DUO {isSelected&&<span style={{fontSize:10,color:'#4ade80',letterSpacing:1}}>· TAP TO COLLAPSE</span>}</div>
             <div style={{display:'flex',gap:10,marginBottom:12}}>
               {[{p:me,l:lM},{p:partner,l:lP}].map(({p,l},i)=>(
                 <div key={p.id} style={{display:'flex',alignItems:'center',gap:8,flex:1,background:'rgba(0,0,0,0.3)',borderRadius:12,padding:'10px'}}>
@@ -349,7 +387,7 @@ function TeamsTab({ allPlayers, currentUserId, onOpenTeam }) {
                 </div>
               ))}
             </div>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8,marginBottom:10}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:8}}>
               {[{label:'WINS',val:myBest.wins,c:'#4ade80'},{label:'LOSSES',val:myBest.losses,c:'#f87171'},{label:'WIN RATE',val:`${pct}%`,c:'#ffd700'}].map(s=>(
                 <div key={s.label} style={{background:'rgba(0,0,0,0.4)',borderRadius:10,padding:'9px 4px',textAlign:'center'}}>
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:s.c,lineHeight:1}}>{s.val}</div>
@@ -357,10 +395,11 @@ function TeamsTab({ allPlayers, currentUserId, onOpenTeam }) {
                 </div>
               ))}
             </div>
-            <div style={{height:4,background:'rgba(255,255,255,0.07)',borderRadius:2,overflow:'hidden'}}><div style={{height:'100%',width:`${pct}%`,background:'linear-gradient(90deg,#4ade8066,#4ade80)',borderRadius:2}}/></div>
           </div>
         )
       })()}
+
+      {/* All Duos leaderboard */}
       <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'#64748b',letterSpacing:3,marginBottom:14}}>ALL DUOS · TOP 10</div>
       {teams.map((t,idx)=>{
         const p1=playerMap[t.ids[0]],p2=playerMap[t.ids[1]]
@@ -370,8 +409,14 @@ function TeamsTab({ allPlayers, currentUserId, onOpenTeam }) {
         const badge=getRankBadge(idx+1)
         const l1=getLevel(p1.total_wins||0),l2=getLevel(p2.total_wins||0)
         const tc=pct>=60?'#ffd700':pct>=40?'#4ade80':'#94a3b8'
+        const key=t.ids.join('|')
+        const isSelected=selected===key
         return (
-          <div key={t.ids.join('|')} onClick={()=>onOpenTeam&&onOpenTeam(p1,p2)} style={{display:'flex',alignItems:'center',gap:10,padding:'12px',marginBottom:8,background:isMe?'rgba(74,222,128,0.05)':'rgba(255,255,255,0.02)',border:`1px solid ${isMe?'rgba(74,222,128,0.3)':'rgba(255,255,255,0.07)'}`,borderRadius:14,cursor:'pointer'}}>
+          <div key={key} onClick={()=>selectTeam(t)}
+            style={{display:'flex',alignItems:'center',gap:10,padding:'12px',marginBottom:8,
+              background:isSelected?'rgba(74,222,128,0.08)':isMe?'rgba(74,222,128,0.05)':'rgba(255,255,255,0.02)',
+              border:`1px solid ${isSelected?'#4ade8066':isMe?'rgba(74,222,128,0.3)':'rgba(255,255,255,0.07)'}`,
+              borderRadius:14,cursor:'pointer',transition:'all 0.15s'}}>
             <div style={{width:34,height:34,borderRadius:8,background:badge.bg,border:`1px solid ${badge.border}`,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
               <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:badge.color}}>{badge.label}</span>
             </div>
@@ -383,7 +428,7 @@ function TeamsTab({ allPlayers, currentUserId, onOpenTeam }) {
               ))}
             </div>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,color:isMe?'#4ade80':'#f1f5f9',lineHeight:1,marginBottom:3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,color:isSelected?'#4ade80':isMe?'#4ade80':'#f1f5f9',lineHeight:1,marginBottom:3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
                 {p1.display_name} + {p2.display_name} {isMe&&<span style={{fontSize:9,color:'#4ade80',fontFamily:"'Rajdhani',sans-serif"}}>YOU</span>}
               </div>
               <div style={{height:3,background:'rgba(255,255,255,0.06)',borderRadius:2,overflow:'hidden',maxWidth:90}}><div style={{height:'100%',width:`${pct}%`,background:tc,borderRadius:2}}/></div>
@@ -399,11 +444,82 @@ function TeamsTab({ allPlayers, currentUserId, onOpenTeam }) {
           </div>
         )
       })}
+
+      {/* Team Stats Section — scrolls into view on select */}
+      {selectedTeam && (()=>{
+        const p1=playerMap[selectedTeam.ids[0]], p2=playerMap[selectedTeam.ids[1]]
+        if(!p1||!p2) return null
+        const total=selectedTeam.wins+selectedTeam.losses
+        const pct=total>0?Math.round((selectedTeam.wins/total)*100):0
+        const l1=getLevel(p1.total_wins||0), l2=getLevel(p2.total_wins||0)
+        const recentGames = [...(selectedTeam.games||[])].reverse().slice(0,5)
+        const scored    = selectedTeam.games.reduce((a,g)=>a+(g.won?(g.score_a>g.score_b?g.score_a:g.score_b):(g.score_a>g.score_b?g.score_b:g.score_a)),0)
+        const conceded  = selectedTeam.games.reduce((a,g)=>a+(g.won?(g.score_a>g.score_b?g.score_b:g.score_a):(g.score_a>g.score_b?g.score_a:g.score_b)),0)
+        return (
+          <div ref={statsRef} style={{marginTop:24,background:'linear-gradient(160deg,#0d1f14,#060d14)',border:'1.5px solid rgba(74,222,128,0.2)',borderRadius:20,padding:'18px 16px',scrollMarginTop:80}}>
+            {/* Header */}
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'#4ade80',letterSpacing:3,marginBottom:14}}>⚔️ TEAM STATS</div>
+            {/* Players */}
+            <div style={{display:'flex',gap:8,marginBottom:16}}>
+              {[{p:p1,l:l1},{p:p2,l:l2}].map(({p,l},i)=>(
+                <div key={p.id} style={{flex:1,display:'flex',alignItems:'center',gap:8,background:'rgba(0,0,0,0.35)',borderRadius:12,padding:'10px'}}>
+                  <Av id={p.id} size={38} aura={l.aura} profilePic={p.profile_pic}/>
+                  <div style={{minWidth:0}}>
+                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:'#f1f5f9',letterSpacing:0.5,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.display_name}</div>
+                    <div style={{fontSize:10,color:l.aura}}>{l.emoji} {l.name}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {/* Stats grid */}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:16}}>
+              {[{label:'WINS',val:selectedTeam.wins,c:'#4ade80'},{label:'LOSSES',val:selectedTeam.losses,c:'#f87171'},{label:'WIN %',val:`${pct}%`,c:'#ffd700'},{label:'PLAYED',val:total,c:'#93c5fd'}].map(s=>(
+                <div key={s.label} style={{background:'rgba(0,0,0,0.4)',borderRadius:10,padding:'8px 4px',textAlign:'center'}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:s.c,lineHeight:1}}>{s.val}</div>
+                  <div style={{fontSize:9,color:'#475569',fontFamily:"'Rajdhani',sans-serif",letterSpacing:1,marginTop:2}}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+            {/* Points */}
+            <div style={{display:'flex',gap:8,marginBottom:16}}>
+              {[{label:'POINTS SCORED',val:scored,c:'#4ade80'},{label:'POINTS CONCEDED',val:conceded,c:'#f87171'}].map(s=>(
+                <div key={s.label} style={{flex:1,background:'rgba(0,0,0,0.3)',borderRadius:10,padding:'10px',textAlign:'center'}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:s.c}}>{s.val}</div>
+                  <div style={{fontSize:9,color:'#475569',letterSpacing:1}}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+            {/* Win rate bar */}
+            <div style={{marginBottom:16}}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:5}}>
+                <span style={{fontSize:10,color:'#475569',letterSpacing:1,fontWeight:700}}>WIN RATE</span>
+                <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:'#4ade80'}}>{pct}%</span>
+              </div>
+              <div style={{height:6,background:'rgba(255,255,255,0.07)',borderRadius:3,overflow:'hidden'}}>
+                <div style={{height:'100%',width:`${pct}%`,background:'linear-gradient(90deg,#4ade8066,#4ade80)',borderRadius:3,transition:'width 0.5s ease'}}/>
+              </div>
+            </div>
+            {/* Recent games */}
+            {recentGames.length>0&&(
+              <div>
+                <div style={{fontSize:10,color:'#334155',letterSpacing:2,fontWeight:700,marginBottom:8}}>RECENT MATCHES</div>
+                {recentGames.map((g,i)=>(
+                  <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'7px 10px',marginBottom:5,background:'rgba(0,0,0,0.3)',borderRadius:10,border:`1px solid ${g.won?'rgba(74,222,128,0.15)':'rgba(248,113,113,0.1)'}`}}>
+                    <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:g.won?'#4ade80':'#f87171',letterSpacing:1}}>{g.won?'WIN':'LOSS'}</span>
+                    <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'#f1f5f9',letterSpacing:2}}>{g.score_a} — {g.score_b}</span>
+                    <span style={{fontSize:10,color:'#334155'}}>{new Date(g.played_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })()}
     </div>
   )
 }
 
-// ── Games tab ──────────────────────────────────────────────────
+
 function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEditGame, groups }) {
   const [filter, setFilter] = useState('all')
 
@@ -469,7 +585,7 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
         ))}
         {filter !== 'all' && (
           <div style={{ display:'flex', alignItems:'center', marginLeft:'auto', fontSize:12, color:'#475569', fontFamily:"'Rajdhani',sans-serif" }}>
-            {filtered.length} game{filtered.length!==1?'s':''} found
+            {filtered.length} game{filtered.length !== 1 ? 's' : ''} found
           </div>
         )}
       </div>
@@ -495,7 +611,7 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
                 <div style={{fontSize:11,color:'#475569',fontFamily:"'Rajdhani',sans-serif"}}>{sub}</div>
               </div>
               <div style={{flex:1,height:1,background:'rgba(255,255,255,0.06)'}}/>
-              <div style={{background:'rgba(255,255,255,0.05)',borderRadius:20,padding:'3px 10px',fontSize:11,color:'#64748b',fontFamily:"'Rajdhani',sans-serif",fontWeight:600,whiteSpace:'nowrap'}}>{dayGames.length} game{dayGames.length>1?'s':''}</div>
+              <div style={{background:'rgba(255,255,255,0.05)',borderRadius:20,padding:'3px 10px',fontSize:11,color:'#64748b',fontFamily:"'Rajdhani',sans-serif",fontWeight:600,whiteSpace:'nowrap'}}>{dayGames.length} game{dayGames.length !== 1 ? 's' : ''}</div>
             </div>
             {dayGames.map(g=>{
               const tA=(g.team_a_ids||[]).map(id=>players.find(p=>p.id===id)).filter(Boolean)
@@ -518,15 +634,9 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
                   </div>
                   {/* Score row */}
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:6}}>
-                    <div style={{textAlign:'left'}}>
-                      <span style={{fontSize:11,fontWeight:700,color:g.winner_team==='A'?'#4ade80':'#475569',fontFamily:"'Rajdhani',sans-serif",display:'block'}}>Team A</span>
-                      {g.rating_delta_a!=null&&<span style={{fontSize:10,color:g.winner_team==='A'?'#4ade80':'#f87171',fontFamily:"'Bebas Neue',sans-serif",fontWeight:700}}>{g.winner_team==='A'?'+':''}{g.rating_delta_a}</span>}
-                    </div>
+                    <span style={{fontSize:11,fontWeight:700,color:g.winner_team==='A'?'#4ade80':'#475569',fontFamily:"'Rajdhani',sans-serif"}}>Team A</span>
                     <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'#f1f5f9',letterSpacing:3}}>{g.score_a} — {g.score_b}</span>
-                    <div style={{textAlign:'right'}}>
-                      <span style={{fontSize:11,fontWeight:700,color:g.winner_team==='B'?'#4ade80':'#475569',fontFamily:"'Rajdhani',sans-serif",display:'block'}}>Team B</span>
-                      {g.rating_delta_b!=null&&<span style={{fontSize:10,color:g.winner_team==='B'?'#4ade80':'#f87171',fontFamily:"'Bebas Neue',sans-serif",fontWeight:700}}>{g.winner_team==='B'?'+':''}{g.rating_delta_b}</span>}
-                    </div>
+                    <span style={{fontSize:11,fontWeight:700,color:g.winner_team==='B'?'#4ade80':'#475569',fontFamily:"'Rajdhani',sans-serif"}}>Team B</span>
                   </div>
                   <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
                     <div style={{display:'flex',gap:6}}>
@@ -576,504 +686,7 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
 }
 
 
-// ── Report Tab ─────────────────────────────────────────────────
-const WITTY_DEFEAT = [
-  "They didn't lose, they just ran out of points 💀",
-  "That wasn't a match, that was a mercy killing 🪦",
-  "Even the net felt sorry for them 😬",
-  "A moment of silence for their dignity 🕯️",
-  "They should've stayed home and practiced breathing 😮‍💨",
-]
-const WITTY_DOM = [
-  "is absolutely HAUNTING on court 👻",
-  "has made this their personal highlight reel 🎬",
-  "needs to stop bullying people 😤",
-  "is collecting souls like it's a hobby 😈",
-  "should be reported to the badminton police 🚔",
-]
 
-function SmallAvatar({ p, size=28, border='#4ade80' }) {
-  const [err,setErr] = useState(false)
-  if (!p) return null
-  return (
-    <div style={{ width:size, height:size, borderRadius:'50%', overflow:'hidden', border:`1.5px solid ${border}`, background:'#1a2a1a', flexShrink:0 }}>
-      <img src={(!err&&p.profile_pic)||getAvatarUrl(p.id)} width={size} height={size}
-        style={{width:'100%',height:'100%',objectFit:'cover'}}
-        onError={e=>{e.target.onerror=null;setErr(true);e.target.src=getAvatarUrl(p.id)}}/>
-    </div>
-  )
-}
-
-function StatChip({ emoji, value, label, color }) {
-  return (
-    <div style={{ flex:1, textAlign:'center', padding:'8px 4px', background:'rgba(255,255,255,0.03)', borderRadius:10, border:'1px solid rgba(255,255,255,0.07)' }}>
-      <div style={{ fontSize:16 }}>{emoji}</div>
-      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color, lineHeight:1.1 }}>{value}</div>
-      <div style={{ fontSize:9, color:'#475569', letterSpacing:1.2, fontWeight:700, marginTop:1 }}>{label}</div>
-    </div>
-  )
-}
-
-function SectionHeader({ children }) {
-  return (
-    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:11, color:'#475569', letterSpacing:3, marginBottom:6, marginTop:14 }}>
-      {children}
-    </div>
-  )
-}
-
-function ReportTab({ players, currentUserId }) {
-  const [allGames,setAllGames] = useState([])
-  const [loading,setLoading]   = useState(true)
-  const [period,setPeriod]     = useState('today')
-  const [view,setView]         = useState('overview')
-  const allowedIds = new Set((players||[]).map(p=>p.id))
-
-  useEffect(() => {
-    supabase.from('games').select('*').eq('is_reverted',false).order('played_at',{ascending:false})
-      .then(({data}) => {
-        setAllGames((data||[]).filter(g=>[...(g.team_a_ids||[]),...(g.team_b_ids||[])].every(id=>allowedIds.has(id))))
-        setLoading(false)
-      })
-  }, [players])
-
-  const pm = Object.fromEntries((players||[]).map(p=>[p.id,p]))
-  const pn = id => pm[id]?.display_name?.split(' ')[0]||'?'
-
-  const { start, label } = (() => {
-    const now = new Date()
-    if (period==='today') { const s=new Date(now); s.setHours(0,0,0,0); return {start:s,label:'TODAY'} }
-    if (period==='week')  { const s=new Date(now); s.setDate(now.getDate()-((now.getDay()+6)%7)); s.setHours(0,0,0,0); return {start:s,label:'THIS WEEK'} }
-    return {start:new Date(now.getFullYear(),now.getMonth(),1),label:'THIS MONTH'}
-  })()
-
-  const pg = allGames.filter(g=>new Date(g.played_at)>=start)
-
-  // Player stats
-  const pStats = (() => {
-    const s = {}
-    pg.forEach(g=>{
-      [...g.team_a_ids,...g.team_b_ids].forEach(pid=>{
-        if(!s[pid]) s[pid]={wins:0,games:0,scored:0,conceded:0}
-        const inA=g.team_a_ids.includes(pid)
-        s[pid].games++
-        if(g.winner_team===(inA?'A':'B')) s[pid].wins++
-        s[pid].scored   += inA?g.score_a:g.score_b
-        s[pid].conceded += inA?g.score_b:g.score_a
-      })
-    })
-    return Object.entries(s).map(([pid,d])=>({pid,...d,pct:d.games>0?Math.round(d.wins/d.games*100):0}))
-      .sort((a,b)=>b.wins-a.wins||b.pct-a.pct)
-  })()
-
-  // Duos — sorted by wins only
-  const duos = (() => {
-    const t={}
-    pg.forEach(g=>{
-      [{ids:[...g.team_a_ids].sort(),won:g.winner_team==='A'},{ids:[...g.team_b_ids].sort(),won:g.winner_team==='B'}].forEach(({ids,won})=>{
-        const k=ids.join('|'); if(!t[k]) t[k]={ids,wins:0,games:0}
-        t[k].games++; if(won) t[k].wins++
-      })
-    })
-    return Object.values(t).sort((a,b)=>b.wins-a.wins) // sort by wins only
-  })()
-  const bestDuo   = duos[0]||null
-  const runnerDuo = duos[1]||null
-  const unbeaten  = duos.find(d=>d.games>=2&&d.wins===d.games)||null
-
-  // Worst blowout
-  const blowouts = [...pg].filter(g=>Math.abs(g.score_a-g.score_b)>=10)
-    .sort((a,b)=>Math.abs(b.score_a-b.score_b)-Math.abs(a.score_a-a.score_b))
-  const worst = blowouts[0]||null
-
-  // Domination
-  const dom = (() => {
-    const h={}
-    pg.forEach(g=>{
-      const w=g.winner_team==='A'?g.team_a_ids:g.team_b_ids
-      const l=g.winner_team==='A'?g.team_b_ids:g.team_a_ids
-      w.forEach(wi=>l.forEach(li=>{ const k=`${wi}>${li}`; if(!h[k]) h[k]={w:wi,l:li,wins:0}; h[k].wins++ }))
-    })
-    return Object.values(h).sort((a,b)=>b.wins-a.wins)[0]||null
-  })()
-
-  // My stats
-  const myG   = pg.filter(g=>g.team_a_ids.includes(currentUserId)||g.team_b_ids.includes(currentUserId))
-  const myW   = myG.filter(g=>{ const inA=g.team_a_ids.includes(currentUserId); return g.winner_team===(inA?'A':'B') }).length
-  const myL   = myG.length-myW
-  const myPct = myG.length>0?Math.round(myW/myG.length*100):0
-  const myScored   = myG.reduce((a,g)=>a+(g.team_a_ids.includes(currentUserId)?g.score_a:g.score_b),0)
-  const myConceded = myG.reduce((a,g)=>a+(g.team_a_ids.includes(currentUserId)?g.score_b:g.score_a),0)
-  const me    = pm[currentUserId]
-  const myLv  = getLevel(me?.total_wins||0)
-
-  if (loading) return <div style={{textAlign:'center',color:'#475569',padding:32,fontFamily:"'Rajdhani',sans-serif",fontSize:14}}>Loading stats...</div>
-
-  return (
-    <div style={{ fontFamily:"'Rajdhani',sans-serif", color:'#f1f5f9', fontSize:13 }}>
-
-      {/* View + Period row */}
-      <div style={{ display:'flex', gap:6, marginBottom:10 }}>
-        {[{id:'overview',label:'📊 Overview'},{id:'mycard',label:'🎴 My Card'}].map(v=>(
-          <button key={v.id} onClick={()=>setView(v.id)} style={{ flex:1, padding:'8px 4px', borderRadius:10, cursor:'pointer', border: view===v.id?'1px solid rgba(74,222,128,0.4)':'1px solid rgba(255,255,255,0.08)', background: view===v.id?'rgba(74,222,128,0.1)':'rgba(255,255,255,0.03)', color: view===v.id?'#4ade80':'#64748b', fontFamily:"'Bebas Neue',sans-serif", fontSize:13, letterSpacing:1 }}>{v.label}</button>
-        ))}
-      </div>
-      <div style={{ display:'flex', gap:6, marginBottom:14 }}>
-        {[{id:'today',label:'Today'},{id:'week',label:'Week'},{id:'month',label:'Month'}].map(p=>(
-          <button key={p.id} onClick={()=>setPeriod(p.id)} style={{ flex:1, padding:'7px 4px', borderRadius:20, cursor:'pointer', border: period===p.id?'1px solid rgba(74,222,128,0.4)':'1px solid rgba(255,255,255,0.07)', background: period===p.id?'rgba(74,222,128,0.1)':'transparent', color: period===p.id?'#4ade80':'#64748b', fontFamily:"'Rajdhani',sans-serif", fontSize:12, fontWeight:700 }}>{p.label}</button>
-        ))}
-      </div>
-
-      {/* ── OVERVIEW ── */}
-      {view==='overview' && (
-        pg.length===0
-          ? <div style={{ textAlign:'center', padding:40, color:'#334155' }}>
-              <div style={{ fontSize:36 }}>🏸</div>
-              <div style={{ marginTop:10, fontSize:14 }}>No games {label.toLowerCase()}</div>
-            </div>
-          : <div>
-              {/* STAT ROW */}
-              <div style={{ display:'flex', gap:6, marginBottom:2 }}>
-                <StatChip emoji="🎮" value={pg.length} label="MATCHES" color="#4ade80"/>
-                <StatChip emoji="⚔️" value={pStats.length} label="WARRIORS" color="#60a5fa"/>
-                <StatChip emoji="🔥" value={pg.reduce((a,g)=>a+g.score_a+g.score_b,0)} label="POINTS" color="#fb923c"/>
-              </div>
-
-              {/* BEST DUO */}
-              {bestDuo && pm[bestDuo.ids[0]] && pm[bestDuo.ids[1]] && (
-                <>
-                <SectionHeader>🏆 BEST DUO · {label}</SectionHeader>
-                <div style={{ background:'rgba(255,215,0,0.07)', border:'1px solid rgba(255,215,0,0.2)', borderRadius:12, padding:'10px 12px', marginBottom:2 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                    <div style={{ display:'flex', gap:-4 }}>
-                      {bestDuo.ids.map((id,i)=><div key={id} style={{ marginLeft:i?-8:0, zIndex:bestDuo.ids.length-i }}><SmallAvatar p={pm[id]} size={34} border="#ffd700"/></div>)}
-                    </div>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'#ffd700', letterSpacing:1, lineHeight:1 }}>{pn(bestDuo.ids[0])} + {pn(bestDuo.ids[1])}</div>
-                      {runnerDuo && pm[runnerDuo.ids[0]] && <div style={{ fontSize:10, color:'#475569', marginTop:2 }}>🥈 {pn(runnerDuo.ids[0])} + {pn(runnerDuo.ids[1])} · {runnerDuo.wins}W</div>}
-                    </div>
-                    <div style={{ textAlign:'right', flexShrink:0 }}>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, color:'#ffd700', lineHeight:1 }}>{bestDuo.wins}W</div>
-                      <div style={{ fontSize:10, color:'#64748b' }}>{bestDuo.games} played</div>
-                    </div>
-                  </div>
-                </div>
-                </>
-              )}
-
-              {/* UNBEATEN */}
-              {unbeaten && pm[unbeaten.ids[0]] && pm[unbeaten.ids[1]] && (
-                <>
-                <SectionHeader>🔥 UNBEATEN STREAK</SectionHeader>
-                <div style={{ background:'rgba(192,132,252,0.07)', border:'1px solid rgba(192,132,252,0.2)', borderRadius:12, padding:'10px 12px', marginBottom:2 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                    <div style={{ display:'flex' }}>
-                      {unbeaten.ids.map((id,i)=><div key={id} style={{ marginLeft:i?-8:0 }}><SmallAvatar p={pm[id]} size={30} border="#c084fc"/></div>)}
-                    </div>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:'#c084fc', letterSpacing:1 }}>{pn(unbeaten.ids[0])} + {pn(unbeaten.ids[1])}</div>
-                      <div style={{ fontSize:10, color:'#475569' }}>Still unbeaten · {unbeaten.games} matches</div>
-                    </div>
-                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#c084fc' }}>{unbeaten.wins}-0</div>
-                  </div>
-                </div>
-                </>
-              )}
-
-              {/* HEAVY DEFEAT */}
-              {worst && (()=>{
-                const margin = Math.abs(worst.score_a-worst.score_b)
-                const wIds = worst.winner_team==='A'?worst.team_a_ids:worst.team_b_ids
-                const lIds = worst.winner_team==='A'?worst.team_b_ids:worst.team_a_ids
-                const wS   = worst.winner_team==='A'?worst.score_a:worst.score_b
-                const lS   = worst.winner_team==='A'?worst.score_b:worst.score_a
-                const wit  = WITTY_DEFEAT[new Date(worst.played_at).getMinutes()%WITTY_DEFEAT.length]
-                return (
-                  <>
-                  <SectionHeader>💀 HEAVY DEFEAT · {margin} PT GAP</SectionHeader>
-                  <div style={{ background:'rgba(248,113,113,0.06)', border:'1px solid rgba(248,113,113,0.2)', borderRadius:12, padding:'10px 12px', marginBottom:2 }}>
-                    <div style={{ display:'flex', gap:8, alignItems:'stretch', marginBottom:8 }}>
-                      {/* Winners */}
-                      <div style={{ flex:1, background:'rgba(74,222,128,0.08)', borderRadius:8, padding:'8px' }}>
-                        <div style={{ fontSize:9, color:'#4ade80', letterSpacing:1.5, fontWeight:700, marginBottom:6 }}>VICTORS 🏆</div>
-                        {wIds.map(id=>(
-                          <div key={id} style={{ display:'flex', alignItems:'center', gap:5, marginBottom:3 }}>
-                            <SmallAvatar p={pm[id]} size={22} border="#4ade80"/>
-                            <span style={{ fontSize:12, color:'#4ade80', fontWeight:700 }}>{pn(id)}</span>
-                          </div>
-                        ))}
-                        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#4ade80', marginTop:4 }}>{wS}</div>
-                      </div>
-                      <div style={{ display:'flex', alignItems:'center', color:'#334155', fontFamily:"'Bebas Neue',sans-serif", fontSize:14 }}>VS</div>
-                      {/* Losers */}
-                      <div style={{ flex:1, background:'rgba(248,113,113,0.07)', borderRadius:8, padding:'8px' }}>
-                        <div style={{ fontSize:9, color:'#f87171', letterSpacing:1.5, fontWeight:700, marginBottom:6 }}>VICTIMS 💀</div>
-                        {lIds.map(id=>(
-                          <div key={id} style={{ display:'flex', alignItems:'center', gap:5, marginBottom:3 }}>
-                            <SmallAvatar p={pm[id]} size={22} border="#f87171"/>
-                            <span style={{ fontSize:12, color:'#f87171', fontWeight:700 }}>{pn(id)}</span>
-                          </div>
-                        ))}
-                        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#f87171', marginTop:4 }}>{lS}</div>
-                      </div>
-                    </div>
-                    <div style={{ fontSize:11, color:'#64748b', fontStyle:'italic', textAlign:'center', borderTop:'1px solid rgba(255,255,255,0.05)', paddingTop:7 }}>"{wit}"</div>
-                  </div>
-                  </>
-                )
-              })()}
-
-              {/* DOMINATION */}
-              {dom && dom.wins>=2 && pm[dom.w] && pm[dom.l] && (()=>{
-                const wit = WITTY_DOM[new Date().getMinutes()%WITTY_DOM.length]
-                const lv = getLevel(pm[dom.w].total_wins||0)
-                return (
-                  <>
-                  <SectionHeader>😈 PERSONAL DOMINATION</SectionHeader>
-                  <div style={{ background:'rgba(251,146,60,0.06)', border:'1px solid rgba(251,146,60,0.2)', borderRadius:12, padding:'10px 12px', marginBottom:2 }}>
-                    <div style={{ display:'flex', alignItems:'center', gap:10 }}>
-                      <SmallAvatar p={pm[dom.w]} size={36} border={lv.aura}/>
-                      <div style={{ flex:1 }}>
-                        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:'#fb923c', letterSpacing:1 }}>{pn(dom.w)} <span style={{ color:'#334155' }}>vs</span> {pn(dom.l)}</div>
-                        <div style={{ fontSize:10, color:'#64748b', fontStyle:'italic' }}>"{pn(dom.w)} {wit}"</div>
-                      </div>
-                      <SmallAvatar p={pm[dom.l]} size={30} border="#334155"/>
-                      <div style={{ textAlign:'center', flexShrink:0, minWidth:36 }}>
-                        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, color:'#fb923c', lineHeight:1 }}>{dom.wins}×</div>
-                        <div style={{ fontSize:9, color:'#64748b' }}>WINS</div>
-                      </div>
-                    </div>
-                  </div>
-                  </>
-                )
-              })()}
-
-              {/* LEADERBOARD */}
-              <SectionHeader>⚔️ WARRIOR LEADERBOARD</SectionHeader>
-              <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.06)', borderRadius:12, overflow:'hidden' }}>
-                {pStats.slice(0,8).map((s,i)=>{
-                  const p=pm[s.pid]; if(!p) return null
-                  const lv=getLevel(p.total_wins||0)
-                  const isMe=s.pid===currentUserId
-                  const medals=['🥇','🥈','🥉','4','5','6','7','8']
-                  return (
-                    <div key={s.pid} style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 10px', borderBottom:'1px solid rgba(255,255,255,0.04)', background:isMe?'rgba(74,222,128,0.05)':'transparent' }}>
-                      <span style={{ fontSize:i<3?14:10, width:20, textAlign:'center', color:'#334155', flexShrink:0 }}>{i<3?medals[i]:`#${i+1}`}</span>
-                      <SmallAvatar p={p} size={28} border={lv.aura}/>
-                      <span style={{ flex:1, fontFamily:"'Bebas Neue',sans-serif", fontSize:14, color:isMe?'#4ade80':'#f1f5f9', letterSpacing:0.5, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.display_name}{isMe?' 👈':''}</span>
-                      <div style={{ display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-                        <span style={{ fontSize:12, color:'#4ade80', fontWeight:700, fontFamily:"'Bebas Neue',sans-serif" }}>{s.wins}W</span>
-                        <span style={{ fontSize:10, color:'#475569', fontFamily:"'Bebas Neue',sans-serif" }}>{s.pct}%</span>
-                        <div style={{ width:40, height:3, background:'rgba(255,255,255,0.06)', borderRadius:2, overflow:'hidden' }}>
-                          <div style={{ height:'100%', width:s.pct+'%', background:lv.aura, borderRadius:2 }}/>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-      )}
-
-      {/* ── MY CARD ── */}
-      {view==='mycard' && (
-        <div>
-          <div style={{ background:`linear-gradient(160deg,${myLv.bg||'#0d1f14'},#060d14)`, border:`1.5px solid ${myLv.aura}33`, borderRadius:20, padding:'16px', marginBottom:10, position:'relative', overflow:'hidden' }}>
-            <svg width="100%" height="100%" viewBox="0 0 400 280" preserveAspectRatio="xMidYMid slice" style={{ position:'absolute', inset:0, opacity:0.06 }} aria-hidden="true">
-              <rect x="8" y="8" width="384" height="264" fill="none" stroke={myLv.aura} strokeWidth="1.5"/>
-              <line x1="200" y1="8" x2="200" y2="272" stroke={myLv.aura} strokeWidth="1"/>
-              <line x1="8" y1="140" x2="392" y2="140" stroke={myLv.aura} strokeWidth="1"/>
-              <ellipse cx="200" cy="140" rx="70" ry="70" fill="none" stroke={myLv.aura} strokeWidth="0.8" opacity="0.5"/>
-            </svg>
-            <div style={{ position:'relative', zIndex:1 }}>
-              {/* Header row */}
-              <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:12 }}>
-                <div style={{ width:52, height:52, borderRadius:'50%', overflow:'hidden', border:`2px solid ${myLv.aura}`, background:'#1a2a1a', flexShrink:0, boxShadow:`0 0 12px ${myLv.aura}44` }}>
-                  {me && <img src={me.profile_pic||getAvatarUrl(currentUserId)} width={52} height={52} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>{e.target.onerror=null;e.target.src=getAvatarUrl(currentUserId)}}/>}
-                </div>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:'#f1f5f9', letterSpacing:2, lineHeight:1 }}>{me?.display_name||'Player'}</div>
-                  <div style={{ fontSize:10, color:myLv.aura, fontWeight:700, letterSpacing:1, marginTop:2 }}>{myLv.emoji||'⭐'} {myLv.name||'PLAYER'}</div>
-                </div>
-                <div style={{ textAlign:'right' }}>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:9, color:'#334155', letterSpacing:2 }}>🏸 SHUTTLE · {label}</div>
-                </div>
-              </div>
-
-              {myG.length===0
-                ? <div style={{ textAlign:'center', color:'#334155', padding:20 }}>No games {label.toLowerCase()}</div>
-                : <>
-                  {/* Big win rate + bar */}
-                  <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:60, color:myLv.aura, lineHeight:1, textShadow:`0 0 30px ${myLv.aura}44` }}>{myPct}%</div>
-                      <div style={{ fontSize:9, color:'#64748b', letterSpacing:3, fontWeight:700 }}>WIN RATE · {label}</div>
-                      <div style={{ height:4, background:'rgba(255,255,255,0.07)', borderRadius:2, overflow:'hidden', marginTop:6 }}>
-                        <div style={{ height:'100%', width:myPct+'%', background:`linear-gradient(90deg,${myLv.aura}55,${myLv.aura})`, borderRadius:2 }}/>
-                      </div>
-                    </div>
-                    {/* Mini stat column */}
-                    <div style={{ display:'flex', flexDirection:'column', gap:4, flexShrink:0 }}>
-                      {[{v:myG.length,l:'PLAYED',c:'#93c5fd'},{v:myW,l:'WON',c:'#4ade80'},{v:myL,l:'LOST',c:'#f87171'}].map(s=>(
-                        <div key={s.l} style={{ background:'rgba(0,0,0,0.35)', borderRadius:8, padding:'4px 10px', textAlign:'center', minWidth:56 }}>
-                          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:s.c, lineHeight:1 }}>{s.v}</div>
-                          <div style={{ fontSize:8, color:'#64748b', letterSpacing:1 }}>{s.l}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Scoring row */}
-                  <div style={{ display:'flex', gap:6, marginBottom:10 }}>
-                    {[{v:myScored,l:'SCORED',c:'#4ade80'},{v:myConceded,l:'CONCEDED',c:'#f87171'},{v:myScored-myConceded,l:'DIFF',c:myScored>myConceded?'#4ade80':'#f87171',prefix:myScored>myConceded?'+':''}].map(s=>(
-                      <div key={s.l} style={{ flex:1, background:'rgba(0,0,0,0.3)', borderRadius:8, padding:'6px 4px', textAlign:'center' }}>
-                        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:s.c, lineHeight:1 }}>{s.prefix||''}{s.v}</div>
-                        <div style={{ fontSize:8, color:'#64748b', letterSpacing:1 }}>{s.l}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Form dots */}
-                  <div>
-                    <div style={{ fontSize:9, color:'#334155', letterSpacing:1.5, marginBottom:5 }}>RECENT FORM</div>
-                    <div style={{ display:'flex', gap:4, flexWrap:'wrap' }}>
-                      {myG.slice(0,12).map((g,i)=>{
-                        const inA=g.team_a_ids.includes(currentUserId)
-                        const won=g.winner_team===(inA?'A':'B')
-                        return <div key={i} style={{ width:24, height:24, borderRadius:'50%', background:won?'rgba(74,222,128,0.15)':'rgba(248,113,113,0.15)', border:`1px solid ${won?'#4ade80':'#f87171'}`, display:'flex', alignItems:'center', justifyContent:'center', fontFamily:"'Bebas Neue',sans-serif", fontSize:11, color:won?'#4ade80':'#f87171' }}>{won?'W':'L'}</div>
-                      })}
-                    </div>
-                  </div>
-                </>
-              }
-            </div>
-          </div>
-          <div style={{ textAlign:'center', fontSize:11, color:'#334155' }}>📸 Screenshot to flex on your court</div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Edit Game Modal ────────────────────────────────────────────
-function EditGameModal({ game, players, onClose, onSave }) {
-  const [sA, setSA] = useState(String(game.score_a))
-  const [sB, setSB] = useState(String(game.score_b))
-  const [saving, setSaving] = useState(false)
-  const tA = (game.team_a_ids||[]).map(id=>players.find(p=>p.id===id)).filter(Boolean)
-  const tB = (game.team_b_ids||[]).map(id=>players.find(p=>p.id===id)).filter(Boolean)
-
-  async function handleSave() {
-    const a=parseInt(sA), b=parseInt(sB)
-    if (isNaN(a)||isNaN(b)||a<0||b<0||a===b) return
-    setSaving(true)
-    await onSave(a, b)
-    setSaving(false)
-  }
-
-  return (
-    <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-      <div style={{ background:'#0a1628', border:'1px solid rgba(74,222,128,0.25)', borderRadius:20, padding:24, width:'100%', maxWidth:340, fontFamily:"'Rajdhani',sans-serif" }}>
-        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:'#f1f5f9', letterSpacing:2, marginBottom:4 }}>Edit Score</div>
-        <div style={{ fontSize:12, color:'#475569', marginBottom:20 }}>
-          {tA.map(p=>p.display_name).join(' + ')} vs {tB.map(p=>p.display_name).join(' + ')}
-        </div>
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:16, marginBottom:20 }}>
-          <div style={{ textAlign:'center' }}>
-            <div style={{ fontSize:12, color:'#4ade80', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2, marginBottom:8 }}>TEAM A</div>
-            <input type="number" inputMode="numeric" value={sA} onChange={e=>setSA(e.target.value)}
-              style={{ width:80, background:'rgba(0,0,0,0.5)', border:'2px solid rgba(74,222,128,0.3)', borderRadius:12, padding:'8px 0', color:'#f1f5f9', fontFamily:"'Bebas Neue',sans-serif", fontSize:48, textAlign:'center', outline:'none' }}/>
-          </div>
-          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:32, color:'#1e3a2f', marginTop:24 }}>—</div>
-          <div style={{ textAlign:'center' }}>
-            <div style={{ fontSize:12, color:'#60a5fa', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2, marginBottom:8 }}>TEAM B</div>
-            <input type="number" inputMode="numeric" value={sB} onChange={e=>setSB(e.target.value)}
-              style={{ width:80, background:'rgba(0,0,0,0.5)', border:'2px solid rgba(96,165,250,0.3)', borderRadius:12, padding:'8px 0', color:'#f1f5f9', fontFamily:"'Bebas Neue',sans-serif", fontSize:48, textAlign:'center', outline:'none' }}/>
-          </div>
-        </div>
-        {sA && sB && parseInt(sA)!==parseInt(sB) && (
-          <div style={{ textAlign:'center', marginBottom:12, fontFamily:"'Bebas Neue',sans-serif", fontSize:14, color:'#4ade80', letterSpacing:2 }}>
-            🏆 TEAM {parseInt(sA)>parseInt(sB)?'A':'B'} WINS
-          </div>
-        )}
-        <div style={{ display:'flex', gap:10 }}>
-          <button onClick={onClose} style={{ flex:1, background:'transparent', border:'1px solid #1e293b', color:'#475569', borderRadius:50, padding:12, cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:2 }}>CANCEL</button>
-          <button onClick={handleSave} disabled={saving||!sA||!sB||parseInt(sA)===parseInt(sB)}
-            style={{ flex:2, background:'linear-gradient(135deg,#14532d,#166534)', border:'1.5px solid #4ade80', color:'#4ade80', borderRadius:50, padding:12, cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:2, opacity:saving?0.6:1 }}>
-            {saving?'SAVING...':'SAVE CHANGES'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-
-// ── Join Court Modal ───────────────────────────────────────────
-function JoinCourtModal({ group, onClose, onJoined, currentUserId }) {
-  const [pin, setPin] = useState('')
-  const [error, setError] = useState('')
-  const [joining, setJoining] = useState(false)
-
-  async function handleJoin() {
-    if (pin.length !== 4) { setError('Enter the 4-digit court PIN'); return }
-    setJoining(true); setError('')
-    try {
-      // Verify PIN
-      const { data: g, error: e } = await supabase
-        .from('groups').select('id,pin').eq('id', group.id).single()
-      if (e || !g) throw new Error('Court not found')
-      if (g.pin !== pin) { setError('Wrong PIN — ask your court admin'); setJoining(false); return }
-
-      // Already a member?
-      const { data: existing } = await supabase.from('group_members')
-        .select('player_id').eq('group_id', group.id).eq('player_id', currentUserId).single()
-      if (existing) { setError('You are already in this court!'); setJoining(false); return }
-
-      // Join
-      await supabase.from('group_members').insert({ group_id: group.id, player_id: currentUserId })
-      onJoined && onJoined()
-      onClose()
-    } catch (err) { setError(err.message || 'Failed to join') }
-    setJoining(false)
-  }
-
-  return (
-    <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.75)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
-      <div style={{ background:'#0a1628', border:'1px solid rgba(74,222,128,0.25)', borderRadius:20, padding:24, width:'100%', maxWidth:300, fontFamily:"'Rajdhani',sans-serif" }}>
-        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'#f1f5f9', letterSpacing:2, marginBottom:4 }}>Join Court</div>
-        <div style={{ fontSize:13, color:'#64748b', marginBottom:16 }}>🏟️ {group.name}</div>
-
-        <div style={{ fontSize:11, color:'#64748b', letterSpacing:1.5, fontWeight:700, textTransform:'uppercase', marginBottom:8 }}>Court PIN</div>
-        <input
-          type="password" inputMode="numeric" maxLength={4}
-          value={pin} onChange={e=>{ if(/^\d{0,4}$/.test(e.target.value)) setPin(e.target.value) }}
-          onKeyDown={e=>e.key==='Enter'&&handleJoin()}
-          placeholder="••••" autoFocus
-          style={{ width:'100%', boxSizing:'border-box', background:'rgba(0,0,0,0.4)', border:'1.5px solid rgba(255,255,255,0.1)', borderRadius:12, padding:'12px 16px', color:'#4ade80', fontFamily:"'Bebas Neue',sans-serif", fontSize:32, textAlign:'center', letterSpacing:8, outline:'none', marginBottom:8 }}/>
-
-        {/* PIN dots */}
-        <div style={{ display:'flex', justifyContent:'center', gap:8, marginBottom:12 }}>
-          {[0,1,2,3].map(i=>(
-            <div key={i} style={{ width:8, height:8, borderRadius:'50%', background:i<pin.length?'#4ade80':'rgba(255,255,255,0.1)', transition:'all 0.2s', boxShadow:i<pin.length?'0 0 6px #4ade80':'none' }}/>
-          ))}
-        </div>
-
-        {error && <div style={{ fontSize:12, color:'#f87171', textAlign:'center', marginBottom:12, fontFamily:"'Rajdhani',sans-serif" }}>⚠ {error}</div>}
-
-        <div style={{ display:'flex', gap:8 }}>
-          <button onClick={onClose} style={{ flex:1, background:'transparent', border:'1px solid rgba(255,255,255,0.1)', color:'#475569', borderRadius:50, padding:'11px', cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:14, letterSpacing:1 }}>CANCEL</button>
-          <button onClick={handleJoin} disabled={joining||pin.length!==4}
-            style={{ flex:2, background:pin.length===4?'linear-gradient(135deg,#14532d,#166534)':'rgba(255,255,255,0.05)', border:`1.5px solid ${pin.length===4?'#4ade80':'rgba(255,255,255,0.1)'}`, color:pin.length===4?'#4ade80':'#475569', borderRadius:50, padding:'11px', cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:14, letterSpacing:1 }}>
-            {joining?'JOINING...':'JOIN COURT'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ── Main Dashboard ─────────────────────────────────────────────
 export default function Dashboard({ onOpenProfile }) {
   const { currentUser, logout } = useAuth()
   const { players: allPlayers, recentGames: allGames, loading: globalLoading, refetch: globalRefetch } = useRealtimeDashboard()
@@ -1092,13 +705,13 @@ export default function Dashboard({ onOpenProfile }) {
   const [myCourtsView, setMyCourtsView]         = useState('my')
   const [showMyCourts, setShowMyCourts]         = useState(false)
   const TAB_ORDER = ['players','teams','games','report','videos']
-  const [chipsVisible, setChipsVisible]         = useState(true)
+  const [openTeamDetail, setOpenTeamDetail]     = useState(null)
   const [showSettings, setShowSettings]         = useState(false)
   const [showRatingInfo, setShowRatingInfo]     = useState(false)
   const [gamePreference, setGamePreference]     = useState('doubles')
+  const [chipsVisible, setChipsVisible]         = useState(true)
   const chipsShownOnce                          = useRef(false)
   const scrollRef                               = useRef(null)
-  const [openTeam, setOpenTeam]               = useState(null) // {p1, p2}
 
   const isAdmin = currentUser.isAdmin || currentUser.role === 'admin'
   const { deleteGame, updateGameScore } = useGameLogger()
@@ -1123,6 +736,10 @@ export default function Dashboard({ onOpenProfile }) {
   }
 
   useEffect(() => { loadGroups() }, [])
+  useEffect(() => {
+    supabase.from('player_settings').select('game_preference').eq('player_id', currentUser.id).single()
+      .then(({ data }) => { if (data) setGamePreference(data.game_preference) })
+  }, [])
   useEffect(() => {
     supabase.from('player_settings').select('game_preference').eq('player_id', currentUser.id).single()
       .then(({ data }) => { if (data) setGamePreference(data.game_preference) })
@@ -1154,7 +771,7 @@ export default function Dashboard({ onOpenProfile }) {
     else courtRefetch()
   }
 
-  const filteredPlayers = players
+  const filteredPlayers = [...players].sort((a,b)=>(b.rating_doubles||0)-(a.rating_doubles||0))
   const filteredGames = recentGames
   const loading = isLoading
 
@@ -1237,7 +854,6 @@ export default function Dashboard({ onOpenProfile }) {
           onCreateCourt={() => { setCourtManagerView('create'); setShowCourtManager(true); setShowMenu(false) }}
           onJoinCourt={() => { setMyCourtsView('join'); setShowMyCourts(true); setShowMenu(false) }}
           onOpenSettings={() => { setShowSettings(true); setShowMenu(false) }}
-          onOpenRatingInfo={() => { setShowRatingInfo(true); setShowMenu(false) }}
         />
       )}
 
@@ -1258,7 +874,7 @@ export default function Dashboard({ onOpenProfile }) {
       </div>
 
       {/* Group filter chips — not sticky, hides on scroll */}
-      {myGroupIds.length > 0 && (
+      {myGroupIds.length ? (
         <div style={{
           overflow:'hidden',
           maxHeight: chipsVisible ? 52 : 0,
@@ -1274,7 +890,7 @@ export default function Dashboard({ onOpenProfile }) {
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Tabs */}
       <div style={{ position:'sticky', top:54, zIndex:38, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', display:'flex', borderBottom:'2px solid rgba(255,255,255,0.05)', overflowX:'auto' }}>
@@ -1302,7 +918,11 @@ export default function Dashboard({ onOpenProfile }) {
             {me && (
               <HeroCard player={me} isCurrentUser onClick={()=>onOpenProfile&&onOpenProfile(me.id, effectiveGroup)}/>
             )}
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, color:'#64748b', letterSpacing:3, marginBottom:14 }}>🏆 LEADERBOARD</div>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, color:'#64748b', letterSpacing:3, marginBottom:6 }}>🏆 LEADERBOARD</div>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+              <span style={{ fontSize:10, color:'#334155', fontFamily:"'Rajdhani',sans-serif" }}>Ranked by ELO rating</span>
+              <button onClick={()=>setShowRatingInfo(true)} style={{ background:'none', border:'none', color:'#4ade80', cursor:'pointer', fontFamily:"'Rajdhani',sans-serif", fontSize:10, fontWeight:700, padding:0 }}>Know more →</button>
+            </div>
             {filteredPlayers.map((p,idx) => (
               <LeaderRow key={p.id} player={p} rank={idx+1} isCurrentUser={p.id===currentUser.id} onClick={()=>onOpenProfile&&onOpenProfile(p.id, effectiveGroup)}/>
             ))}
@@ -1315,7 +935,7 @@ export default function Dashboard({ onOpenProfile }) {
         )}
         {tab === 'teams' && (
           <div style={{ animation:'card-in 0.3s ease-out' }}>
-            <TeamsTab allPlayers={filteredPlayers} currentUserId={currentUser.id} onOpenTeam={(p1,p2)=>setOpenTeam({p1,p2})}/>
+            <TeamsTab allPlayers={filteredPlayers} currentUserId={currentUser.id}/>
           </div>
         )}
         {tab==='teams' && (
@@ -1333,6 +953,7 @@ export default function Dashboard({ onOpenProfile }) {
             <ReportCard players={filteredPlayers} currentUserId={currentUser.id} groups={groups} activeGroup={effectiveGroup}/>
           </div>
         )}
+
         {tab === 'videos' && (
           <div style={{ padding:'16px', animation:'card-in 0.3s ease-out' }}>
             <VideoTab currentUserId={currentUser.id}/>
@@ -1347,18 +968,18 @@ export default function Dashboard({ onOpenProfile }) {
         </button>
       </div>
 
-      {openTeam && (
-        <TeamProfile
-          p1={openTeam.p1}
-          p2={openTeam.p2}
-          onBack={() => setOpenTeam(null)}
-        />
-      )}
-      {showRatingInfo && <HowRatingWorks onClose={()=>setShowRatingInfo(false)}/>}
       {showSettings && (
         <SettingsPage
           currentUser={currentUser}
           onClose={() => setShowSettings(false)}
+        />
+      )}
+      {showRatingInfo && <HowRatingWorks onClose={()=>setShowRatingInfo(false)}/>}
+      {openTeamDetail && (
+        <TeamProfile
+          p1={openTeamDetail.p1}
+          p2={openTeamDetail.p2}
+          onBack={() => setOpenTeamDetail(null)}
         />
       )}
       {showMyCourts && (

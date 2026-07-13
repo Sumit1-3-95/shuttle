@@ -54,11 +54,43 @@ function MiniRatingChart({ history, color }) {
         {/* Fill area */}
         <polygon points={`0,${h} ${pts} ${w},${h}`} fill={color} opacity="0.08"/>
         {/* Last point dot */}
-        {vals.length > 0 && (
+        {vals.length ? (
           <circle cx={(vals.length-1)/(vals.length-1)*w} cy={h-((last-min)/(max-min))*h} r="3" fill={color}/>
-        )}
+        ) : null}
       </svg>
     </div>
+  )
+}
+
+// ── Rating Gauge ──────────────────────────────────────────────
+function RatingGauge({ rating, tier, calibrating, size=130 }) {
+  const pct  = Math.min(100, Math.round(((rating - 100) / (2000 - 100)) * 100))
+  const r    = 48, cx = size/2, cy = size/2
+  const circ = 2 * Math.PI * r
+  const dash = (pct / 100) * circ * 0.75
+  const rotation = -225
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke="rgba(255,255,255,0.07)"
+        strokeWidth={9} strokeDasharray={`${circ*0.75} ${circ*0.25}`}
+        strokeLinecap="round" transform={`rotate(${rotation} ${cx} ${cy})`}/>
+      <circle cx={cx} cy={cy} r={r} fill="none" stroke={tier.color}
+        strokeWidth={9} strokeDasharray={`${dash} ${circ - dash + circ*0.25}`}
+        strokeLinecap="round" transform={`rotate(${rotation} ${cx} ${cy})`}
+        style={{ filter:`drop-shadow(0 0 8px ${tier.color}88)`, transition:'stroke-dasharray 0.6s ease' }}/>
+      {calibrating ? (
+        <>
+          <text x={cx} y={cy-2} textAnchor="middle" fill={tier.color} fontSize="20" fontFamily="'Bebas Neue'" letterSpacing="1">?</text>
+          <text x={cx} y={cy+14} textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize="7" fontFamily="'Rajdhani'" fontWeight="700" letterSpacing="1.5">CALIBRATING</text>
+        </>
+      ) : (
+        <>
+          <text x={cx} y={cy-4} textAnchor="middle" fill={tier.color} fontSize="22" fontFamily="'Bebas Neue'" letterSpacing="1">{rating}</text>
+          <text x={cx} y={cy+13} textAnchor="middle" fill="rgba(255,255,255,0.35)" fontSize="7" fontFamily="'Rajdhani'" fontWeight="700" letterSpacing="2">ELO RATING</text>
+          <text x={cx} y={cy+24} textAnchor="middle" fill={tier.color} fontSize="8" fontFamily="'Rajdhani'" fontWeight="700">{tier.emoji} {tier.name}</text>
+        </>
+      )}
+    </svg>
   )
 }
 
@@ -75,7 +107,7 @@ function getBragLine(wins, losses, games, streak, ratingDelta) {
 }
 
 // ── Personal Card ─────────────────────────────────────────────
-function PersonalCard({ player, periodGames, ratingHistory, allGames, currentUserId, period, courtName, playerMap }) {
+function PersonalCard({ player, periodGames, ratingHistory, drillSessions, getPeriodStart, allGames, currentUserId, period, courtName, playerMap }) {
   const myGames = periodGames.filter(g =>
     g.team_a_ids?.includes(currentUserId) || g.team_b_ids?.includes(currentUserId)
   )
@@ -138,31 +170,70 @@ function PersonalCard({ player, periodGames, ratingHistory, allGames, currentUse
             <img src={player?.profile_pic||getAvatarUrl(currentUserId)} style={{ width:'100%',height:'100%',objectFit:'cover' }} onError={e=>{e.target.onerror=null;e.target.src=getAvatarUrl(currentUserId)}}/>
           </div>
         </div>
-        {/* Gauge + stats */}
-        <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:12 }}>
-          <WinGauge pct={myPct} color={myPct>=60?'#4ade80':myPct>=40?'#fbbf24':'#f87171'} size={130}/>
-          <div style={{ flex:1 }}>
-            {[{v:myWins,l:'WINS',c:'#4ade80'},{v:myLosses,l:'LOSSES',c:'#f87171'},{v:myGames.length,l:'PLAYED',c:'#93c5fd'},{v:myScored,l:'POINTS',c:'#fbbf24'}].map(s=>(
-              <div key={s.l} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'4px 0', borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
-                <span style={{ fontSize:10, color:'rgba(255,255,255,0.35)', letterSpacing:1, fontWeight:700 }}>{s.l}</span>
-                <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:s.c, lineHeight:1 }}>{s.v}</span>
-              </div>
-            ))}
+        {/* Dual gauges */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6, marginBottom:10 }}>
+          <div style={{ textAlign:'center' }}>
+            <div style={{ fontSize:8, color:'rgba(255,255,255,0.25)', letterSpacing:2, fontWeight:700, marginBottom:2 }}>WIN RATE</div>
+            <WinGauge pct={myPct} color={myPct>=60?'#4ade80':myPct>=40?'#fbbf24':'#f87171'} size={130}/>
+          </div>
+          <div style={{ textAlign:'center' }}>
+            <div style={{ fontSize:8, color:'rgba(255,255,255,0.25)', letterSpacing:2, fontWeight:700, marginBottom:2 }}>RATING</div>
+            <RatingGauge rating={rating} tier={tier} calibrating={calib} size={130}/>
           </div>
         </div>
+        {/* Stats — now a horizontal row below gauges */}
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:6, marginBottom:12 }}>
+          {[{v:myWins,l:'WINS',c:'#4ade80'},{v:myLosses,l:'LOSSES',c:'#f87171'},{v:myGames.length,l:'PLAYED',c:'#93c5fd'},{v:myScored,l:'PTS',c:'#fbbf24'}].map(s=>(
+            <div key={s.l} style={{ textAlign:'center', background:'rgba(255,255,255,0.04)', borderRadius:8, padding:'6px 2px', border:'1px solid rgba(255,255,255,0.06)' }}>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:s.c, lineHeight:1 }}>{s.v}</div>
+              <div style={{ fontSize:8, color:'rgba(255,255,255,0.3)', letterSpacing:1, fontWeight:700, marginTop:1 }}>{s.l}</div>
+            </div>
+          ))}
+        </div>
+        {/* Remove old inline gauge+stats section */}
+        {false && <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:12 }}>
+          <WinGauge pct={myPct} color={myPct>=60?'#4ade80':myPct>=40?'#fbbf24':'#f87171'} size={130}/>
+        </div>}
         {/* Rating delta */}
-        {myGames.length>0 && (
+        {myGames.length ? (
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, padding:'7px 12px', marginBottom:12 }}>
             <span style={{ fontSize:10, color:'rgba(255,255,255,0.35)', fontWeight:700, letterSpacing:1 }}>RATING CHANGE</span>
             <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:rDelta>=0?'#4ade80':'#f87171' }}>{rDelta>=0?'+':''}{rDelta} pts</span>
           </div>
-        )}
+        ) : null}
         {/* Rating chart */}
-        {ratingHistory?.length > 1 && <MiniRatingChart history={ratingHistory} color={tier.color}/>}
+        {ratingHistory?.length >= 2 && <MiniRatingChart history={ratingHistory} color={tier.color}/>}
         {/* Brag line */}
         <div style={{ background:'linear-gradient(135deg,rgba(74,222,128,0.1),rgba(74,222,128,0.04))', border:'1px solid rgba(74,222,128,0.18)', borderRadius:10, padding:'9px 12px', marginBottom:12, textAlign:'center' }}>
           <div style={{ fontSize:13, color:'#e2e8f0', fontWeight:700 }}>{brag}</div>
         </div>
+        {/* Drills summary */}
+        {(()=>{
+          const start = getPeriodStart()
+          const periodDrills = drillSessions ? drillSessions.filter(s => new Date(s.session_date+'T00:00:00') >= start) : []
+          if (periodDrills.length === 0) return null
+          const totalMins = periodDrills.reduce((a,s)=>a+s.duration_mins, 0)
+          const totalCal  = periodDrills.reduce((a,s)=>a+Math.round((s.drills?.calories_per_min||6)*s.duration_mins), 0)
+          return (
+            <div style={{ background:'rgba(96,165,250,0.07)', border:'1px solid rgba(96,165,250,0.18)', borderRadius:10, padding:'9px 12px', marginBottom:12, display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ fontSize:18, flexShrink:0 }}>🏋️</div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:9, color:'#60a5fa', letterSpacing:2, fontWeight:700, marginBottom:2 }}>DRILLS THIS PERIOD</div>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:14, color:'#f1f5f9', letterSpacing:0.5 }}>{periodDrills.length} session{periodDrills.length!==1?'s':''}</div>
+              </div>
+              <div style={{ display:'flex', gap:10, flexShrink:0 }}>
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'#60a5fa' }}>{totalMins}m</div>
+                  <div style={{ fontSize:8, color:'rgba(96,165,250,0.5)', letterSpacing:1 }}>TRAINED</div>
+                </div>
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'#fb923c' }}>{totalCal}</div>
+                  <div style={{ fontSize:8, color:'rgba(251,146,60,0.5)', letterSpacing:1 }}>CALORIES</div>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
         {/* Best Duo */}
         {bestDuoPlayer && (
           <div style={{ background:'rgba(255,215,0,0.06)', border:'1px solid rgba(255,215,0,0.15)', borderRadius:10, padding:'9px 12px', marginBottom:12, display:'flex', alignItems:'center', gap:10 }}>
@@ -178,7 +249,7 @@ function PersonalCard({ player, periodGames, ratingHistory, allGames, currentUse
           </div>
         )}
         {/* Form dots */}
-        {formGames.length>0 && (
+        {formGames.length ? (
           <div style={{ marginBottom:12 }}>
             <div style={{ fontSize:9, color:'rgba(255,255,255,0.25)', letterSpacing:2, fontWeight:700, marginBottom:5 }}>RECENT FORM</div>
             <div style={{ display:'flex', gap:4 }}>
@@ -191,7 +262,7 @@ function PersonalCard({ player, periodGames, ratingHistory, allGames, currentUse
               })}
             </div>
           </div>
-        )}
+        ) : null}
         {/* Footer */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
           {courtName&&<span style={{ fontSize:9, color:'rgba(255,255,255,0.2)', letterSpacing:1 }}>🏟️ {courtName}</span>}
@@ -211,7 +282,7 @@ function CourtCard({ courtName, players, periodGames, allGames, period, playerMa
     const pg = periodGames.filter(g=>g.team_a_ids?.includes(p.id)||g.team_b_ids?.includes(p.id))
     const wins = pg.filter(g=>g.winner_team===(g.team_a_ids?.includes(p.id)?'A':'B')).length
     return {...p, pg:pg.length, wins, pct:pg.length>0?Math.round(wins/pg.length*100):0}
-  }).filter(p=>p.pg>0).sort((a,b)=>b.wins-a.wins||b.pct-a.pct).slice(0,5)
+  }).filter(p=>p.pg).sort((a,b)=>b.wins-a.wins||b.pct-a.pct).slice(0,5)
 
   const totalGames   = periodGames.length
   const totalPlayers = pStats.length
@@ -277,6 +348,33 @@ function CourtCard({ courtName, players, periodGames, allGames, period, playerMa
           ))}
           {pStats.length===0&&<div style={{textAlign:'center',color:'rgba(255,255,255,0.15)',fontSize:12,padding:16}}>No games this period</div>}
         </div>
+        {/* Drills summary */}
+        {(()=>{
+          const start = getPeriodStart()
+          const periodDrills = drillSessions ? drillSessions.filter(s => new Date(s.session_date+'T00:00:00') >= start) : []
+          if (periodDrills.length === 0) return null
+          const totalMins = periodDrills.reduce((a,s)=>a+s.duration_mins, 0)
+          const totalCal  = periodDrills.reduce((a,s)=>a+Math.round((s.drills?.calories_per_min||6)*s.duration_mins), 0)
+          return (
+            <div style={{ background:'rgba(96,165,250,0.07)', border:'1px solid rgba(96,165,250,0.18)', borderRadius:10, padding:'9px 12px', marginBottom:12, display:'flex', alignItems:'center', gap:10 }}>
+              <div style={{ fontSize:18, flexShrink:0 }}>🏋️</div>
+              <div style={{ flex:1 }}>
+                <div style={{ fontSize:9, color:'#60a5fa', letterSpacing:2, fontWeight:700, marginBottom:2 }}>DRILLS THIS PERIOD</div>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:14, color:'#f1f5f9', letterSpacing:0.5 }}>{periodDrills.length} session{periodDrills.length!==1?'s':''}</div>
+              </div>
+              <div style={{ display:'flex', gap:10, flexShrink:0 }}>
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'#60a5fa' }}>{totalMins}m</div>
+                  <div style={{ fontSize:8, color:'rgba(96,165,250,0.5)', letterSpacing:1 }}>TRAINED</div>
+                </div>
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'#fb923c' }}>{totalCal}</div>
+                  <div style={{ fontSize:8, color:'rgba(251,146,60,0.5)', letterSpacing:1 }}>CALORIES</div>
+                </div>
+              </div>
+            </div>
+          )
+        })()}
         {/* Best Duo */}
         {bestDuo && playerMap[bestDuo.ids[0]] && playerMap[bestDuo.ids[1]] && (
           <div style={{ background:'rgba(255,215,0,0.07)', border:'1px solid rgba(255,215,0,0.18)', borderRadius:12, padding:'10px 12px', marginBottom:10 }}>
@@ -297,7 +395,7 @@ function CourtCard({ courtName, players, periodGames, allGames, period, playerMa
               </div>
               <div style={{ textAlign:'right', flexShrink:0 }}>
                 <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#ffd700' }}>{bestDuo.wins}W</div>
-                <div style={{ fontSize:9, color:'rgba(255,215,0,0.4)' }}>{bestDuo.games>0?Math.round(bestDuo.wins/bestDuo.games*100):0}%</div>
+                <div style={{ fontSize:9, color:'rgba(255,215,0,0.4)' }}>{bestDuo.games ? Math.round(bestDuo.wins/bestDuo.games*100) : 0}%</div>
               </div>
             </div>
           </div>
@@ -344,6 +442,7 @@ export default function ReportCard({ players, currentUserId, groups, activeGroup
   const [cardType, setCardType] = useState('personal')
   const [allGames, setAllGames] = useState([])
   const [ratingHistory, setRatingHistory] = useState([])
+  const [drillSessions, setDrillSessions] = useState([])
   const [loading, setLoading]   = useState(true)
   const [sharing, setSharing]   = useState(false)
   const cardRef = useRef(null)
@@ -355,9 +454,11 @@ export default function ReportCard({ players, currentUserId, groups, activeGroup
     Promise.all([
       supabase.from('games').select('*').eq('is_reverted',false).order('played_at',{ascending:false}),
       supabase.from('rating_history').select('*').eq('player_id',currentUserId).eq('game_type','doubles').order('created_at',{ascending:true}).limit(30),
-    ]).then(([{data:g},{data:rh}]) => {
+      supabase.from('drill_sessions').select('*, drill_participants!inner(player_id), drills(name,category,calories_per_min)').eq('drill_participants.player_id',currentUserId).order('session_date',{ascending:false}).limit(30),
+    ]).then(([{data:g},{data:rh},{data:ds}]) => {
       setAllGames((g||[]).filter(x=>[...(x.team_a_ids||[]),...(x.team_b_ids||[])].every(id=>allowedIds.has(id))))
       setRatingHistory(rh||[])
+      setDrillSessions(ds||[])
       setLoading(false)
     })
   }, [players])
@@ -413,7 +514,7 @@ export default function ReportCard({ players, currentUserId, groups, activeGroup
       ) : (
         <div ref={cardRef} style={{ display:'flex', justifyContent:'center' }}>
           {cardType==='personal'
-            ? <PersonalCard player={me} periodGames={periodGames} allGames={allGames} ratingHistory={ratingHistory} currentUserId={currentUserId} period={period} courtName={courtName} playerMap={playerMap}/>
+            ? <PersonalCard player={me} periodGames={periodGames} allGames={allGames} ratingHistory={ratingHistory} drillSessions={drillSessions} getPeriodStart={getPeriodStart} currentUserId={currentUserId} period={period} courtName={courtName} playerMap={playerMap}/>
             : <CourtCard courtName={courtName} players={players} periodGames={periodGames} allGames={allGames} period={period} playerMap={playerMap}/>
           }
         </div>
