@@ -15,6 +15,7 @@ import { useGameLogger } from '../hooks/useGameLogger'
 import { getRatingTier, isCalibrating } from '../utils/ratingEngine'
 import HowRatingWorks from './HowRatingWorks'
 import ReportCard from './ReportCard'
+import RacquetNinja from './racquet-ninja/RacquetNinja'
 
 function getLevel(wins) {
   if (wins >= 50) return { name:'LEGEND',    tier:5, aura:'#ffd700', bg:'#2a1f00', glow:'rgba(255,215,0,0.4)',   emoji:'👑' }
@@ -64,7 +65,7 @@ function TabLoader() {
 }
 
 // ── Hamburger menu ─────────────────────────────────────────────
-function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup, onOpenCourtManager, onOpenMyCourts, onCreateCourt, onJoinCourt, onOpenSettings }) {
+function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup, onOpenCourtManager, onOpenMyCourts, onCreateCourt, onJoinCourt, onOpenSettings, onOpenRatingInfo }) {
   const level = getLevel(currentPlayer?.total_wins || 0)
   const [showCreate, setShowCreate] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
@@ -708,6 +709,8 @@ export default function Dashboard({ onOpenProfile }) {
   const [openTeamDetail, setOpenTeamDetail]     = useState(null)
   const [showSettings, setShowSettings]         = useState(false)
   const [showRatingInfo, setShowRatingInfo]     = useState(false)
+  const [showReportCard, setShowReportCard]     = useState(false)
+  const [showNinja, setShowNinja]               = useState(false)
   const [gamePreference, setGamePreference]     = useState('doubles')
   const [chipsVisible, setChipsVisible]         = useState(true)
   const chipsShownOnce                          = useRef(false)
@@ -821,6 +824,7 @@ export default function Dashboard({ onOpenProfile }) {
         @keyframes drawer-in { from{transform:translateX(-100%)} to{transform:translateX(0)} }
         @keyframes shuttle-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         @keyframes tab-loader-in { from{opacity:0} to{opacity:1} }
+        @keyframes ninja-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
         @keyframes reel-pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(1.4)} }
         .tab-btn { background:none; border:none; color:#64748b; font-family:'Bebas Neue',sans-serif; font-size:15px; letter-spacing:1.5px; padding:12px 14px; cursor:pointer; border-bottom:3px solid transparent; transition:all 0.2s; flex:0 0 auto; text-align:center; white-space:nowrap; }
         .tab-btn.active { color:#4ade80; border-bottom-color:#4ade80; }
@@ -854,6 +858,7 @@ export default function Dashboard({ onOpenProfile }) {
           onCreateCourt={() => { setCourtManagerView('create'); setShowCourtManager(true); setShowMenu(false) }}
           onJoinCourt={() => { setMyCourtsView('join'); setShowMyCourts(true); setShowMenu(false) }}
           onOpenSettings={() => { setShowSettings(true); setShowMenu(false) }}
+          onOpenRatingInfo={() => { setShowRatingInfo(true); setShowMenu(false) }}
         />
       )}
 
@@ -968,6 +973,15 @@ export default function Dashboard({ onOpenProfile }) {
         </button>
       </div>
 
+      {/* Racquet Ninja floating button — bottom right */}
+      <div onClick={()=>setShowRN(true)} style={{ position:'fixed', bottom:96, right:16, zIndex:60, display:'flex', flexDirection:'column', alignItems:'center', gap:4, cursor:'pointer' }}>
+        <div style={{ width:52, height:52, borderRadius:'50%', background:'linear-gradient(135deg,#fbbf24,#d97706)', border:'2.5px solid rgba(251,191,36,0.8)', boxShadow:'0 0 20px rgba(251,191,36,0.5), 0 4px 16px rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26, animation:'rn-fab-glow 2.5s ease-in-out infinite' }}>
+          🥷
+        </div>
+        <div style={{ fontSize:8, color:'#fbbf24', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, textShadow:'0 0 8px rgba(251,191,36,0.6)', textAlign:'center', lineHeight:1.1 }}>RACQUET<br/>NINJA</div>
+        <style>{`@keyframes rn-fab-glow{0%,100%{box-shadow:0 0 20px rgba(251,191,36,0.5),0 4px 16px rgba(0,0,0,0.4)}50%{box-shadow:0 0 35px rgba(251,191,36,0.8),0 4px 20px rgba(0,0,0,0.5)}}`}</style>
+      </div>
+
       {showSettings && (
         <SettingsPage
           currentUser={currentUser}
@@ -1017,6 +1031,27 @@ export default function Dashboard({ onOpenProfile }) {
           }}
         />
       )}
+      {/* Racquet Ninja Page */}
+      {showNinja && <RacquetNinja onClose={()=>setShowNinja(false)} currentUser={currentUser} currentPlayer={players?.find(p=>p.id===currentUser.id)}/>}
+
+      {/* Racquet Ninja Floating Button */}
+      {!showNinja && (
+        <div onClick={()=>setShowNinja(true)} style={{ position:'fixed', bottom:88, right:16, zIndex:60, display:'flex', flexDirection:'column', alignItems:'center', gap:4, cursor:'pointer' }}>
+          <div style={{
+            width:52, height:52, borderRadius:'50%', overflow:'hidden',
+            border:'2.5px solid #4ade80',
+            boxShadow:'0 0 0 4px rgba(74,222,128,0.15), 0 0 20px rgba(74,222,128,0.3)',
+            background:'#0a1a0a',
+            animation:'ninja-float 3s ease-in-out infinite',
+          }}>
+            <img src="/racquet-ninja.jpg" alt="Racquet Ninja"
+              style={{ width:'100%', height:'100%', objectFit:'cover' }}
+              onError={e=>{ e.target.style.background='#1a2a1a'; e.target.style.display='none' }}/>
+          </div>
+          <div style={{ fontSize:8, color:'#4ade80', letterSpacing:1, fontWeight:700, fontFamily:"'Rajdhani',sans-serif", textShadow:'0 0 8px rgba(74,222,128,0.5)', whiteSpace:'nowrap' }}>RACQUET NINJA</div>
+        </div>
+      )}
+
       {showLogGame && <LogGame onClose={()=>setShowLogGame(false)} onGameLogged={handleGameLogged} activeGroup={effectiveGroup} groupMembers={groupMembers} groups={groups} currentUserId={currentUser.id} defaultSingles={gamePreference==='singles'}/>}
     </div>
   )

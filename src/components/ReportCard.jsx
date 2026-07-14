@@ -275,7 +275,7 @@ function PersonalCard({ player, periodGames, ratingHistory, drillSessions, getPe
 }
 
 // ── Court Card ────────────────────────────────────────────────
-function CourtCard({ courtName, players, periodGames, allGames, period, playerMap }) {
+function CourtCard({ courtName, players, periodGames, allGames, period, playerMap, getPeriodStart }) {
   const periodLabel = period==='today'?'TODAY':period==='week'?'THIS WEEK':'THIS MONTH'
 
   const pStats = players.map(p => {
@@ -515,7 +515,7 @@ export default function ReportCard({ players, currentUserId, groups, activeGroup
         <div ref={cardRef} style={{ display:'flex', justifyContent:'center' }}>
           {cardType==='personal'
             ? <PersonalCard player={me} periodGames={periodGames} allGames={allGames} ratingHistory={ratingHistory} drillSessions={drillSessions} getPeriodStart={getPeriodStart} currentUserId={currentUserId} period={period} courtName={courtName} playerMap={playerMap}/>
-            : <CourtCard courtName={courtName} players={players} periodGames={periodGames} allGames={allGames} period={period} playerMap={playerMap}/>
+            : <CourtCard courtName={courtName} players={players} periodGames={periodGames} allGames={allGames} period={period} playerMap={playerMap} getPeriodStart={getPeriodStart}/>
           }
         </div>
       )}
