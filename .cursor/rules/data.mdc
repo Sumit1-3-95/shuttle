@@ -1,0 +1,57 @@
+---
+description: Supabase data layer, schema, and business logic flows
+globs: src/**/*.{js,jsx}
+alwaysApply: false
+---
+
+# Data Layer
+
+## Client
+
+All data access goes through `src/supabaseClient.js`. Env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+
+There is no separate backend server. Queries live in hooks and sometimes components.
+
+## Core Tables
+
+| Table | Purpose |
+|-------|---------|
+| `players` | Identity, ratings, global stats, `pin_hash`, `profile_pic` |
+| `groups` | Courts (name, `court_code`, pin) |
+| `group_members` | Court membership |
+| `games` | Matches (`team_a_ids`, `team_b_ids`, scores, `group_id`, `is_singles`) |
+| `rating_history` | Per-player rating deltas per game |
+| `game_skills` | Post-match skill/flaw tags |
+| `player_settings` | Preferences (e.g. `game_preference`) |
+
+**Storage:** `avatars` bucket for profile pictures.
+
+**Racquet Ninja tables:** `rn_drills`, `rn_sessions`, `rn_session_registrations` (partner feature).
+
+## Canonical Write Paths
+
+- **Log match:** `hooks/useGameLogger.js` → `calcMatchRatings()` → update `players`, insert `rating_history`
+- **Delete match:** `useGameLogger.deleteGame()` — reverses via `rating_history.rating_before`
+- **Recalc all:** `components/RecalcRatings.jsx` + `recalcAllRatings()` in `ratingEngine.js` (admin only)
+
+## Rating Engine
+
+`utils/ratingEngine.js` is the single source of truth for Elo math:
+- Separate `rating_singles` / `rating_doubles` tracks
+- K-factor by games played (calibrating → active → established)
+- Participation bonus on wins
+- `getInitialRating()` from onboarding skill/competitive/frequency fields
+
+## Court-Scoped Stats
+
+`useCourtData` and `usePlayerProfile` **recompute stats from games** for the active court — they do not rely solely on `players.total_wins` etc.
+
+**Legacy games:** Games with `group_id = null` are included in a court if all participants are court members.
+
+## Auth (Not Supabase Auth)
+
+`context/AuthContext.jsx`: login by phone/username/display name + 4-digit PIN. Session in `localStorage` key `shuttle_user`. PIN hashed with `bcryptjs` in the browser.
+
+## Realtime
+
+Supabase channels in `useRealtimeDashboard` (games INSERT/UPDATE) and `usePlayerProfile` (games, game_skills INSERT).

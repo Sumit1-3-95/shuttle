@@ -1,0 +1,47 @@
+---
+description: Shuttle product context, MVP scope, and core concepts
+alwaysApply: true
+---
+
+# Shuttle Product
+
+Shuttle is the identity and reputation layer for badminton players. Players record matches, compete within playing groups (Courts), build ratings and performance history, and eventually discover opponents of comparable skill.
+
+## Product Pillars
+
+Use these to understand long-term direction — do not force every feature into them:
+
+- **Identity** — persistent player profiles earned through real play
+- **Reputation** — credible ratings, stats, and rivalries from match history
+- **Competition** — leaderboards, head-to-head, court-level rivalry
+- **Progress** — trends, streaks, performance over time
+- **Discovery** — find comparable players (Phase 2, not MVP)
+
+## Core Concepts
+
+| Concept | Meaning |
+|---------|---------|
+| **Player** | Individual with profile, ratings, match history, stats |
+| **Court** | Private playing group (`groups` table) — not a physical court |
+| **Team** | Doubles pair in a match (two players) |
+| **Match** | Recorded game (singles or doubles); all stats derive from matches |
+| **Rating** | Elo-based strength score from historical matches |
+| **Rivalry** | Head-to-head history between players or teams |
+
+## MVP Scope
+
+**In scope:** profiles, court management, match logging, ratings, leaderboards, rivalries, performance trends.
+
+**Out of scope:** payments, platform tournaments, AI features, coaching, multi-sport.
+
+## Design Principles
+
+- Every match contributes to long-term identity
+- Stats are earned through gameplay, not self-declared
+- Match logging must be fast and frictionless
+- Mobile-first experience
+- Simplicity over feature richness
+
+## Product Flow
+
+Create Profile → Join/Create Court → Play → Log Match → Ratings & Insights → Trusted Identity

@@ -1,0 +1,25 @@
+---
+description: Git commit and pull request conventions
+alwaysApply: false
+---
+
+# Git Conventions
+
+## Commits
+
+- Only commit when explicitly asked
+- Write concise messages (1–2 sentences) focused on **why**, not what
+- Use complete sentences; match existing style (e.g. "updated README.md", "checkpoint — all working")
+- Never commit `.env` or files with secrets
+- Never skip hooks, force-push to main, or amend unless conditions are met
+
+## Pull Requests
+
+- Use `gh pr create` with Summary + Test plan sections
+- Push branch with `-u` before creating PR
+- Include all commits on the branch, not just the latest
+
+## Branching
+
+- Do not force-push unless explicitly requested
+- Do not update git config

@@ -1,0 +1,57 @@
+---
+description: React UI patterns, styling, and component conventions
+globs: src/**/*.{jsx,js}
+alwaysApply: false
+---
+
+# Frontend Conventions
+
+## Stack
+
+React 19 + Vite. No router — navigation via component state in `App.jsx` and `Dashboard.jsx`. No UI library.
+
+## Styling
+
+- **Inline `style={{}}` objects** are the primary styling method
+- Per-component `<style>` blocks for keyframes and shared classes (`.tab-btn`, `.group-chip`)
+- Do not introduce Tailwind, CSS modules, or styled-components without approval
+- `index.css` / `App.css` are Vite boilerplate — app UI does not use them
+
+## Design Tokens
+
+| Token | Value |
+|-------|-------|
+| Background | `#060d14` |
+| Text | `#f1f5f9` |
+| Accent | `#4ade80` |
+| Muted | `#64748b`, `#475569` |
+| Heading font | `'Bebas Neue', sans-serif` |
+| Body font | `'Rajdhani', sans-serif` |
+
+Load fonts via Google Fonts in component `<style>` blocks (existing pattern).
+
+## UI Patterns
+
+- Mobile-first, portrait PWA layout
+- Bottom tab bar: players / teams / games / report / videos
+- Hamburger drawer for courts, settings, profile
+- Full-screen overlays for LogGame, PlayerProfile, CourtManager, etc.
+- Dark theme with glow accents and tier-based aura colors
+
+## Component Structure
+
+- **Hooks** (`src/hooks/`) own data fetching and side effects
+- **Components** (`src/components/`) own presentation and local UI state
+- Extract sub-components within large files before creating new top-level files
+- `racquet-ninja/` is a self-contained partner feature module
+
+## Duplicated Helpers
+
+`getLevel()` (win-based tiers) and avatar wrappers are duplicated across files. When touching these, match the local copy — do not create a shared module unless asked.
+
+## Two Progression Systems
+
+- **Win tiers** (`getLevel`): ROOKIE → CONTENDER → SMASH PRO → ELITE → LEGEND
+- **Elo tiers** (`getRatingTier` in `ratingEngine.js`): ROOKIE → BEGINNER → … → LEGEND
+
+Both appear in UI. Do not conflate them.

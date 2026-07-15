@@ -1,0 +1,31 @@
+---
+description: How agents should communicate and handle ambiguity
+alwaysApply: true
+---
+
+# Communication
+
+## When to Ask
+
+Ask before making major assumptions when requirements are genuinely ambiguous and materially affect implementation. Do not guess on product decisions.
+
+## When to Act
+
+For clear, scoped tasks: investigate, implement, and report what changed. Do not ask for permission on obvious fixes within the stated scope.
+
+## Responses
+
+- Be concise and precise
+- Cite existing code with `startLine:endLine:filepath` format
+- Explain what changed and why in plain language
+- Proportional detail — simple fixes don't need long writeups
+
+## Refactors
+
+- Do not redesign UI for consistency unless asked
+- Do not refactor large files (`Dashboard.jsx`) unless asked
+- Do not add dependencies, tests, or TypeScript without asking
+
+## Product Decisions
+
+Prefer solutions that make Shuttle easier to evolve. Business logic and product outcomes beat engineering sophistication.

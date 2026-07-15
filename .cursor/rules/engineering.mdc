@@ -1,0 +1,47 @@
+---
+description: Core engineering principles for Shuttle
+alwaysApply: true
+---
+
+# Engineering Principles
+
+## Before Changing Code
+
+1. Read surrounding code and understand existing patterns
+2. Reuse existing abstractions before introducing new ones
+3. Extend existing files where reasonable; split only when separation genuinely helps
+4. Do not modify unrelated files during a task
+5. Preserve behavior during refactors unless behavior changes are explicitly requested
+
+## Code Quality
+
+- Prefer simple, readable code over clever abstractions
+- Do not over-engineer
+- Add comments only for non-obvious business logic
+- Keep components focused and reasonably small
+- Prefer composition over inheritance
+- Keep state local unless it genuinely needs to be shared
+- Avoid unnecessary `useEffect` and unnecessary derived state
+
+## Typing
+
+The codebase is JavaScript (`.js`/`.jsx`). Use JSDoc types on non-trivial functions. Do not migrate to TypeScript or add `.ts` files unless explicitly requested.
+
+## Dependencies & Tests
+
+- Do not install new npm dependencies without asking first
+- Write tests when modifying critical business logic (`ratingEngine.js`, `useGameLogger.js`) or when specifically requested
+- No test infrastructure exists yet — discuss approach before adding one
+
+## Priorities
+
+Business logic and product outcomes matter more than technical elegance. Prefer solutions that make the product easier to evolve.
+
+Optimize for shipping speed while maintaining clean, maintainable code.
+
+## Sensitive Areas
+
+- `utils/ratingEngine.js` — canonical rating math; change with care
+- `hooks/useGameLogger.js` — canonical match write path
+- `Dashboard.jsx` — large god component; do not refactor unless asked
+- Auth uses custom PIN + `bcryptjs` in browser, not Supabase Auth
