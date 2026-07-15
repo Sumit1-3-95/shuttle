@@ -113,7 +113,10 @@ export function useCourtData(groupId) {
     setLoading(false)
   }, [groupId])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch when groupId changes
+    void load()
+  }, [load])
 
   return { courtPlayers, courtGames, loading, refetch: load }
 }

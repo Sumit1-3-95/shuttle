@@ -29,10 +29,6 @@ function Av({ id, size=40, aura='#4ade8055', profilePic=null }) {
   )
 }
 
-function generateCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase()
-}
-
 function generateUsername(name, phone) {
   const base = name.toLowerCase().replace(/\s+/g,'').replace(/[^a-z0-9]/g,'') || 'player'
   return base + (phone ? phone.slice(-3) : Math.floor(Math.random()*900+100))
@@ -116,7 +112,7 @@ function CreateCourt({ onBack, currentUserId, onCreated }) {
     }
   }
 
-  const inp = (val, ph, onChange, type='text', mode='text') => ({
+  const inp = (val, ph, onChange, type='text') => ({
     background:'rgba(0,0,0,0.4)',
     border:`1px solid ${val.length===10&&type==='tel'?'rgba(74,222,128,0.5)':'rgba(255,255,255,0.1)'}`,
     borderRadius:10, padding:'10px 12px',
@@ -186,7 +182,7 @@ function CreateCourt({ onBack, currentUserId, onCreated }) {
 }
 
 // ── Court Detail Screen ────────────────────────────────────────
-function CourtDetail({ court, allPlayers, currentUserId, onBack, onUpdated }) {
+function CourtDetail({ court, currentUserId, onBack, onUpdated }) {
   const [members, setMembers]     = useState([])
   const [loading, setLoading]     = useState(true)
   const [showAdd, setShowAdd]     = useState(false)
@@ -198,6 +194,7 @@ function CourtDetail({ court, allPlayers, currentUserId, onBack, onUpdated }) {
   const [removing, setRemoving]   = useState(null)
   const [copied, setCopied]       = useState(false)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when court changes
   useEffect(() => { loadMembers() }, [court.id])
 
   async function loadMembers() {
@@ -389,7 +386,7 @@ function CourtDetail({ court, allPlayers, currentUserId, onBack, onUpdated }) {
 }
 
 // ── Court List Screen ──────────────────────────────────────────
-function CourtList({ courts, allPlayers, memberCounts, onSelectCourt, onCreateCourt }) {
+function CourtList({ courts, memberCounts, onSelectCourt, onCreateCourt }) {
   return (
     <div style={{ flex:1, display:'flex', flexDirection:'column', minHeight:0 }}>
       <div style={{ padding:'16px 16px 12px', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>

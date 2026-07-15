@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useRealtimeDashboard } from '../hooks/useRealtimeDashboard'
 import { useCourtData } from '../hooks/useCourtData'
-import { getAvatarUrl, getCharacterName } from '../utils/avatars'
+import { getAvatarUrl } from '../utils/avatars'
 import { supabase } from '../supabaseClient'
 import LogGame from './LogGame'
 import CourtManager from './CourtManager'
@@ -65,7 +65,7 @@ function TabLoader() {
 }
 
 // ── Hamburger menu ─────────────────────────────────────────────
-function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup, onOpenCourtManager, onOpenMyCourts, onCreateCourt, onJoinCourt, onOpenSettings, onOpenRatingInfo }) {
+function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onOpenCourtManager, onOpenMyCourts, onCreateCourt, onJoinCourt, onOpenSettings, onOpenRatingInfo }) {
   const level = getLevel(currentPlayer?.total_wins || 0)
   const [showCreate, setShowCreate] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
@@ -193,11 +193,8 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
         </div>
 
         <div style={{ padding:'0 16px', marginBottom:8 }}>
-          <button onClick={() => { setShowRatingInfo(true); setShowMenu(false) }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', marginBottom:8, background:'rgba(74,222,128,0.06)', border:'1px solid rgba(74,222,128,0.15)', borderRadius:10, cursor:'pointer', color:'#4ade80', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
+          <button onClick={() => { onOpenRatingInfo && onOpenRatingInfo(); onClose() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', background:'rgba(74,222,128,0.06)', border:'1px solid rgba(74,222,128,0.15)', borderRadius:10, cursor:'pointer', color:'#4ade80', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
             <span>📊</span> How Rating Works
-          </button>
-          <button onClick={() => { setShowSettings(true); setShowMenu(false) }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, cursor:'pointer', color:'#64748b', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
-            <span>⚙️</span> Settings
           </button>
         </div>
         {/* Logout */}
@@ -316,7 +313,6 @@ function TeamsTab({ allPlayers, currentUserId }) {
   const [teams, setTeams]       = useState([])
   const [loading, setLoading]   = useState(true)
   const [selected, setSelected] = useState(null) // selected team key
-  const [teamGames, setTeamGames] = useState([])
   const statsRef = useRef(null)
   const playerMap = Object.fromEntries((allPlayers||[]).map(p=>[p.id,p]))
   const allowedIds = new Set((allPlayers||[]).map(p=>p.id))
@@ -331,9 +327,9 @@ function TeamsTab({ allPlayers, currentUserId }) {
       })
       const ts = {}
       games.forEach(g => {
-        [{ids:[...g.team_a_ids].sort(),won:g.winner_team==='A',sa:g.score_a,sb:g.score_b,game:g},
-         {ids:[...g.team_b_ids].sort(),won:g.winner_team==='B',sa:g.score_b,sb:g.score_a,game:g}
-        ].forEach(({ids,won,sa,sb,game})=>{
+        [{ids:[...g.team_a_ids].sort(),won:g.winner_team==='A',game:g},
+         {ids:[...g.team_b_ids].sort(),won:g.winner_team==='B',game:g}
+        ].forEach(({ids,won,game})=>{
           const k=ids.join('|')
           if(!ts[k]) ts[k]={ids,wins:0,losses:0,games:[]}
           ts[k].wins+=won?1:0; ts[k].losses+=won?0:1; ts[k].games.push({...game,won})
@@ -343,7 +339,16 @@ function TeamsTab({ allPlayers, currentUserId }) {
       setLoading(false)
     }
     build()
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- allowedIds derived from allPlayers
   },[allPlayers])
+
+  useEffect(() => {
+    if (!selected) return
+    const t = setTimeout(() => {
+      statsRef.current?.scrollIntoView({ behavior:'smooth', block:'start' })
+    }, 80)
+    return () => clearTimeout(t)
+  }, [selected])
 
   function selectTeam(t) {
     const key = t.ids.join('|')
@@ -352,11 +357,6 @@ function TeamsTab({ allPlayers, currentUserId }) {
       return
     }
     setSelected(key)
-    setTeamGames(t.games || [])
-    // Smooth scroll to stats section after render
-    setTimeout(() => {
-      statsRef.current?.scrollIntoView({ behavior:'smooth', block:'start' })
-    }, 80)
   }
 
   if (loading) return <div style={{textAlign:'center',color:'#475569',padding:40,fontFamily:"'Rajdhani',sans-serif",fontSize:16}}>Building team stats...</div>
@@ -462,7 +462,7 @@ function TeamsTab({ allPlayers, currentUserId }) {
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'#4ade80',letterSpacing:3,marginBottom:14}}>⚔️ TEAM STATS</div>
             {/* Players */}
             <div style={{display:'flex',gap:8,marginBottom:16}}>
-              {[{p:p1,l:l1},{p:p2,l:l2}].map(({p,l},i)=>(
+              {[{p:p1,l:l1},{p:p2,l:l2}].map(({p,l})=>(
                 <div key={p.id} style={{flex:1,display:'flex',alignItems:'center',gap:8,background:'rgba(0,0,0,0.35)',borderRadius:12,padding:'10px'}}>
                   <Av id={p.id} size={38} aura={l.aura} profilePic={p.profile_pic}/>
                   <div style={{minWidth:0}}>
@@ -521,7 +521,7 @@ function TeamsTab({ allPlayers, currentUserId }) {
 }
 
 
-function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEditGame, groups }) {
+function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEditGame }) {
   const [filter, setFilter] = useState('all')
 
   function getFilteredGames() {
@@ -598,7 +598,7 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
           <div style={{fontSize:15,fontFamily:"'Rajdhani',sans-serif",color:'#475569'}}>
             {filter==='today'?'No games today yet':filter==='week'?'No games this week':filter==='month'?'No games this month':'No games yet'}
           </div>
-          {filter!=='all' && <div style={{fontSize:12,color:'#334155',marginTop:6,fontFamily:"'Rajdhani',sans-serif",cursor:'pointer',color:'#4ade80'}} onClick={()=>setFilter('all')}>View all games →</div>}
+          {filter!=='all' && <div style={{fontSize:12,marginTop:6,fontFamily:"'Rajdhani',sans-serif",cursor:'pointer',color:'#4ade80'}} onClick={()=>setFilter('all')}>View all games →</div>}
         </div>
       )}
 
@@ -688,6 +688,119 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
 
 
 
+function EditGameModal({ game, players, onClose, onSave }) {
+  const [sA, setSA] = useState(String(game.score_a))
+  const [sB, setSB] = useState(String(game.score_b))
+  const [saving, setSaving] = useState(false)
+  const tA = (game.team_a_ids||[]).map(id=>players.find(p=>p.id===id)).filter(Boolean)
+  const tB = (game.team_b_ids||[]).map(id=>players.find(p=>p.id===id)).filter(Boolean)
+
+  async function handleSave() {
+    const a=parseInt(sA), b=parseInt(sB)
+    if (isNaN(a)||isNaN(b)||a<0||b<0||a===b) return
+    setSaving(true)
+    await onSave(a, b)
+    setSaving(false)
+  }
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:100, background:'rgba(0,0,0,0.8)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+      <div style={{ background:'#0a1628', border:'1px solid rgba(74,222,128,0.25)', borderRadius:20, padding:24, width:'100%', maxWidth:340, fontFamily:"'Rajdhani',sans-serif" }}>
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:'#f1f5f9', letterSpacing:2, marginBottom:4 }}>Edit Score</div>
+        <div style={{ fontSize:12, color:'#475569', marginBottom:20 }}>
+          {tA.map(p=>p.display_name).join(' + ')} vs {tB.map(p=>p.display_name).join(' + ')}
+        </div>
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:16, marginBottom:20 }}>
+          <div style={{ textAlign:'center' }}>
+            <div style={{ fontSize:12, color:'#4ade80', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2, marginBottom:8 }}>TEAM A</div>
+            <input type="number" inputMode="numeric" value={sA} onChange={e=>setSA(e.target.value)}
+              style={{ width:80, background:'rgba(0,0,0,0.5)', border:'2px solid rgba(74,222,128,0.3)', borderRadius:12, padding:'8px 0', color:'#f1f5f9', fontFamily:"'Bebas Neue',sans-serif", fontSize:48, textAlign:'center', outline:'none' }}/>
+          </div>
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:32, color:'#1e3a2f', marginTop:24 }}>—</div>
+          <div style={{ textAlign:'center' }}>
+            <div style={{ fontSize:12, color:'#60a5fa', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2, marginBottom:8 }}>TEAM B</div>
+            <input type="number" inputMode="numeric" value={sB} onChange={e=>setSB(e.target.value)}
+              style={{ width:80, background:'rgba(0,0,0,0.5)', border:'2px solid rgba(96,165,250,0.3)', borderRadius:12, padding:'8px 0', color:'#f1f5f9', fontFamily:"'Bebas Neue',sans-serif", fontSize:48, textAlign:'center', outline:'none' }}/>
+          </div>
+        </div>
+        {sA && sB && parseInt(sA)!==parseInt(sB) && (
+          <div style={{ textAlign:'center', marginBottom:12, fontFamily:"'Bebas Neue',sans-serif", fontSize:14, color:'#4ade80', letterSpacing:2 }}>
+            🏆 TEAM {parseInt(sA)>parseInt(sB)?'A':'B'} WINS
+          </div>
+        )}
+        <div style={{ display:'flex', gap:10 }}>
+          <button onClick={onClose} style={{ flex:1, background:'transparent', border:'1px solid #1e293b', color:'#475569', borderRadius:50, padding:12, cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:2 }}>CANCEL</button>
+          <button onClick={handleSave} disabled={saving||!sA||!sB||parseInt(sA)===parseInt(sB)}
+            style={{ flex:2, background:'linear-gradient(135deg,#14532d,#166534)', border:'1.5px solid #4ade80', color:'#4ade80', borderRadius:50, padding:12, cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:2, opacity:saving?0.6:1 }}>
+            {saving?'SAVING...':'SAVE CHANGES'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Join Court Modal ───────────────────────────────────────────
+function JoinCourtModal({ group, onClose, onJoined, currentUserId }) {
+  const [pin, setPin] = useState('')
+  const [error, setError] = useState('')
+  const [joining, setJoining] = useState(false)
+
+  async function handleJoin() {
+    if (pin.length !== 4) { setError('Enter the 4-digit court PIN'); return }
+    setJoining(true); setError('')
+    try {
+      const { data: g, error: e } = await supabase
+        .from('groups').select('id,pin').eq('id', group.id).single()
+      if (e || !g) throw new Error('Court not found')
+      if (g.pin !== pin) { setError('Wrong PIN — ask your court admin'); setJoining(false); return }
+
+      const { data: existing } = await supabase.from('group_members')
+        .select('player_id').eq('group_id', group.id).eq('player_id', currentUserId).single()
+      if (existing) { setError('You are already in this court!'); setJoining(false); return }
+
+      await supabase.from('group_members').insert({ group_id: group.id, player_id: currentUserId })
+      onJoined && onJoined()
+      onClose()
+    } catch (err) { setError(err.message || 'Failed to join') }
+    setJoining(false)
+  }
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:200, background:'rgba(0,0,0,0.75)', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+      <div style={{ background:'#0a1628', border:'1px solid rgba(74,222,128,0.25)', borderRadius:20, padding:24, width:'100%', maxWidth:300, fontFamily:"'Rajdhani',sans-serif" }}>
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'#f1f5f9', letterSpacing:2, marginBottom:4 }}>Join Court</div>
+        <div style={{ fontSize:13, color:'#64748b', marginBottom:16 }}>🏟️ {group.name}</div>
+
+        <div style={{ fontSize:11, color:'#64748b', letterSpacing:1.5, fontWeight:700, textTransform:'uppercase', marginBottom:8 }}>Court PIN</div>
+        <input
+          type="password" inputMode="numeric" maxLength={4}
+          value={pin} onChange={e=>{ if(/^\d{0,4}$/.test(e.target.value)) setPin(e.target.value) }}
+          onKeyDown={e=>e.key==='Enter'&&handleJoin()}
+          placeholder="••••" autoFocus
+          style={{ width:'100%', boxSizing:'border-box', background:'rgba(0,0,0,0.4)', border:'1.5px solid rgba(255,255,255,0.1)', borderRadius:12, padding:'12px 16px', color:'#4ade80', fontFamily:"'Bebas Neue',sans-serif", fontSize:32, textAlign:'center', letterSpacing:8, outline:'none', marginBottom:8 }}/>
+
+        <div style={{ display:'flex', justifyContent:'center', gap:8, marginBottom:12 }}>
+          {[0,1,2,3].map(i=>(
+            <div key={i} style={{ width:8, height:8, borderRadius:'50%', background:i<pin.length?'#4ade80':'rgba(255,255,255,0.1)', transition:'all 0.2s', boxShadow:i<pin.length?'0 0 6px #4ade80':'none' }}/>
+          ))}
+        </div>
+
+        {error && <div style={{ fontSize:12, color:'#f87171', textAlign:'center', marginBottom:12, fontFamily:"'Rajdhani',sans-serif" }}>⚠ {error}</div>}
+
+        <div style={{ display:'flex', gap:8 }}>
+          <button onClick={onClose} style={{ flex:1, background:'transparent', border:'1px solid rgba(255,255,255,0.1)', color:'#475569', borderRadius:50, padding:'11px', cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:14, letterSpacing:1 }}>CANCEL</button>
+          <button onClick={handleJoin} disabled={joining||pin.length!==4}
+            style={{ flex:2, background:pin.length===4?'linear-gradient(135deg,#14532d,#166534)':'rgba(255,255,255,0.05)', border:`1.5px solid ${pin.length===4?'#4ade80':'rgba(255,255,255,0.1)'}`, color:pin.length===4?'#4ade80':'#475569', borderRadius:50, padding:'11px', cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:14, letterSpacing:1 }}>
+            {joining?'JOINING...':'JOIN COURT'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Main Dashboard ─────────────────────────────────────────────
 export default function Dashboard({ onOpenProfile }) {
   const { currentUser, logout } = useAuth()
   const { players: allPlayers, recentGames: allGames, loading: globalLoading, refetch: globalRefetch } = useRealtimeDashboard()
@@ -705,15 +818,12 @@ export default function Dashboard({ onOpenProfile }) {
   const [courtManagerView, setCourtManagerView] = useState('list')
   const [myCourtsView, setMyCourtsView]         = useState('my')
   const [showMyCourts, setShowMyCourts]         = useState(false)
-  const TAB_ORDER = ['players','teams','games','report','videos']
   const [openTeamDetail, setOpenTeamDetail]     = useState(null)
   const [showSettings, setShowSettings]         = useState(false)
   const [showRatingInfo, setShowRatingInfo]     = useState(false)
-  const [showReportCard, setShowReportCard]     = useState(false)
   const [showNinja, setShowNinja]               = useState(false)
   const [gamePreference, setGamePreference]     = useState('doubles')
-  const [chipsVisible, setChipsVisible]         = useState(true)
-  const chipsShownOnce                          = useRef(false)
+  const chipsVisible = true
   const scrollRef                               = useRef(null)
 
   const isAdmin = currentUser.isAdmin || currentUser.role === 'admin'
@@ -738,25 +848,18 @@ export default function Dashboard({ onOpenProfile }) {
     }
   }
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch
   useEffect(() => { loadGroups() }, [])
   useEffect(() => {
     supabase.from('player_settings').select('game_preference').eq('player_id', currentUser.id).single()
       .then(({ data }) => { if (data) setGamePreference(data.game_preference) })
-  }, [])
-  useEffect(() => {
-    supabase.from('player_settings').select('game_preference').eq('player_id', currentUser.id).single()
-      .then(({ data }) => { if (data) setGamePreference(data.game_preference) })
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only for this user session
   }, [])
 
-
-
-  useEffect(() => {
-    if (activeGroup === 'player_default' && myGroupIds.length > 0) {
-      setActiveGroup(myGroupIds[0])
-    }
-  }, [myGroupIds.join(',')])
-
-  const effectiveGroup = activeGroup === 'player_default' ? 'all' : activeGroup
+  const resolvedGroup = (activeGroup === 'player_default' && myGroupIds.length > 0)
+    ? myGroupIds[0]
+    : activeGroup
+  const effectiveGroup = resolvedGroup === 'player_default' ? 'all' : resolvedGroup
   // Court-scoped data — stats recomputed from court games only
   const { courtPlayers, courtGames, loading: courtLoading, refetch: courtRefetch } = useCourtData(
     effectiveGroup === 'all' ? null : effectiveGroup
@@ -785,27 +888,6 @@ export default function Dashboard({ onOpenProfile }) {
     setTab(id)
     // Scroll content to top on tab change
     if (scrollRef.current) scrollRef.current.scrollTop = 0
-  }
-
-  function handleContentScroll(e) {
-    // Hide chips on first scroll
-    if (e.target.scrollTop > 30 && !chipsShownOnce.current) {
-      chipsShownOnce.current = true
-      setChipsVisible(false)
-    }
-    // Infinite scroll to next tab — only on Players, Teams tabs
-    const scrollableToNext = ['players','teams']
-    if (!scrollableToNext.includes(tab)) return
-    const el = e.target
-    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80
-    if (nearBottom) {
-      const currentIdx = TAB_ORDER.indexOf(tab)
-      const nextTab = TAB_ORDER[currentIdx + 1]
-      if (nextTab) {
-        setTabLoading(true)
-        setTimeout(() => { setTabLoading(false); setTab(nextTab); el.scrollTop = 0 }, 400)
-      }
-    }
   }
 
   function handleGameLogged() {
@@ -950,7 +1032,7 @@ export default function Dashboard({ onOpenProfile }) {
         )}
         {tab === 'games' && (
           <div style={{ animation:'card-in 0.3s ease-out' }}>
-            <GamesTab recentGames={filteredGames} players={filteredPlayers} loading={loading} isAdmin={isAdmin} groups={groups} onDeleteGame={async(id)=>{ if(window.confirm('Delete this game? Stats will be updated for all players.')) { const r = await deleteGame(id); if(r.success){ setTimeout(()=>refetch(), 800) } else { alert('Delete failed: ' + r.message) } }}} onEditGame={(g)=>setEditGame(g)}/>
+            <GamesTab recentGames={filteredGames} players={filteredPlayers} loading={loading} isAdmin={isAdmin} onDeleteGame={async(id)=>{ if(window.confirm('Delete this game? Stats will be updated for all players.')) { const r = await deleteGame(id); if(r.success){ setTimeout(()=>refetch(), 800) } else { alert('Delete failed: ' + r.message) } }}} onEditGame={(g)=>setEditGame(g)}/>
           </div>
         )}
         {tab === 'report' && (
@@ -971,15 +1053,6 @@ export default function Dashboard({ onOpenProfile }) {
         <button onClick={()=>setShowLogGame(true)} style={{ display:'block', width:'92%', margin:'0 auto', background:'linear-gradient(135deg,#14532d,#166534)', border:'1.5px solid #4ade80', color:'#4ade80', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:3, padding:'13px', borderRadius:50, cursor:'pointer', animation:'fab-pulse 2.5s ease-in-out infinite', pointerEvents:'all' }}>
           + ADD GAME
         </button>
-      </div>
-
-      {/* Racquet Ninja floating button — bottom right */}
-      <div onClick={()=>setShowRN(true)} style={{ position:'fixed', bottom:96, right:16, zIndex:60, display:'flex', flexDirection:'column', alignItems:'center', gap:4, cursor:'pointer' }}>
-        <div style={{ width:52, height:52, borderRadius:'50%', background:'linear-gradient(135deg,#fbbf24,#d97706)', border:'2.5px solid rgba(251,191,36,0.8)', boxShadow:'0 0 20px rgba(251,191,36,0.5), 0 4px 16px rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26, animation:'rn-fab-glow 2.5s ease-in-out infinite' }}>
-          🥷
-        </div>
-        <div style={{ fontSize:8, color:'#fbbf24', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, textShadow:'0 0 8px rgba(251,191,36,0.6)', textAlign:'center', lineHeight:1.1 }}>RACQUET<br/>NINJA</div>
-        <style>{`@keyframes rn-fab-glow{0%,100%{box-shadow:0 0 20px rgba(251,191,36,0.5),0 4px 16px rgba(0,0,0,0.4)}50%{box-shadow:0 0 35px rgba(251,191,36,0.8),0 4px 20px rgba(0,0,0,0.5)}}`}</style>
       </div>
 
       {showSettings && (

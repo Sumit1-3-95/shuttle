@@ -95,6 +95,7 @@ export function calcRatingChange(playerRating, opponentRating, won, gamesPlayed)
  * @returns {{ teamA: Object[], teamB: Object[], deltaA: number, deltaB: number }}
  */
 export function calcMatchRatings(teamA, teamB, winner, isSingles) {
+  void isSingles // reserved — singles/doubles share rating math today
   const avgA = Math.round(teamA.reduce((s, p) => s + p.rating, 0) / teamA.length)
   const avgB = Math.round(teamB.reduce((s, p) => s + p.rating, 0) / teamB.length)
 

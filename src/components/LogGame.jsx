@@ -1,5 +1,5 @@
 // src/components/LogGame.jsx — v14
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useGameLogger } from '../hooks/useGameLogger'
 import CourtBackground from './CourtBackground'
@@ -44,7 +44,7 @@ function PAv({ player, size=60, float=false, dim=false }) {
   )
 }
 
-function SkillsSheet({ playerMap, teamA, teamB, winner, onSubmit, onSkip }) {
+function SkillsSheet({ playerMap, teamA, teamB, onSubmit, onSkip }) {
   const [sel, setSel] = useState({})
   function toggle(pid, key) {
     setSel(prev => {
@@ -156,13 +156,10 @@ function SkillsSheet({ playerMap, teamA, teamB, winner, onSubmit, onSkip }) {
   )
 }
 
-export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembers, groups, currentUserId, defaultSingles=false }) {
+export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembers, groups, currentUserId }) {
   const { currentUser } = useAuth()
   const { getPlayers, logGame } = useGameLogger()
-  const [isSingles, setIsSingles] = useState(defaultSingles)
-  const [showFatality, setShowFatality] = useState(false)
 
-  const [players, setPlayers]           = useState([])
   const [allPlayers, setAllPlayers]     = useState([])
   const [courtFilter, setCourtFilter]   = useState(null)
   const [teamA, setTeamA]               = useState([])
@@ -178,36 +175,49 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
   const [gameId, setGameId]             = useState(null)
   const [countA, setCountA]             = useState(0)
   const [countB, setCountB]             = useState(0)
+  const [confetti, setConfetti]         = useState([])
 
   useEffect(() => {
     getPlayers().then(r => { if (r.success) setAllPlayers(r.data) })
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- mount fetch
   }, [])
 
-  useEffect(() => {
-    if (!allPlayers.length) return
-    const filterGroup = courtFilter || activeGroup
+  const resolvedCourtFilter = courtFilter ?? (
+    (activeGroup && activeGroup !== 'all') ? activeGroup
+    : (groups && groupMembers && currentUserId
+        ? (groups.find(g => (groupMembers[g.id]||[]).includes(currentUserId))?.id ?? null)
+        : null)
+  )
+
+  const players = useMemo(() => {
+    if (!allPlayers.length) return []
+    const filterGroup = resolvedCourtFilter || activeGroup
     let filtered = allPlayers
-    if (filterGroup && filterGroup !== 'all' && groupMembers && groupMembers[filterGroup]) {
+    if (filterGroup && filterGroup !== 'all' && groupMembers?.[filterGroup]) {
       filtered = allPlayers.filter(p => groupMembers[filterGroup].includes(p.id))
     }
-    setPlayers([...filtered].sort((a,b) => (b.total_games||0) - (a.total_games||0)))
-  }, [allPlayers, courtFilter, activeGroup, groupMembers])
-
-  useEffect(() => {
-    if (courtFilter !== null) return
-    if (activeGroup && activeGroup !== 'all') { setCourtFilter(activeGroup); return }
-    if (groups && groupMembers && currentUserId) {
-      const myGroup = groups.find(g => (groupMembers[g.id]||[]).includes(currentUserId))
-      if (myGroup) setCourtFilter(myGroup.id)
-    }
-  }, [groups, groupMembers, currentUserId, activeGroup])
+    return [...filtered].sort((a,b) => (b.total_games||0) - (a.total_games||0))
+  }, [allPlayers, resolvedCourtFilter, activeGroup, groupMembers])
 
   useEffect(() => {
     if (step!==3||!winner) return
     const tA=parseInt(scoreA)||0, tB=parseInt(scoreB)||0; let f=0
     const t=setInterval(()=>{ f++; setCountA(Math.round((f/40)*tA)); setCountB(Math.round((f/40)*tB)); if(f>=40) clearInterval(t) },30)
     return ()=>clearInterval(t)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional snapshot at celebration start
   },[step,winner])
+
+  useEffect(() => {
+    if (step !== 3 || !winner) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- generate once when celebration starts
+    setConfetti(Array.from({length:24}, (_,i)=>({
+      top: 5+Math.random()*35,
+      left: Math.random()*100,
+      dur: 0.7+Math.random()*1.3,
+      delay: Math.random()*0.4,
+      icon: ['🏸','⭐','✨','💫','🎯','💥'][i%6],
+    })))
+  }, [step, winner])
 
   function togglePlayer(pid) {
     if (selectingFor==='A') {
@@ -227,11 +237,6 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
         }
       }
     }
-  }
-
-  function handleModeToggle() {
-    setIsSingles(v => !v)
-    setTeamA([]); setTeamB([]); setSelectingFor('A')
   }
 
   function handleScoreAChange(val) { if(val.length>2) return; setScoreA(val); if(val&&!scoreB) setScoreB('21') }
@@ -307,16 +312,16 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
       `}</style>
 
       {showSkills && (
-        <SkillsSheet playerMap={playerMap} teamA={teamA} teamB={teamB} winner={winner}
+        <SkillsSheet playerMap={playerMap} teamA={teamA} teamB={teamB}
           onSubmit={handleSkillsSubmit} onSkip={()=>handleSkillsSubmit({})}/>
       )}
 
       {/* CELEBRATE */}
       {step===3&&winner&&(
         <div style={{position:'absolute',inset:0,zIndex:80,background:'rgba(0,0,0,0.9)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:20}}>
-          {Array.from({length:24}).map((_,i)=>(
-            <div key={i} style={{position:'absolute',top:(5+Math.random()*35)+'%',left:(Math.random()*100)+'%',fontSize:20,animation:'confetti-drop '+(0.7+Math.random()*1.3)+'s ease-in '+(Math.random()*0.4)+'s forwards'}}>
-              {['🏸','⭐','✨','💫','🎯','💥'][i%6]}
+          {confetti.map((c,i)=>(
+            <div key={i} style={{position:'absolute',top:c.top+'%',left:c.left+'%',fontSize:20,animation:'confetti-drop '+c.dur+'s ease-in '+c.delay+'s forwards'}}>
+              {c.icon}
             </div>
           ))}
           <div style={{textAlign:'center',animation:'celebrate-in 0.6s cubic-bezier(0.34,1.56,0.64,1) forwards',width:'100%',maxWidth:360}}>
@@ -382,9 +387,9 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
                 {groups.filter(g => groupMembers && groupMembers[g.id] && groupMembers[g.id].includes(currentUserId)).map(g => (
                   <button key={g.id} onClick={()=>setCourtFilter(g.id)} style={{
                     padding:'5px 12px', borderRadius:20, cursor:'pointer', flexShrink:0,
-                    border: courtFilter===g.id ? '1px solid rgba(74,222,128,0.5)' : '1px solid rgba(255,255,255,0.1)',
-                    background: courtFilter===g.id ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.04)',
-                    color: courtFilter===g.id ? '#4ade80' : '#64748b',
+                    border: resolvedCourtFilter===g.id ? '1px solid rgba(74,222,128,0.5)' : '1px solid rgba(255,255,255,0.1)',
+                    background: resolvedCourtFilter===g.id ? 'rgba(74,222,128,0.15)' : 'rgba(255,255,255,0.04)',
+                    color: resolvedCourtFilter===g.id ? '#4ade80' : '#64748b',
                     fontFamily:"'Rajdhani',sans-serif", fontSize:12, fontWeight:700, whiteSpace:'nowrap', transition:'all 0.15s',
                   }}>🏸 {g.name}</button>
                 ))}

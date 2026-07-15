@@ -5,7 +5,6 @@ import bcrypt from 'bcryptjs'
 
 export default function SettingsPage({ currentUser, onClose }) {
   const [gamePreference, setGamePreference] = useState('doubles')
-  const [saving, setSaving]                 = useState(false)
   const [saved, setSaved]                   = useState(false)
   // PIN change
   const [currentPin, setCurrentPin]         = useState('')
@@ -18,6 +17,7 @@ export default function SettingsPage({ currentUser, onClose }) {
   useEffect(() => {
     supabase.from('player_settings').select('*').eq('player_id', currentUser.id).single()
       .then(({ data }) => { if (data) setGamePreference(data.game_preference) })
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only for this user session
   }, [])
 
   async function changePin() {
@@ -41,11 +41,10 @@ export default function SettingsPage({ currentUser, onClose }) {
 
   async function save(pref) {
     setGamePreference(pref)
-    setSaving(true)
     await supabase.from('player_settings').upsert({
       player_id: currentUser.id, game_preference: pref, updated_at: new Date().toISOString()
     })
-    setSaving(false); setSaved(true)
+    setSaved(true)
     setTimeout(() => setSaved(false), 1500)
   }
 

@@ -24,7 +24,7 @@ export function usePlayerProfile(playerId, groupId = null) {
     ])
 
     // Fetch games scoped to court
-    let courtGames = []
+    let courtGames
     if (groupId && groupId !== 'all') {
       // 1. Games tagged with this court
       const { data: tagged } = await supabase
@@ -70,7 +70,7 @@ export function usePlayerProfile(playerId, groupId = null) {
     // Recompute stats from scoped games
     let total_games=0, total_wins=0, total_losses=0
     let points_scored=0, points_conceded=0
-    let current_streak=0, best_streak=0, temp=0
+    let best_streak=0, temp=0
 
     courtGames.forEach(g => {
       const inA = (g.team_a_ids||[]).includes(playerId)
@@ -81,9 +81,7 @@ export function usePlayerProfile(playerId, groupId = null) {
       if (won) { total_wins++; temp++; best_streak = Math.max(best_streak, temp) }
       else      { total_losses++; temp = 0 }
     })
-    current_streak = temp
-
-    if (p) setPlayer({ ...p, total_games, total_wins, total_losses, points_scored, points_conceded, current_streak, best_streak })
+    if (p) setPlayer({ ...p, total_games, total_wins, total_losses, points_scored, points_conceded, current_streak: temp, best_streak })
     setGames(courtGames)
     if (ap) setAllPlayers(ap)
     if (sk) setSkills(sk)
@@ -93,7 +91,15 @@ export function usePlayerProfile(playerId, groupId = null) {
     isFirstLoad.current = false
   }, [playerId, groupId])
 
-  useEffect(() => { fetchAll(false) }, [fetchAll])
+  function showToast(msg, type='green') {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), 3500)
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch when player/court changes
+    void fetchAll(false)
+  }, [fetchAll])
 
   useEffect(() => {
     const channel = supabase
@@ -115,11 +121,6 @@ export function usePlayerProfile(playerId, groupId = null) {
     setHasNewGame(false)
     await fetchAll(true)
     showToast('✅ Profile updated!', 'green')
-  }
-
-  function showToast(msg, type='green') {
-    setToast({ msg, type })
-    setTimeout(() => setToast(null), 3500)
   }
 
   return { player, games, allPlayers, skills, loading, refreshing, toast, hasNewGame, refresh }

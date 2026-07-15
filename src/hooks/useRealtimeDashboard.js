@@ -32,7 +32,8 @@ export function useRealtimeDashboard() {
   }
 
   useEffect(() => {
-    fetchAll()
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch + realtime subscription
+    void fetchAll()
 
     const channel = supabase
       .channel('realtime-games')

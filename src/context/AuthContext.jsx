@@ -1,22 +1,24 @@
 // src/context/AuthContext.jsx — v4
 // Login by phone number OR username, + PIN
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import bcrypt from 'bcryptjs'
 
 const AuthContext = createContext(null)
 
-export function AuthProvider({ children }) {
-  const [currentUser, setCurrentUser] = useState(null)
-  const [loading, setLoading]         = useState(true)
-
-  useEffect(() => {
+function readStoredUser() {
+  try {
     const stored = localStorage.getItem('shuttle_user')
-    if (stored) {
-      try { setCurrentUser(JSON.parse(stored)) } catch {}
-    }
-    setLoading(false)
-  }, [])
+    return stored ? JSON.parse(stored) : null
+  } catch {
+    // ignore corrupt storage
+    return null
+  }
+}
+
+export function AuthProvider({ children }) {
+  const [currentUser, setCurrentUser] = useState(readStoredUser)
+  const loading = false
 
   async function login(identifier, pin) {
     const query = identifier.trim()
@@ -73,6 +75,7 @@ export function AuthProvider({ children }) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook colocated with provider
 export function useAuth() {
   return useContext(AuthContext)
 }

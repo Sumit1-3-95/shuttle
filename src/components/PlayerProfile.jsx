@@ -17,15 +17,6 @@ function getLevel(wins) {
   return            { name:'ROOKIE',     tier:1, aura:'#94a3b8', bg:'#111827', glow:'rgba(148,163,184,0.2)', emoji:'🎯' }
 }
 
-const SKILLS_META = {
-  bullet_smash:   { label:'Bullet Smash',   icon:'💥', type:'skill' },
-  killer_drop:    { label:'Killer Drop',    icon:'🎯', type:'skill' },
-  service_streak: { label:'Service Streak', icon:'🔥', type:'skill' },
-  unforced_error: { label:'Unforced Error', icon:'😬', type:'flaw' },
-  nervous_net:    { label:'Nervous Net',    icon:'😰', type:'flaw' },
-  forced_out:     { label:'Forced Out',     icon:'💨', type:'flaw' },
-}
-
 function Av({ id, size=48, aura='#4ade8055' }) {
   const [err, setErr] = useState(false)
   return (
@@ -130,7 +121,6 @@ export default function PlayerProfile({ playerId, groupId, onBack }) {
   const isOwnProfile = currentUser?.id === playerId
   const { player, games, allPlayers, skills, loading, refreshing, toast, hasNewGame, refresh } = usePlayerProfile(playerId, groupId)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
-  const [photoToast, setPhotoToast]         = useState(null)
 
   async function handlePhotoUpload(e) {
     const file = e.target.files[0]
@@ -144,19 +134,13 @@ export default function PlayerProfile({ playerId, groupId, onBack }) {
       if (upErr) throw upErr
       const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path)
       await supabase.from('players').update({ profile_pic: urlData.publicUrl }).eq('id', playerId)
-      setPhotoToast('✅ Photo updated!')
-      setTimeout(() => setPhotoToast(null), 3000)
       refresh()
     } catch (err) {
-      setPhotoToast('❌ Upload failed: ' + err.message)
-      setTimeout(() => setPhotoToast(null), 3000)
+      alert('Upload failed: ' + err.message)
     }
     setUploadingPhoto(false)
   }
   const [tab, setTab] = useState('overview')
-
-  // Show court scope label if viewing court-specific stats
-  const courtLabel = groupId && groupId !== 'all' ? '🏟️ Court Stats' : null
 
   if (loading || !player) return (
     <div style={{ minHeight:'100vh', background:'#060d14', display:'flex', alignItems:'center', justifyContent:'center', color:'#4ade80', fontFamily:"'Bebas Neue',sans-serif", fontSize:24, letterSpacing:3 }}>
@@ -222,11 +206,6 @@ export default function PlayerProfile({ playerId, groupId, onBack }) {
   const h2hData = Object.entries(h2hMap)
     .map(([pid,s])=>({ name:playerMap[pid]?.display_name||'?', pid, ...s, total:s.wins+s.losses }))
     .sort((a,b)=>b.total-a.total)
-
-  // Skills aggregation
-  const skillCounts = {}
-  // We'll count from games — placeholder until game_skills table has data
-  // For now show empty state gracefully
 
   const tabs = [
     { id:'overview', label:'Overview' },

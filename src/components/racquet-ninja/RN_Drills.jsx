@@ -95,15 +95,14 @@ function DrillDetail({ drill, onBack }) {
 }
 
 // ── Main Drills Page ───────────────────────────────────────────
-export default function RN_Drills({ onBack, currentUserId, isMember }) {
+export default function RN_Drills({ onBack }) {
   const [selected, setSelected] = useState(null)
   const [filter, setFilter]     = useState('All')
   const [drills, setDrills]     = useState(SEED_DRILLS)
-  const [loading, setLoading]   = useState(false)
+  const [loading, setLoading]   = useState(true)
 
   // Try loading from Supabase, fall back to seed
   useEffect(() => {
-    setLoading(true)
     supabase.from('rn_drills').select('*').eq('is_active', true).order('sort_order')
       .then(({ data }) => {
         if (data && data.length > 0) setDrills(data)

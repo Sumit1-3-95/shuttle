@@ -1,7 +1,7 @@
 // src/components/VideoTab.jsx — v4
 // Rectangular 16:9 feed, filter chips, session-based watched ranking,
 // one video at a time, larger touch area, no external redirect
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../supabaseClient'
 
 const ALL_TAGS = ['Skills', 'Smash', 'Match Highlights', 'Rally', 'Footwork', 'Defense', 'Pro Tips']
@@ -56,7 +56,7 @@ function VideoCard({ video, watched, isPlaying, onPlay, onPause }) {
         iframeRef.current.contentWindow?.postMessage(
           JSON.stringify({ event:'command', func:'pauseVideo' }), '*'
         )
-      } catch(e) {}
+      } catch { /* ignore cross-origin postMessage */ }
     }
   }, [isPlaying])
 
@@ -162,8 +162,6 @@ export default function VideoTab({ currentUserId }) {
   const [playingId, setPlayingId] = useState(null)
   const [loading, setLoading]     = useState(true)
 
-  useEffect(() => { loadAll() }, [])
-
   async function loadAll() {
     setLoading(true)
     const [{ data: vids }, { data: w }] = await Promise.all([
@@ -183,6 +181,12 @@ export default function VideoTab({ currentUserId }) {
     setVideos(sorted)
     setLoading(false)
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch
+    void loadAll()
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only
+  }, [])
 
   async function handlePlay(videoId) {
     setPlayingId(videoId)

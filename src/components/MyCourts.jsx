@@ -35,6 +35,7 @@ function CourtDetail({ court, currentUser, onBack, onUpdated }) {
   const [addMsg, setAddMsg]       = useState({ type:'', text:'' })
   const [copied, setCopied]       = useState(false)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- reload when court changes
   useEffect(() => { loadMembers() }, [court.id])
 
   async function loadMembers() {
@@ -90,7 +91,7 @@ function CourtDetail({ court, currentUser, onBack, onUpdated }) {
           await supabase.from('group_members').insert({ group_id: court.id, player_id: playerId })
           added++
         }
-      } catch(e) { continue }
+      } catch { continue }
     }
     setPlayers([{ name:'', phone:'' }])
     setAddMsg({ type:'success', text: `${added} player${added!==1?'s':''} added! Login: phone + PIN ${DEFAULT_PIN}` })
@@ -201,7 +202,8 @@ export default function MyCourts({ currentUser, onClose, initialView='my', onCre
   const [myCourts, setMyCourts]       = useState([])
   const [allCourts, setAllCourts]     = useState([])
   const [loading, setLoading]         = useState(true)
-  const [view, setView]               = useState(initialView)
+  const [viewOverride, setViewOverride] = useState(null)
+  const view = viewOverride ?? initialView
   const [selectedCourt, setSelectedCourt] = useState(null)
   // Join tab
   const [search, setSearch]           = useState('')
@@ -209,8 +211,8 @@ export default function MyCourts({ currentUser, onClose, initialView='my', onCre
   const [codeMsg, setCodeMsg]         = useState({ type:'', text:'' })
   const [joining, setJoining]         = useState(false)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only
   useEffect(() => { load() }, [])
-  useEffect(() => { setView(initialView) }, [initialView])
 
   async function load() {
     setLoading(true)
@@ -274,7 +276,7 @@ export default function MyCourts({ currentUser, onClose, initialView='my', onCre
       {/* Tabs */}
       <div style={{ display:'flex', borderBottom:'1px solid rgba(255,255,255,0.06)', flexShrink:0 }}>
         {[{id:'my',label:'My Courts'},{id:'join',label:'Join a Court'}].map(t => (
-          <button key={t.id} onClick={()=>setView(t.id)} style={{
+          <button key={t.id} onClick={()=>setViewOverride(t.id)} style={{
             flex:1, padding:'12px', background:'none', border:'none',
             borderBottom:`2px solid ${view===t.id?'#4ade80':'transparent'}`,
             color:view===t.id?'#4ade80':'#475569',
@@ -293,7 +295,7 @@ export default function MyCourts({ currentUser, onClose, initialView='my', onCre
               <div style={{ textAlign:'center', color:'#334155', padding:40 }}>
                 <div style={{ fontSize:32, marginBottom:12 }}>🏟️</div>
                 <div style={{ fontSize:14, marginBottom:16 }}>No courts yet</div>
-                <button onClick={()=>setView('join')} style={{ background:'rgba(74,222,128,0.1)', border:'1px solid rgba(74,222,128,0.3)', color:'#4ade80', borderRadius:20, padding:'8px 20px', cursor:'pointer', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>Find a Court →</button>
+                <button onClick={()=>setViewOverride('join')} style={{ background:'rgba(74,222,128,0.1)', border:'1px solid rgba(74,222,128,0.3)', color:'#4ade80', borderRadius:20, padding:'8px 20px', cursor:'pointer', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>Find a Court →</button>
               </div>
             )}
             {myCourts.map(c => (

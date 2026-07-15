@@ -4,16 +4,7 @@ import { supabase } from '../../supabaseClient'
 import { getRatingTier, isCalibrating } from '../../utils/ratingEngine'
 import { getAvatarUrl } from '../../utils/avatars'
 
-function getLevel(wins) {
-  if (wins>=50) return {name:'LEGEND',  aura:'#ffd700'}
-  if (wins>=30) return {name:'ELITE',   aura:'#c084fc'}
-  if (wins>=15) return {name:'PRO',     aura:'#38bdf8'}
-  if (wins>=5)  return {name:'RISING',  aura:'#4ade80'}
-  return              {name:'ROOKIE',  aura:'#94a3b8'}
-}
-
 function PlayerDetailPage({ player, onBack }) {
-  const level   = getLevel(player.total_wins||0)
   const tier    = getRatingTier(player.rating_doubles||1000)
   const calib   = isCalibrating(player.rating_doubles_games||0)
   const winPct  = player.total_games>0 ? Math.round(player.total_wins/player.total_games*100) : 0

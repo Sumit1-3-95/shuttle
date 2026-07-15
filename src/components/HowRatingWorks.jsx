@@ -216,7 +216,7 @@ export default function HowRatingWorks({ onClose }) {
             <div style={{ fontSize:13, color:'#475569', marginBottom:20, lineHeight:1.6 }}>
               Six tiers define your level. Your tier badge updates automatically as your rating changes.
             </div>
-            {TIERS.map((t,i) => (
+            {TIERS.map((t) => (
               <div key={t.name} style={{ display:'flex', alignItems:'center', gap:14, padding:'14px 16px', marginBottom:8, background:`rgba(0,0,0,0.3)`, border:`1.5px solid ${t.color}22`, borderLeft:`4px solid ${t.color}`, borderRadius:14 }}>
                 <div style={{ fontSize:28, flexShrink:0 }}>{t.emoji}</div>
                 <div style={{ flex:1 }}>

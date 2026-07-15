@@ -106,7 +106,7 @@ export function useGameLogger() {
       }
     }
     // game_skills may not exist — ignore error
-    try { await supabase.from('game_skills').delete().eq('game_id', gameId) } catch(e) {}
+    try { await supabase.from('game_skills').delete().eq('game_id', gameId) } catch { /* ignore */ }
     const { error } = await supabase.from('games').delete().eq('id', gameId)
     if (error) return { success: false, message: error.message }
     return { success: true }

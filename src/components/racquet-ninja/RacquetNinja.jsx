@@ -14,7 +14,6 @@ const PLAYERS_IMG  = 'https://images.unsplash.com/photo-1529900748604-07564a03e7
 const DRILLS_IMG   = 'https://images.unsplash.com/photo-1551698618-1dfe5d97d256?w=600&q=80' // badminton action
 const SCHEDULE_IMG = 'https://images.unsplash.com/photo-1607962837359-5e7e89f86776?w=600&q=80' // court top-down
 const TOURN_IMG    = 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&q=80' // trophy / competition
-const ABOUT_IMG    = 'https://images.unsplash.com/photo-1535131749006-b7f58c99034b?w=600&q=80' // coach / training
 
 function ImageCard({ img, title, subtitle, badge, badgeColor='#4ade80', accentColor='#4ade80', onClick }) {
   return (
@@ -41,15 +40,11 @@ function ImageCard({ img, title, subtitle, badge, badgeColor='#4ade80', accentCo
 
 export default function RacquetNinja({ onClose, currentUser, currentPlayer }) {
   const [page, setPage]         = useState(null)
-  const [isMember, setIsMember] = useState(false)
-  const [rnRole, setRnRole]     = useState(null)
   const [drillCount, setDrillCount] = useState(0)
+  const isMember = !!currentPlayer?.is_rn_member
+  const rnRole = currentPlayer?.rn_role || null
 
   useEffect(() => {
-    if (currentPlayer) {
-      setIsMember(!!currentPlayer.is_rn_member)
-      setRnRole(currentPlayer.rn_role || null)
-    }
     supabase.from('rn_drills').select('id', { count:'exact', head:true }).eq('is_active', true)
       .then(({ count }) => setDrillCount(count||0))
   }, [currentPlayer])

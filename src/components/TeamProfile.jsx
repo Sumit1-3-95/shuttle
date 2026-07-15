@@ -25,7 +25,7 @@ function Av({ id, size=48, aura='#4ade8055', profilePic=null }) {
 }
 
 // Simple SVG bar chart
-function MiniBarChart({ games, p1id, p2id }) {
+function MiniBarChart({ games, p1id }) {
   if (!games.length) return null
   const last10 = games.slice(-10)
   return (
@@ -92,14 +92,13 @@ export default function TeamProfile({ p1, p2, onBack }) {
   const pointDiff   = totalScored - totalConceded
 
   // Streak
-  let currentStreak = 0, bestStreak = 0, temp = 0
+  let bestStreak = 0, temp = 0
   games.forEach(g => {
     const inA = g.team_a_ids.includes(p1.id)
     const won = g.winner_team === (inA?'A':'B')
     if (won) { temp++; bestStreak = Math.max(bestStreak, temp) }
     else temp = 0
   })
-  currentStreak = temp
 
   // Last 5 form
   const form = games.slice(-5).map(g => {
@@ -217,7 +216,7 @@ export default function TeamProfile({ p1, p2, onBack }) {
               {games.length > 0 && (
                 <>
                   <div style={{ fontSize:11, color:'#334155', fontFamily:"'Rajdhani',sans-serif", marginBottom:6 }}>Last {Math.min(games.length,10)} games</div>
-                  <MiniBarChart games={games} p1id={p1.id} p2id={p2.id}/>
+                  <MiniBarChart games={games} p1id={p1.id}/>
                 </>
               )}
             </div>

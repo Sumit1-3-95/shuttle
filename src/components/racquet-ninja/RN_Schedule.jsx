@@ -14,8 +14,6 @@ export default function RN_Schedule({ onBack, currentUserId, isMember }) {
   const [joining, setJoining]   = useState(null)
   const [filter, setFilter]     = useState('all')
 
-  useEffect(() => { loadAll() }, [])
-
   async function loadAll() {
     const [{ data: s }, { data: r }] = await Promise.all([
       supabase.from('rn_sessions').select('*, rn_session_registrations(player_id)').eq('is_active', true).order('scheduled_at'),
@@ -25,6 +23,12 @@ export default function RN_Schedule({ onBack, currentUserId, isMember }) {
     setMyRegs(new Set((r||[]).map(x=>x.session_id)))
     setLoading(false)
   }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch
+    void loadAll()
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only
+  }, [])
 
   async function joinSession(sessionId) {
     if (!isMember) return
@@ -77,7 +81,7 @@ export default function RN_Schedule({ onBack, currentUserId, isMember }) {
           </div>
         )}
 
-        {show.map((s,i)=>{
+        {show.map((s)=>{
           const ts   = TYPE_STYLE[s.type]||TYPE_STYLE.open_challenge
           const regs = s.rn_session_registrations?.length||0
           const full = regs >= (s.max_players||8)

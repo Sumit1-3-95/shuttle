@@ -190,10 +190,6 @@ function PersonalCard({ player, periodGames, ratingHistory, drillSessions, getPe
             </div>
           ))}
         </div>
-        {/* Remove old inline gauge+stats section */}
-        {false && <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:12 }}>
-          <WinGauge pct={myPct} color={myPct>=60?'#4ade80':myPct>=40?'#fbbf24':'#f87171'} size={130}/>
-        </div>}
         {/* Rating delta */}
         {myGames.length ? (
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', background:'rgba(255,255,255,0.04)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, padding:'7px 12px', marginBottom:12 }}>
@@ -275,7 +271,7 @@ function PersonalCard({ player, periodGames, ratingHistory, drillSessions, getPe
 }
 
 // ── Court Card ────────────────────────────────────────────────
-function CourtCard({ courtName, players, periodGames, allGames, period, playerMap, getPeriodStart, drillSessions }) {
+function CourtCard({ courtName, players, periodGames, period, playerMap, getPeriodStart, drillSessions }) {
   const periodLabel = period==='today'?'TODAY':period==='week'?'THIS WEEK':'THIS MONTH'
 
   const pStats = players.map(p => {
@@ -461,6 +457,7 @@ export default function ReportCard({ players, currentUserId, groups, activeGroup
       setDrillSessions(ds||[])
       setLoading(false)
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- refetch when players list identity changes
   }, [players])
 
   function getPeriodStart() {
@@ -480,7 +477,7 @@ export default function ReportCard({ players, currentUserId, groups, activeGroup
       if (navigator.share) {
         await navigator.share({ title:'My Shuttle Badminton Stats 🏸', text:'Check out my stats on Shuttle!', url:'https://shuttle-alpha-umber.vercel.app' })
       }
-    } catch(e) {}
+    } catch { /* ignore share cancel */ }
     setSharing(false)
   }
 
