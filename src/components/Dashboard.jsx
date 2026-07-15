@@ -1036,19 +1036,11 @@ export default function Dashboard({ onOpenProfile }) {
 
       {/* Racquet Ninja Floating Button */}
       {!showNinja && (
-        <div onClick={()=>setShowNinja(true)} style={{ position:'fixed', bottom:88, right:16, zIndex:60, display:'flex', flexDirection:'column', alignItems:'center', gap:4, cursor:'pointer' }}>
-          <div style={{
-            width:52, height:52, borderRadius:'50%', overflow:'hidden',
-            border:'2.5px solid #4ade80',
-            boxShadow:'0 0 0 4px rgba(74,222,128,0.15), 0 0 20px rgba(74,222,128,0.3)',
-            background:'#0a1a0a',
-            animation:'ninja-float 3s ease-in-out infinite',
-          }}>
-            <img src="/racquet-ninja.jpg" alt="Racquet Ninja"
-              style={{ width:'100%', height:'100%', objectFit:'cover' }}
-              onError={e=>{ e.target.style.background='#1a2a1a'; e.target.style.display='none' }}/>
+        <div onClick={()=>setShowNinja(true)} style={{ position:'fixed', bottom:88, right:16, zIndex:60, display:'flex', flexDirection:'column', alignItems:'center', gap:5, cursor:'pointer', animation:'ninja-float 3s ease-in-out infinite' }}>
+          <div style={{ width:52, height:52, borderRadius:'50%', overflow:'hidden', border:'2.5px solid #4ade80', boxShadow:'0 0 16px rgba(74,222,128,0.35)', background:'#0a1a0a' }}>
+            <img src="/racquet-ninja.jpg" alt="Racquet Ninja" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none' }}/>
           </div>
-          <div style={{ fontSize:8, color:'#4ade80', letterSpacing:1, fontWeight:700, fontFamily:"'Rajdhani',sans-serif", textShadow:'0 0 8px rgba(74,222,128,0.5)', whiteSpace:'nowrap' }}>RACQUET NINJA</div>
+          <div style={{ fontSize:8, color:'#4ade80', letterSpacing:1.5, fontWeight:700, fontFamily:"'Rajdhani',sans-serif", whiteSpace:'nowrap', background:'rgba(6,13,20,0.85)', padding:'2px 7px', borderRadius:10, border:'1px solid rgba(74,222,128,0.25)' }}>RACQUET NINJA</div>
         </div>
       )}
 
