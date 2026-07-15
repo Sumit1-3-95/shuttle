@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "prompt",
+        "prompt": "Provide a quick reference for testing Shuttle. Include the available commands."
+      }
+    ]
+  }
+}
