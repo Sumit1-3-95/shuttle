@@ -84,7 +84,7 @@ export function useGameLogger() {
   }
 
   async function deleteGame(gameId) {
-    // Reverse rating changes before deleting
+    // Reverse rating changes by restoring rating_before from history
     const { data: game } = await supabase.from('games').select('*').eq('id', gameId).single()
     if (game) {
       const { data: history } = await supabase.from('rating_history').select('*').eq('game_id', gameId)
@@ -92,18 +92,21 @@ export function useGameLogger() {
         const isSingles = game.is_singles
         const ratingKey = isSingles ? 'rating_singles' : 'rating_doubles'
         const gamesKey  = isSingles ? 'rating_singles_games' : 'rating_doubles_games'
+        // Fetch current game counts to decrement
+        const pids = history.map(h => h.player_id)
+        const { data: playerRows } = await supabase.from('players').select('id,' + ratingKey + ',' + gamesKey).in('id', pids)
+        const pm = Object.fromEntries((playerRows||[]).map(p => [p.id, p]))
         await Promise.all(history.map(h =>
-          supabase.from('players').rpc('adjust_rating', {
-            p_id: h.player_id, col: ratingKey, delta: -h.delta,
-            gcol: gamesKey
-          }).catch(() => // fallback: just revert manually
-            supabase.from('players').update({ [ratingKey]: h.rating_before }).eq('id', h.player_id)
-          )
+          supabase.from('players').update({
+            [ratingKey]: h.rating_before,
+            [gamesKey]: Math.max(0, (pm[h.player_id]?.[gamesKey] || 1) - 1),
+          }).eq('id', h.player_id)
         ))
         await supabase.from('rating_history').delete().eq('game_id', gameId)
       }
     }
-    await supabase.from('game_skills').delete().eq('game_id', gameId)
+    // game_skills may not exist — ignore error
+    try { await supabase.from('game_skills').delete().eq('game_id', gameId) } catch(e) {}
     const { error } = await supabase.from('games').delete().eq('id', gameId)
     if (error) return { success: false, message: error.message }
     return { success: true }
