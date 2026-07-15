@@ -10,6 +10,8 @@ cp .env.example .env   # add your Supabase credentials
 npm run dev
 ```
 
+After clone, run `npm install` once — that installs the Husky pre-commit hook. Commits then auto-run ESLint on staged `.js`/`.jsx` files and are blocked if any errors are found.
+
 ## Tech Stack
 
 - React 19 + Vite
