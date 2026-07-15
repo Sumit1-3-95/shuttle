@@ -50,3 +50,8 @@ npm run build    # Production build
 npm run lint     # ESLint
 npm run preview  # Preview production build
 ```
+
+## Local preview & bug reports
+
+- **Cursor agent preview:** enable **Settings → Tools & MCP → Browser Automation → Browser Tab**, keep `npm run dev` running, then the agent can open `http://localhost:5173` inside Cursor after UI changes.
+- **Collaborator (browser):** if something breaks while using `npm run dev`, use **Copy for AI** on the red banner (or full-screen error page), paste into an AI chat, and ask for a fix. Vite’s red compile overlay can also be selected and copied the same way.

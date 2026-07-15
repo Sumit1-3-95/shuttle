@@ -1,0 +1,21 @@
+---
+description: How the agent previews and verifies Shuttle in Cursor after UI/runtime changes
+alwaysApply: true
+---
+
+# Dev Preview
+
+## In-Cursor preview (agent)
+
+After UI or user-facing runtime changes, verify in Cursor when Browser Automation is available:
+
+1. Ensure `npm run dev` is running (default Vite URL: `http://localhost:5173`)
+2. Use Cursor Browser Automation (`cursor-ide-browser`) — not an external Chrome profile
+3. Navigate to the affected screen, snapshot/screenshot, and confirm the change
+4. If browser tools are missing: tell the user to enable **Settings → Tools & MCP → Browser Automation → Browser Tab**, then restart Cursor
+
+Do not assume the user's external browser session is enough for agent verification.
+
+## Collaborator errors
+
+Non-developers paste bugs from the in-app **Copy for AI** control (`DevBugReporter` / `ErrorBoundary`). When they paste a Shuttle bug report, treat it as a runtime failure report and fix from that context first.
