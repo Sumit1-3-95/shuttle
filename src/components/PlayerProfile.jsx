@@ -125,7 +125,7 @@ function Toast({ toast }) {
   )
 }
 
-export default function PlayerProfile({ playerId, groupId, onBack }) {
+export default function PlayerProfile({ playerId, groupId, onBack, onGameChipClick }) {
   const { currentUser } = useAuth()
   const isOwnProfile = currentUser?.id === playerId
   const { player, games, allPlayers, skills, loading, refreshing, toast, hasNewGame, refresh } = usePlayerProfile(playerId, groupId)
@@ -310,7 +310,7 @@ export default function PlayerProfile({ playerId, groupId, onBack }) {
             <span style={{ fontSize:12, color:'#64748b', fontFamily:"'Rajdhani',sans-serif" }}>{getCharacterName(playerId)}</span>
           </div>
 
-          {/* Recent form dots */}
+          {/* Recent form dots — simple W/L */}
           {recentForm.length>0 && (
             <div style={{ display:'flex', gap:4, justifyContent:'center', marginBottom:0, flexWrap:'wrap' }}>
               {recentForm.map((r,i) => (
@@ -401,18 +401,44 @@ export default function PlayerProfile({ playerId, groupId, onBack }) {
               </div>
             )}
 
-            {/* Recent games */}
-            <div style={{ fontSize:12, color:'#475569', letterSpacing:2, textTransform:'uppercase', fontWeight:700, marginBottom:12, fontFamily:"'Rajdhani',sans-serif" }}>Recent Games</div>
+            {/* Recent games — rich cards with tap to navigate */}
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
+              <div style={{ fontSize:12, color:'#475569', letterSpacing:2, textTransform:'uppercase', fontWeight:700, fontFamily:"'Rajdhani',sans-serif" }}>Recent Games</div>
+              <div style={{ fontSize:10, color:'#334155' }}>Tap to view ›</div>
+            </div>
             <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
-              {games.slice(-8).reverse().map(g => {
-                const inA=g.team_a_ids?.includes(playerId)
-                const won=g.winner_team===(inA?'A':'B')
-                const own=inA?g.score_a:g.score_b, opp=inA?g.score_b:g.score_a
+              {games.slice(-10).reverse().map(g => {
+                const inA      = g.team_a_ids?.includes(playerId)
+                const won      = g.winner_team===(inA?'A':'B')
+                const myScore  = inA ? g.score_a : g.score_b
+                const oppScore = inA ? g.score_b : g.score_a
+                const myIds    = (inA ? g.team_a_ids : g.team_b_ids)||[]
+                const oppIds   = (inA ? g.team_b_ids : g.team_a_ids)||[]
+                const myNames  = myIds.filter(id=>id!==playerId).map(id=>playerMap[id]?.display_name?.split(' ')[0]||'?')
+                const oppNames = oppIds.map(id=>playerMap[id]?.display_name?.split(' ')[0]||'?')
+                const isSingles = g.team_a_ids?.length===1
+                const rDelta   = inA ? g.rating_delta_a : g.rating_delta_b
                 return (
-                  <div key={g.id} style={{ display:'flex', alignItems:'center', gap:10, background:'rgba(255,255,255,0.02)', border:`1px solid ${won?'rgba(74,222,128,0.15)':'rgba(248,113,113,0.1)'}`, borderRadius:12, padding:'10px 12px', width:'100%', boxSizing:'border-box' }}>
-                    <div style={{ width:28, height:28, borderRadius:'50%', background:won?'rgba(74,222,128,0.15)':'rgba(248,113,113,0.15)', border:`1px solid ${won?'#4ade80':'#f87171'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, fontFamily:"'Bebas Neue',sans-serif", color:won?'#4ade80':'#f87171', flexShrink:0 }}>{won?'W':'L'}</div>
-                    <div style={{ flex:1, fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:'#f1f5f9', letterSpacing:2 }}>{own} — {opp}</div>
-                    <div style={{ fontSize:11, color:'#334155', fontFamily:"'Rajdhani',sans-serif" }}>{new Date(g.played_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div>
+                  <div key={g.id} onClick={()=>onGameChipClick&&onGameChipClick(g.id)}
+                    style={{ display:'flex', alignItems:'center', gap:10, background:won?'rgba(74,222,128,0.04)':'rgba(248,113,113,0.03)', border:`1px solid ${won?'rgba(74,222,128,0.15)':'rgba(248,113,113,0.1)'}`, borderRadius:14, padding:'11px 12px', cursor:'pointer' }}>
+                    {/* W/L badge */}
+                    <div style={{ width:30, height:30, borderRadius:'50%', background:won?'rgba(74,222,128,0.15)':'rgba(248,113,113,0.15)', border:`1px solid ${won?'#4ade80':'#f87171'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, fontFamily:"'Bebas Neue',sans-serif", color:won?'#4ade80':'#f87171', flexShrink:0 }}>{won?'W':'L'}</div>
+                    {/* Teams info */}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
+                        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'#f1f5f9', letterSpacing:2 }}>{myScore} — {oppScore}</span>
+                        <span style={{ fontSize:9, padding:'1px 6px', borderRadius:10, background:'rgba(255,255,255,0.05)', color:'#475569', fontWeight:700 }}>{isSingles?'1v1':'2v2'}</span>
+                      </div>
+                      <div style={{ fontSize:10, color:'#475569', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        {myNames.length ? `w/ ${myNames.join(' & ')} ` : ''}vs {oppNames.join(' & ')}
+                      </div>
+                    </div>
+                    {/* Right: date + rating delta */}
+                    <div style={{ textAlign:'right', flexShrink:0 }}>
+                      <div style={{ fontSize:10, color:'#334155', marginBottom:3 }}>{new Date(g.played_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div>
+                      {rDelta!=null && <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:won?'#4ade80':'#f87171' }}>{won?'+':''}{rDelta}</div>}
+                    </div>
+                    <div style={{ fontSize:14, color:'#1e293b', flexShrink:0 }}>›</div>
                   </div>
                 )
               })}

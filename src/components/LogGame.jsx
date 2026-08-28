@@ -160,6 +160,7 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
   const { currentUser } = useAuth()
   const { getPlayers, logGame } = useGameLogger()
   const [isSingles, setIsSingles] = useState(defaultSingles)
+  const [scores, setScores] = useState([{ scoreA:"", scoreB:"" }])
   const [showFatality, setShowFatality] = useState(false)
 
   const [players, setPlayers]           = useState([])
@@ -168,8 +169,6 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
   const [teamA, setTeamA]               = useState([])
   const [teamB, setTeamB]               = useState([])
   const [selectingFor, setSelectingFor] = useState('A')
-  const [scoreA, setScoreA]             = useState('')
-  const [scoreB, setScoreB]             = useState('')
   const [step, setStep]                 = useState(1)
   const [showSkills, setShowSkills]     = useState(false)
   const [loading, setLoading]           = useState(false)
@@ -204,7 +203,7 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
 
   useEffect(() => {
     if (step!==3||!winner) return
-    const tA=parseInt(scoreA)||0, tB=parseInt(scoreB)||0; let f=0
+    const tA=parseInt(scores[0]?.scoreA)||0, tB=parseInt(scores[0]?.scoreB)||0; let f=0
     const t=setInterval(()=>{ f++; setCountA(Math.round((f/40)*tA)); setCountB(Math.round((f/40)*tB)); if(f>=40) clearInterval(t) },30)
     return ()=>clearInterval(t)
   },[step,winner])
@@ -229,29 +228,44 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
     }
   }
 
+  function addScoreRow() {
+    setScores(prev => [...prev, { scoreA:'', scoreB:'' }])
+  }
+
+  function removeScoreRow(i) {
+    setScores(prev => prev.filter((_,idx)=>idx!==i))
+  }
+
+  function updateScore(i, field, val) {
+    if (!/^\d{0,2}$/.test(val)) return
+    setScores(prev => prev.map((s,idx)=>idx===i?{...s,[field]:val}:s))
+  }
+
   function handleModeToggle() {
     setIsSingles(v => !v)
     setTeamA([]); setTeamB([]); setSelectingFor('A')
   }
 
-  function handleScoreAChange(val) { if(val.length>2) return; setScoreA(val); if(val&&!scoreB) setScoreB('21') }
-  function handleScoreBChange(val) { if(val.length>2) return; setScoreB(val); if(val&&!scoreA) setScoreA('21') }
+  function handleScoreAChange(val) { updateScore(0,'scoreA',val) }
+  function handleScoreBChange(val) { updateScore(0,'scoreB',val) }
 
   const playerMap = Object.fromEntries(players.map(p=>[p.id,p]))
   const isDoublesReady = teamA.length===2 && teamB.length===2
   const isSinglesReady = teamA.length===1 && teamB.length===1
-  const canProceed = isDoublesReady || isSinglesReady
+  const teamsReady = isDoublesReady || isSinglesReady
+  const allScoresFilled = scores.every(s=>s.scoreA!==''&&s.scoreB!==''&&parseInt(s.scoreA)!==parseInt(s.scoreB))
+  const canProceed = teamsReady
   function teamLabel(team) { return team.map(pid=>playerMap[pid]?.display_name||'?').join(' · ') }
 
   function winnerLabel() {
-    const sA=parseInt(scoreA), sB=parseInt(scoreB)
+    const sA=parseInt(scores[0]?.scoreA)||0, sB=parseInt(scores[0]?.scoreB)||0
     if (isNaN(sA)||isNaN(sB)||sA===sB) return null
     const names = (sA>sB?teamA:teamB).map(pid=>playerMap[pid]?.display_name||'?').join(' + ')
     return { team:sA>sB?'A':'B', names }
   }
 
   async function handleSubmit() {
-    const sA=parseInt(scoreA), sB=parseInt(scoreB)
+    const sA=parseInt(scores[0]?.scoreA)||0, sB=parseInt(scores[0]?.scoreB)||0
     if (isNaN(sA)||isNaN(sB)||sA<0||sB<0) { setError('Enter valid scores'); return }
     if (sA===sB) { setError('Scores cannot be equal'); return }
     setLoading(true); setError('')
@@ -456,40 +470,47 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
           </div>
           <div style={{background:'rgba(6,13,20,0.98)',borderTop:'1px solid rgba(74,222,128,0.15)',borderRadius:'22px 22px 0 0',padding:'18px 16px 28px',animation:'panel-up 0.3s ease-out'}}>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:'#64748b',letterSpacing:3,textAlign:'center',marginBottom:14}}>FINAL SCORE</div>
-            {(()=>{
-              const sA=parseInt(scoreA)||0, sB=parseInt(scoreB)||0
-              const bothFilled = scoreA!=='' && scoreB!==''
-              const aWins = bothFilled && sA>sB
-              const bWins = bothFilled && sB>sA
-              const aColor = bothFilled ? (aWins?'#4ade80':'#f87171') : '#4ade80'
-              const bColor = bothFilled ? (bWins?'#4ade80':'#f87171') : '#60a5fa'
+            {/* Team labels */}
+            <div style={{display:'flex',gap:12,marginBottom:10}}>
+              <div style={{flex:1,textAlign:'center'}}>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:'#4ade80',letterSpacing:2,marginBottom:2}}>TEAM A</div>
+                <div style={{fontSize:11,color:'#4ade8088',fontFamily:"'Rajdhani',sans-serif",fontWeight:700}}>{teamLabel(teamA)}</div>
+              </div>
+              <div style={{width:32}}/>
+              <div style={{flex:1,textAlign:'center'}}>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:'#60a5fa',letterSpacing:2,marginBottom:2}}>TEAM B</div>
+                <div style={{fontSize:11,color:'#60a5fa88',fontFamily:"'Rajdhani',sans-serif",fontWeight:700}}>{teamLabel(teamB)}</div>
+              </div>
+            </div>
+
+            {/* Score rows */}
+            {scores.map((s,i)=>{
+              const sA=parseInt(s.scoreA)||0, sB=parseInt(s.scoreB)||0
+              const both=s.scoreA!==''&&s.scoreB!==''
+              const aW=both&&sA>sB, bW=both&&sB>sA
               return (
-                <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:12,marginBottom:10}}>
-                  <div style={{textAlign:'center',flex:1}}>
-                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:aColor,letterSpacing:2,marginBottom:2}}>TEAM A</div>
-                    <div style={{fontSize:11,color:aColor+'bb',fontFamily:"'Rajdhani',sans-serif",fontWeight:700,marginBottom:6,minHeight:14}}>{teamLabel(teamA)}</div>
-                    <input className="sb" type="number" inputMode="numeric" pattern="[0-9]*" min="0" max="99"
-                      value={scoreA} placeholder="–"
-                      onChange={e=>handleScoreAChange(e.target.value)}
-                      onFocus={e=>{ e.target.select(); e.target.style.borderColor=aColor }}
-                      onBlur={e=>e.target.style.borderColor=scoreA?aColor+'66':'rgba(255,255,255,0.1)'}
-                      style={{borderColor:scoreA?aColor+'66':'rgba(255,255,255,0.1)',color:scoreA?'#f1f5f9':'#1e3a2f'}}
-                      autoFocus/>
-                  </div>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:32,color:'#1e3a2f',marginTop:24}}>—</div>
-                  <div style={{textAlign:'center',flex:1}}>
-                    <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:bColor,letterSpacing:2,marginBottom:2}}>TEAM B</div>
-                    <div style={{fontSize:11,color:bColor+'bb',fontFamily:"'Rajdhani',sans-serif",fontWeight:700,marginBottom:6,minHeight:14}}>{teamLabel(teamB)}</div>
-                    <input className="sb" type="number" inputMode="numeric" pattern="[0-9]*" min="0" max="99"
-                      value={scoreB} placeholder="–"
-                      onChange={e=>handleScoreBChange(e.target.value)}
-                      onFocus={e=>{ e.target.select(); e.target.style.borderColor=bColor }}
-                      onBlur={e=>e.target.style.borderColor=scoreB?bColor+'66':'rgba(255,255,255,0.1)'}
-                      style={{borderColor:scoreB?bColor+'66':'rgba(255,255,255,0.1)',color:scoreB?'#f1f5f9':'#1e3a2f'}}/>
-                  </div>
+                <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
+                  <div style={{fontSize:10,color:'#334155',fontWeight:700,fontFamily:"'Bebas Neue',sans-serif",minWidth:14}}>G{i+1}</div>
+                  <input className="sb" type="number" inputMode="numeric" min="0" max="99"
+                    value={s.scoreA} placeholder="–" autoFocus={i===0}
+                    onChange={e=>updateScore(i,'scoreA',e.target.value)}
+                    style={{flex:1,borderColor:aW?'rgba(74,222,128,0.5)':bW?'rgba(248,113,113,0.4)':'rgba(255,255,255,0.1)',color:s.scoreA?'#f1f5f9':'#1e3a2f'}}/>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'#1e3a2f'}}>—</div>
+                  <input className="sb" type="number" inputMode="numeric" min="0" max="99"
+                    value={s.scoreB} placeholder="–"
+                    onChange={e=>updateScore(i,'scoreB',e.target.value)}
+                    style={{flex:1,borderColor:bW?'rgba(74,222,128,0.5)':aW?'rgba(248,113,113,0.4)':'rgba(255,255,255,0.1)',color:s.scoreB?'#f1f5f9':'#1e3a2f'}}/>
+                  {scores.length>1&&<button onClick={()=>removeScoreRow(i)} style={{background:'none',border:'none',color:'#334155',cursor:'pointer',fontSize:16,padding:'0 4px',flexShrink:0}}>✕</button>}
                 </div>
               )
-            })()}
+            })}
+
+            {/* Add game button */}
+            {scores.length < 5 && (
+              <button onClick={addScoreRow} style={{width:'100%',background:'rgba(255,255,255,0.03)',border:'1px dashed rgba(255,255,255,0.12)',color:'#475569',borderRadius:10,padding:'8px',cursor:'pointer',fontFamily:"'Rajdhani',sans-serif",fontSize:12,fontWeight:700,marginBottom:4}}>
+                + Add another game
+              </button>
+            )}
             {wLabel&&(
               <div style={{textAlign:'center',marginBottom:12,padding:'8px 12px',background:'rgba(74,222,128,0.08)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:12}}>
                 <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'#4ade80',letterSpacing:2,lineHeight:1}}>🏆 TEAM {wLabel.team} WINS</div>
@@ -499,7 +520,7 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
             {error&&<div style={{background:'rgba(239,68,68,0.1)',border:'1px solid rgba(239,68,68,0.3)',borderRadius:10,padding:10,marginBottom:10,fontSize:13,color:'#fca5a5',textAlign:'center'}}>❌ {error}</div>}
             <div style={{display:'flex',gap:10}}>
               <button onClick={()=>setStep(1)} style={{flex:1,background:'transparent',border:'1px solid #1e293b',color:'#475569',borderRadius:50,padding:13,cursor:'pointer',fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:2}}>← BACK</button>
-              <button className="cb" style={{flex:2}} disabled={!scoreA||!scoreB||loading} onClick={handleSubmit}>
+              <button className="cb" style={{flex:2}} disabled={!allScoresFilled||loading} onClick={handleSubmit}>
                 {loading?'SAVING...':'DECLARE WINNER'}
               </button>
             </div>

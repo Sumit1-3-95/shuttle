@@ -16,6 +16,7 @@ import { getRatingTier, isCalibrating } from '../utils/ratingEngine'
 import HowRatingWorks from './HowRatingWorks'
 import ReportCard from './ReportCard'
 import RacquetNinja from './racquet-ninja/RacquetNinja'
+import TournamentsPage from './tournaments/TournamentsPage'
 
 function getLevel(wins) {
   if (wins >= 50) return { name:'LEGEND',    tier:5, aura:'#ffd700', bg:'#2a1f00', glow:'rgba(255,215,0,0.4)',   emoji:'👑' }
@@ -65,7 +66,7 @@ function TabLoader() {
 }
 
 // ── Hamburger menu ─────────────────────────────────────────────
-function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup, onOpenCourtManager, onOpenMyCourts, onCreateCourt, onJoinCourt, onOpenSettings, onOpenRatingInfo }) {
+function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup, onOpenCourtManager, onOpenMyCourts, onCreateCourt, onJoinCourt, onOpenSettings, onOpenRatingInfo, onOpenTournaments }) {
   const level = getLevel(currentPlayer?.total_wins || 0)
   const [showCreate, setShowCreate] = useState(false)
   const [newGroupName, setNewGroupName] = useState('')
@@ -196,9 +197,7 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
           <button onClick={() => { setShowRatingInfo(true); setShowMenu(false) }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', marginBottom:8, background:'rgba(74,222,128,0.06)', border:'1px solid rgba(74,222,128,0.15)', borderRadius:10, cursor:'pointer', color:'#4ade80', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
             <span>📊</span> How Rating Works
           </button>
-          <button onClick={() => { setShowSettings(true); setShowMenu(false) }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, cursor:'pointer', color:'#64748b', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
-            <span>⚙️</span> Settings
-          </button>
+
         </div>
         {/* Logout */}
         <div style={{ padding:'16px 16px 40px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
@@ -688,7 +687,7 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
 
 
 
-export default function Dashboard({ onOpenProfile }) {
+export default function Dashboard({ onOpenProfile, gameNav, onGameNavHandled }) {
   const { currentUser, logout } = useAuth()
   const { players: allPlayers, recentGames: allGames, loading: globalLoading, refetch: globalRefetch } = useRealtimeDashboard()
   const [tab, setTab]               = useState('players')
@@ -711,6 +710,8 @@ export default function Dashboard({ onOpenProfile }) {
   const [showRatingInfo, setShowRatingInfo]     = useState(false)
   const [showReportCard, setShowReportCard]     = useState(false)
   const [showNinja, setShowNinja]               = useState(false)
+  const [showTournaments, setShowTournaments]   = useState(false)
+  const [highlightedGame, setHighlightedGame]   = useState(null)
   const [gamePreference, setGamePreference]     = useState('doubles')
   const [chipsVisible, setChipsVisible]         = useState(true)
   const chipsShownOnce                          = useRef(false)
@@ -739,6 +740,16 @@ export default function Dashboard({ onOpenProfile }) {
   }
 
   useEffect(() => { loadGroups() }, [])
+
+  // Handle game chip navigation from PlayerProfile
+  useEffect(() => {
+    if (gameNav?.tab === 'games') {
+      setTab('games')
+      setHighlightedGame(gameNav.gameId)
+      onGameNavHandled && onGameNavHandled()
+      setTimeout(() => setHighlightedGame(null), 3000)
+    }
+  }, [gameNav])
   useEffect(() => {
     supabase.from('player_settings').select('game_preference').eq('player_id', currentUser.id).single()
       .then(({ data }) => { if (data) setGamePreference(data.game_preference) })
@@ -774,7 +785,12 @@ export default function Dashboard({ onOpenProfile }) {
     else courtRefetch()
   }
 
-  const filteredPlayers = [...players].sort((a,b)=>(b.rating_doubles||0)-(a.rating_doubles||0))
+  const filteredPlayers = [...players].sort((a,b)=>{
+          const aCalib = (a.rating_doubles_games||0) < 15
+          const bCalib = (b.rating_doubles_games||0) < 15
+          if (aCalib !== bCalib) return aCalib ? 1 : -1 // calibrating goes to bottom
+          return (b.rating_doubles||0)-(a.rating_doubles||0)
+        })
   const filteredGames = recentGames
   const loading = isLoading
 
@@ -859,6 +875,7 @@ export default function Dashboard({ onOpenProfile }) {
           onJoinCourt={() => { setMyCourtsView('join'); setShowMyCourts(true); setShowMenu(false) }}
           onOpenSettings={() => { setShowSettings(true); setShowMenu(false) }}
           onOpenRatingInfo={() => { setShowRatingInfo(true); setShowMenu(false) }}
+          onOpenTournaments={() => { setShowTournaments(true); setShowMenu(false) }}
         />
       )}
 
@@ -1032,6 +1049,15 @@ export default function Dashboard({ onOpenProfile }) {
         />
       )}
       {/* Racquet Ninja Page */}
+      {showTournaments && (
+        <TournamentsPage
+          onBack={()=>setShowTournaments(false)}
+          currentUser={currentUser}
+          players={players}
+          groups={groups}
+          activeGroup={effectiveGroup}
+        />
+      )}
       {showNinja && <RacquetNinja onClose={()=>setShowNinja(false)} currentUser={currentUser} currentPlayer={players?.find(p=>p.id===currentUser.id)}/>}
 
       {/* Racquet Ninja Floating Button */}
