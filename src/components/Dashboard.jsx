@@ -67,6 +67,53 @@ function TabLoader() {
   )
 }
 
+// ── Court section — collapsible inside hamburger ───────────────
+function CourtSection({ groups, myGroupIds, activeGroup, onGroupClick, onCreateCourt, onJoinCourt, onOpenMyCourts }) {
+  const [courtsOpen, setCourtsOpen] = useState(false)
+  const myCourts = groups.filter(g => myGroupIds.includes(g.id))
+  return (
+    <div style={{ padding:'0 16px' }}>
+      {/* Manage Courts toggle */}
+      <button onClick={()=>setCourtsOpen(v=>!v)}
+        style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 0', background:'none', border:'none', borderBottom:'1px solid rgba(255,255,255,0.06)', cursor:'pointer', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700, color:'#94a3b8' }}>
+        <span>Courts</span>
+        <span style={{ fontSize:12, color:'#334155', transform:courtsOpen?'rotate(90deg)':'none', transition:'transform 0.2s' }}>›</span>
+      </button>
+
+      {courtsOpen && (
+        <div style={{ paddingTop:8, paddingBottom:4 }}>
+          {/* Court list */}
+          {myCourts.length > 0 && (
+            <div style={{ marginBottom:8 }}>
+              <div onClick={()=>onGroupClick('all')} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 12px', marginBottom:4, background:activeGroup==='all'?'rgba(74,222,128,0.08)':'rgba(255,255,255,0.02)', border:`1px solid ${activeGroup==='all'?'rgba(74,222,128,0.25)':'rgba(255,255,255,0.05)'}`, borderRadius:8, cursor:'pointer' }}>
+                <span style={{ fontSize:13, color:activeGroup==='all'?'#4ade80':'#64748b', fontFamily:"'Rajdhani',sans-serif", fontWeight:700 }}>All Courts</span>
+                {activeGroup==='all' && <span style={{ fontSize:8, color:'#4ade80' }}>●</span>}
+              </div>
+              {myCourts.map(g=>(
+                <div key={g.id} onClick={()=>onGroupClick(g.id)} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'9px 12px', marginBottom:4, background:activeGroup===g.id?'rgba(74,222,128,0.08)':'rgba(255,255,255,0.02)', border:`1px solid ${activeGroup===g.id?'rgba(74,222,128,0.25)':'rgba(255,255,255,0.05)'}`, borderRadius:8, cursor:'pointer' }}>
+                  <span style={{ fontSize:13, color:activeGroup===g.id?'#4ade80':'#64748b', fontFamily:"'Rajdhani',sans-serif", fontWeight:700 }}>{g.name}</span>
+                  {activeGroup===g.id && <span style={{ fontSize:8, color:'#4ade80' }}>●</span>}
+                </div>
+              ))}
+            </div>
+          )}
+          {/* Court actions */}
+          {[
+            {label:'Join a Court', fn:onJoinCourt},
+            {label:'Manage My Courts', fn:onOpenMyCourts},
+            {label:'Create a Court', fn:onCreateCourt},
+          ].map(a=>(
+            <button key={a.label} onClick={a.fn}
+              style={{ width:'100%', textAlign:'left', padding:'9px 0', background:'none', border:'none', borderBottom:'1px solid rgba(255,255,255,0.04)', cursor:'pointer', fontFamily:"'Rajdhani',sans-serif", fontSize:13, fontWeight:700, color:'#475569', display:'block' }}>
+              {a.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Hamburger menu ─────────────────────────────────────────────
 function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeGroup, onGroupSelect, onClose, onLogout, onOpenProfile, onGroupCreated, onJoinGroup, onOpenCourtManager, onOpenMyCourts, onCreateCourt, onJoinCourt, onOpenSettings, onOpenRatingInfo, onOpenTournaments }) {
   const level = getLevel(currentPlayer?.total_wins || 0)
@@ -98,11 +145,11 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
       <div onClick={onClose} style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.6)', zIndex:90, backdropFilter:'blur(4px)' }}/>
       <div style={{ position:'fixed', top:0, left:0, bottom:0, width:'min(290px, 85vw)', background:'#0a1628', borderRight:'1px solid rgba(74,222,128,0.15)', zIndex:91, display:'flex', flexDirection:'column', animation:'drawer-in 0.25s cubic-bezier(0.34,1.2,0.64,1)', boxShadow:'4px 0 40px rgba(0,0,0,0.8)', overflowY:'auto' }}>
 
-        {/* Profile */}
+        {/* Profile — no CTA, just avatar + name */}
         <div style={{ padding:'40px 20px 16px', background:`linear-gradient(180deg,${level.bg},transparent)`, borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
-            <div style={{ position:'relative', cursor:'pointer' }} onClick={() => { onOpenProfile(currentUser.id, activeGroup); onClose() }}>
-              <Av id={currentUser.id} size={56} aura={level.aura} profilePic={currentPlayer?.profile_pic} style={{ border:`2.5px solid ${level.aura}`, boxShadow:`0 0 16px ${level.glow}` }}/>
+          <div onClick={() => { onOpenProfile(currentUser.id, activeGroup); onClose() }} style={{ display:'flex', alignItems:'center', gap:12, cursor:'pointer' }}>
+            <div style={{ position:'relative' }}>
+              <Av id={currentUser.id} size={52} aura={level.aura} profilePic={currentPlayer?.profile_pic} style={{ border:`2.5px solid ${level.aura}`, boxShadow:`0 0 14px ${level.glow}` }}/>
               {(level.tier >= 4) && <div style={{ position:'absolute', inset:-3, borderRadius:'50%', border:`1px solid ${level.aura}`, borderTopColor:'transparent', animation:'spin-ring 3s linear infinite', pointerEvents:'none' }}/>}
             </div>
             <div>
@@ -110,100 +157,40 @@ function HamburgerMenu({ currentUser, currentPlayer, groups, myGroupIds, activeG
               <div style={{ fontSize:11, color:level.aura, fontWeight:700, letterSpacing:1, marginTop:2 }}>{level.emoji} {level.name}</div>
             </div>
           </div>
-          <button onClick={() => { onOpenProfile(currentUser.id, activeGroup); onClose() }} style={{ width:'100%', background:`${level.aura}15`, border:`1px solid ${level.aura}33`, color:level.aura, borderRadius:10, padding:'8px', cursor:'pointer', fontFamily:"'Rajdhani',sans-serif", fontSize:13, fontWeight:700, letterSpacing:1 }}>
-            View My Profile →
-          </button>
         </div>
 
         {/* Scrollable body */}
-        <div style={{ flex:1, overflowY:'auto', padding:'16px 0', WebkitOverflowScrolling:'touch' }}>
+        <div style={{ flex:1, overflowY:'auto', padding:'16px 0 0', WebkitOverflowScrolling:'touch' }}>
 
-          {/* Your courts */}
-          <div style={{ padding:'0 16px 8px' }}>
-            <div style={{ fontSize:10, color:'#475569', letterSpacing:2, textTransform:'uppercase', fontWeight:700, marginBottom:10, fontFamily:"'Rajdhani',sans-serif" }}>Your Courts</div>
-            <div onClick={() => handleGroupClick('all')} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', marginBottom:6, background:activeGroup==='all'?'rgba(74,222,128,0.1)':'rgba(255,255,255,0.02)', border:`1px solid ${activeGroup==='all'?'rgba(74,222,128,0.3)':'rgba(255,255,255,0.06)'}`, borderRadius:10, cursor:'pointer' }}>
-              <span style={{ fontSize:16 }}>🏸</span>
-              <span style={{ fontSize:14, color:activeGroup==='all'?'#4ade80':'#94a3b8', fontFamily:"'Rajdhani',sans-serif", fontWeight:700 }}>All Courts</span>
-              {activeGroup==='all' && <span style={{ marginLeft:'auto', fontSize:10, color:'#4ade80' }}>●</span>}
-            </div>
-            {groups.filter(g => myGroupIds.includes(g.id)).map(g => (
-              <div key={g.id} onClick={() => handleGroupClick(g.id)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', marginBottom:6, background:activeGroup===g.id?'rgba(74,222,128,0.1)':'rgba(74,222,128,0.03)', border:`1px solid ${activeGroup===g.id?'rgba(74,222,128,0.35)':'rgba(74,222,128,0.1)'}`, borderRadius:10, cursor:'pointer' }}>
-                <span style={{ fontSize:16 }}>🏟️</span>
-                <span style={{ fontSize:14, color:activeGroup===g.id?'#4ade80':'#64748b', fontFamily:"'Rajdhani',sans-serif", fontWeight:700 }}>{g.name}</span>
-                {activeGroup===g.id && <span style={{ marginLeft:'auto', fontSize:10, color:'#4ade80' }}>●</span>}
-              </div>
+          {/* Court Management — collapsible */}
+          <CourtSection groups={groups} myGroupIds={myGroupIds} activeGroup={activeGroup}
+            onGroupClick={handleGroupClick}
+            onCreateCourt={()=>{ onCreateCourt&&onCreateCourt(); onClose() }}
+            onJoinCourt={()=>{ onJoinCourt&&onJoinCourt(); onClose() }}
+            onOpenMyCourts={()=>{ onOpenMyCourts&&onOpenMyCourts(); onClose() }}/>
+
+          <div style={{ height:1, background:'rgba(255,255,255,0.05)', margin:'12px 16px' }}/>
+
+          {/* Utility links */}
+          <div style={{ padding:'0 16px' }}>
+            {[
+              { label:'Tournaments', color:'#fbbf24', fn:()=>{ onOpenTournaments&&onOpenTournaments(); onClose() } },
+              { label:'How Rating Works', color:'#4ade80', fn:()=>{ onOpenRatingInfo&&onOpenRatingInfo(); onClose() } },
+              { label:'Racquet Ninja', color:'#c084fc', fn:()=>{ onOpenTournaments&&onOpenTournaments(); onClose() } },
+              { label:'Settings', color:'#64748b', fn:()=>{ onOpenSettings&&onOpenSettings(); onClose() } },
+            ].map(item=>(
+              <button key={item.label} onClick={item.fn}
+                style={{ width:'100%', display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 0', background:'none', border:'none', borderBottom:'1px solid rgba(255,255,255,0.04)', cursor:'pointer', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700, color:item.color, marginBottom:0 }}>
+                {item.label}
+                <span style={{ fontSize:12, color:'#334155' }}>›</span>
+              </button>
             ))}
           </div>
-
-          <div style={{ height:1, background:'rgba(255,255,255,0.05)', margin:'4px 16px 12px' }}/>
-
-          <div style={{ height:1, background:'rgba(255,255,255,0.05)', margin:'4px 16px 12px' }}/>
-
-          {/* Court actions — all users */}
-          <div style={{ padding:'0 16px', marginBottom:8 }}>
-            <div style={{ fontSize:10, color:'#475569', letterSpacing:2, textTransform:'uppercase', fontWeight:700, marginBottom:10, fontFamily:"'Rajdhani',sans-serif" }}>Courts</div>
-            <button onClick={() => { onCreateCourt && onCreateCourt(); onClose() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', marginBottom:8, background:'rgba(74,222,128,0.06)', border:'1px solid rgba(74,222,128,0.2)', borderRadius:10, cursor:'pointer', color:'#4ade80', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
-              <span>🏟️</span> Create a Court
-            </button>
-            <button onClick={() => { onJoinCourt && onJoinCourt(); onClose() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', marginBottom:8, background:'rgba(96,165,250,0.06)', border:'1px solid rgba(96,165,250,0.2)', borderRadius:10, cursor:'pointer', color:'#60a5fa', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
-              <span>🔍</span> Join a Court
-            </button>
-            <button onClick={() => { onOpenMyCourts && onOpenMyCourts(); onClose() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', background:'rgba(148,163,184,0.06)', border:'1px solid rgba(148,163,184,0.2)', borderRadius:10, cursor:'pointer', color:'#94a3b8', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
-              <span>🏸</span> Manage My Courts
-            </button>
-          </div>
-
-          <div style={{ height:1, background:'rgba(255,255,255,0.05)', margin:'4px 16px 12px' }}/>
-
-          {/* Create group */}
-          {(currentUser.isAdmin || currentUser.role === 'admin') && (
-          <div style={{ padding:'0 16px' }}>
-            <div style={{ fontSize:10, color:'#475569', letterSpacing:2, textTransform:'uppercase', fontWeight:700, marginBottom:10, fontFamily:"'Rajdhani',sans-serif" }}>Admin</div>
-            <button onClick={() => { onOpenCourtManager && onOpenCourtManager() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', marginBottom:8, background:'rgba(74,222,128,0.08)', border:'1px solid rgba(74,222,128,0.25)', borderRadius:10, cursor:'pointer', color:'#4ade80', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
-              <span>🏟️</span> Manage All Courts
-            </button>
-            {!showCreate ? (
-              <button onClick={() => setShowCreate(true)} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:'rgba(74,222,128,0.05)', border:'1px dashed rgba(74,222,128,0.3)', borderRadius:10, cursor:'pointer', color:'#4ade80', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
-                <span style={{ fontSize:18 }}>＋</span> Create New Court
-              </button>
-            ) : (
-              <div style={{ background:'rgba(74,222,128,0.05)', border:'1px solid rgba(74,222,128,0.2)', borderRadius:12, padding:'12px' }}>
-                <div style={{ fontSize:11, color:'#4ade80', fontFamily:"'Rajdhani',sans-serif", fontWeight:700, marginBottom:8 }}>COURT NAME</div>
-                <input value={newGroupName} onChange={e=>setNewGroupName(e.target.value)}
-                  onKeyDown={e=>e.key==='Enter'&&handleCreateGroup()}
-                  placeholder="e.g. Lotus Court 3" autoFocus
-                  style={{ width:'100%', boxSizing:'border-box', background:'rgba(0,0,0,0.4)', border:'1px solid rgba(74,222,128,0.3)', borderRadius:8, padding:'9px 12px', color:'#f1f5f9', fontSize:14, fontFamily:"'Rajdhani',sans-serif", outline:'none', marginBottom:8 }}/>
-                {createError && <div style={{ fontSize:11, color:'#f87171', marginBottom:8 }}>⚠ {createError}</div>}
-                <div style={{ display:'flex', gap:8 }}>
-                  <button onClick={() => { setShowCreate(false); setNewGroupName(''); setCreateError('') }}
-                    style={{ flex:1, background:'transparent', border:'1px solid rgba(255,255,255,0.1)', color:'#475569', borderRadius:8, padding:'8px', cursor:'pointer', fontFamily:"'Rajdhani',sans-serif", fontSize:13 }}>Cancel</button>
-                  <button onClick={handleCreateGroup} disabled={creating}
-                    style={{ flex:1, background:'rgba(74,222,128,0.15)', border:'1px solid rgba(74,222,128,0.4)', color:'#4ade80', borderRadius:8, padding:'8px', cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:14, letterSpacing:1 }}>
-                    {creating?'Creating...':'CREATE'}
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-          )}
         </div>
 
-        {/* Settings */}
-        <div style={{ padding:'0 16px', marginBottom:8 }}>
-          <button onClick={() => { onOpenSettings && onOpenSettings(); onClose() }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', background:'rgba(255,255,255,0.03)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:10, cursor:'pointer', color:'#64748b', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
-            <span>⚙️</span> Settings
-          </button>
-        </div>
-
-        <div style={{ padding:'0 16px', marginBottom:8 }}>
-          <button onClick={() => { setShowRatingInfo(true); setShowMenu(false) }} style={{ width:'100%', display:'flex', alignItems:'center', gap:10, padding:'11px 12px', marginBottom:8, background:'rgba(74,222,128,0.06)', border:'1px solid rgba(74,222,128,0.15)', borderRadius:10, cursor:'pointer', color:'#4ade80', fontFamily:"'Rajdhani',sans-serif", fontSize:14, fontWeight:700 }}>
-            <span>📊</span> How Rating Works
-          </button>
-
-        </div>
         {/* Logout */}
         <div style={{ padding:'16px 16px 40px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
-          <button onClick={() => { onLogout(); onClose() }} style={{ width:'100%', background:'rgba(248,113,113,0.08)', border:'1px solid rgba(248,113,113,0.2)', color:'#f87171', borderRadius:10, padding:'12px', cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:2 }}>LOGOUT</button>
+          <button onClick={() => { onLogout(); onClose() }} style={{ width:'100%', background:'rgba(248,113,113,0.06)', border:'1px solid rgba(248,113,113,0.15)', color:'#f87171', borderRadius:10, padding:'11px', cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:15, letterSpacing:2 }}>LOGOUT</button>
         </div>
       </div>
     </>
@@ -692,10 +679,11 @@ function GamesTab({ recentGames, players, loading, isAdmin, onDeleteGame, onEdit
 export default function Dashboard({ onOpenProfile, gameNav, onGameNavHandled }) {
   const { currentUser, logout } = useAuth()
   const { players: allPlayers, recentGames: allGames, loading: globalLoading, refetch: globalRefetch } = useRealtimeDashboard()
-  const [tab, setTab]               = useState('players')
+  const [tab, setTab]               = useState('action')
   const [tabLoading, setTabLoading] = useState(false)
   const [showLogGame, setShowLogGame] = useState(false)
   const [showMenu, setShowMenu]     = useState(false)
+  const [subTab, setSubTab]         = useState('players')
   const [newGame, setNewGame]       = useState(false)
   const [groups, setGroups]         = useState([])
   const [groupMembers, setGroupMembers] = useState({})
@@ -841,6 +829,7 @@ export default function Dashboard({ onOpenProfile, gameNav, onGameNavHandled }) 
         @keyframes spin-ring { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
         @keyframes card-in { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
         @keyframes fab-pulse { 0%,100%{box-shadow:0 4px 24px rgba(74,222,128,0.35)} 50%{box-shadow:0 4px 40px rgba(74,222,128,0.6),0 0 0 6px rgba(74,222,128,0.08)} }
+        @keyframes fab-jump { 0%,100%{transform:translateY(0)} 10%{transform:translateY(-6px)} 20%{transform:translateY(0)} 30%{transform:translateY(-3px)} 40%{transform:translateY(0)} }
         @keyframes shuttle-fly { 0%{left:-40px;opacity:1} 100%{left:110%;opacity:0} }
         @keyframes drawer-in { from{transform:translateX(-100%)} to{transform:translateX(0)} }
         @keyframes shuttle-spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
@@ -893,100 +882,79 @@ export default function Dashboard({ onOpenProfile, gameNav, onGameNavHandled }) 
           <span style={{ fontSize:20 }}>🏸</span>
           <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:24, color:'#4ade80', letterSpacing:4 }}>SHUTTLE</span>
         </div>
-        {me && (
-          <div onClick={() => onOpenProfile && onOpenProfile(currentUser.id)} style={{ cursor:'pointer' }}>
-            <Av id={currentUser.id} size={34} aura={getLevel(me.total_wins||0).aura} profilePic={me?.profile_pic} style={{ border:`2px solid ${getLevel(me.total_wins||0).aura}` }}/>
-          </div>
-        )}
+        <button onClick={()=>setShowLogGame(true)}
+          style={{ background:'rgba(6,13,20,0.9)', border:'1.5px solid rgba(74,222,128,0.5)', color:'#4ade80', borderRadius:22, padding:'7px 16px', cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:14, letterSpacing:2, display:'flex', alignItems:'center', gap:6, flexShrink:0, backdropFilter:'blur(8px)', boxShadow:'0 2px 12px rgba(74,222,128,0.15)' }}>
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><line x1="7" y1="1" x2="7" y2="13" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round"/><line x1="1" y1="7" x2="13" y2="7" stroke="#4ade80" strokeWidth="2.5" strokeLinecap="round"/></svg>
+          ADD GAME
+        </button>
       </div>
 
-      {/* Group filter chips — not sticky, hides on scroll */}
-      {myGroupIds.length ? (
-        <div style={{
-          overflow:'hidden',
-          maxHeight: chipsVisible ? 52 : 0,
-          opacity: chipsVisible ? 1 : 0,
-          transition: 'max-height 0.35s ease, opacity 0.3s ease',
-          background:'rgba(6,13,20,0.97)',
-          borderBottom: chipsVisible ? '1px solid rgba(255,255,255,0.04)' : 'none',
-        }}>
-          <div style={{ padding:'8px 16px', display:'flex', gap:8, overflowX:'auto' }}>
-            <button className={`group-chip${effectiveGroup==='all'?' active':''}`} onClick={()=>setActiveGroup('all')} style={{flexShrink:0}}>All</button>
-            {groups.filter(g => myGroupIds.includes(g.id)).map(g => (
-              <button key={g.id} className={`group-chip${effectiveGroup===g.id?' active':''}`} onClick={()=>setActiveGroup(g.id)} style={{flexShrink:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:130}}>{g.name}</button>
+
+
+      {/* Action sub-tabs — only show when on action tab */}
+      {tab==='action' && (
+        <div style={{ position:'sticky', top:54, zIndex:38, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(8px)', borderBottom:'1px solid rgba(255,255,255,0.06)' }}>
+          {/* Sub-tab strip */}
+          <div style={{ display:'flex' }}>
+            {[{id:'players',label:'PLAYERS'},{id:'teams',label:'TEAMS'},{id:'games',label:'GAMES'}].map(s=>(
+              <button key={s.id} onClick={()=>setSubTab(s.id)}
+                style={{ flex:1, padding:'12px 4px', cursor:'pointer', fontFamily:"'Bebas Neue',sans-serif", fontSize:15, letterSpacing:2, border:'none', borderBottom:`2.5px solid ${subTab===s.id?'#4ade80':'transparent'}`,
+                  background:'transparent',
+                  color:subTab===s.id?'#4ade80':'#334155' }}>
+                {s.label}
+              </button>
             ))}
           </div>
+          {/* Court chips — only in action tab */}
+          {myGroupIds.length > 0 && (
+            <div style={{ padding:'6px 16px 8px', display:'flex', gap:8, overflowX:'auto' }}>
+              <button className={`group-chip${effectiveGroup==='all'?' active':''}`} onClick={()=>setActiveGroup('all')} style={{flexShrink:0}}>All</button>
+              {groups.filter(g=>myGroupIds.includes(g.id)).map(g=>(
+                <button key={g.id} className={`group-chip${effectiveGroup===g.id?' active':''}`} onClick={()=>setActiveGroup(g.id)} style={{flexShrink:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:130}}>{g.name}</button>
+              ))}
+            </div>
+          )}
         </div>
-      ) : null}
-
-      {/* Tabs */}
-      <div style={{ position:'sticky', top:54, zIndex:38, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', display:'flex', borderBottom:'2px solid rgba(255,255,255,0.05)', overflowX:'auto' }}>
-        {[{id:'players',label:'PLAYERS'},{id:'teams',label:'TEAMS'},{id:'games',label:'GAMES'},{id:'goals',label:'GOALS'},{id:'report',label:'REPORT'},{id:'videos',label:'DEUCE'}].map(t=>(
-          <button key={t.id} className={`tab-btn${tab===t.id?' active':''}`} onClick={()=>switchTab(t.id)} style={t.id==='videos' ? {
-            color: tab==='videos' ? '#fb923c' : '#f97316',
-            borderBottomColor: tab==='videos' ? '#fb923c' : 'transparent',
-            position: 'relative',
-            background: tab==='videos' ? 'rgba(251,146,60,0.12)' : 'rgba(251,146,60,0.05)',
-            borderRadius: '8px 8px 0 0',
-            marginTop: 2,
-          } : {}}>
-            {t.label}
-            {t.id==='videos' && tab!=='videos' && (
-              <span style={{ position:'absolute', top:8, right:6, width:5, height:5, borderRadius:'50%', background:'#fb923c', animation:'reel-pulse 2s ease-in-out 3' }}/>
-            )}
-          </button>
-        ))}
-      </div>
+      )}
 
       {/* Content */}
       <div style={{ padding:'14px 14px 100px', minHeight:'calc(100vh - 160px)' }}>
-        {tab === 'players' && (
-          <div style={{ animation:'card-in 0.3s ease-out' }}>
-            {me && (
-              <HeroCard player={me} isCurrentUser onClick={()=>onOpenProfile&&onOpenProfile(me.id, effectiveGroup)}/>
-            )}
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, color:'#64748b', letterSpacing:3, marginBottom:6 }}>🏆 LEADERBOARD</div>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12 }}>
-              <span style={{ fontSize:10, color:'#334155', fontFamily:"'Rajdhani',sans-serif" }}>Ranked by ELO rating</span>
-              <button onClick={()=>setShowRatingInfo(true)} style={{ background:'none', border:'none', color:'#4ade80', cursor:'pointer', fontFamily:"'Rajdhani',sans-serif", fontSize:10, fontWeight:700, padding:0 }}>Know more →</button>
+
+        {tab==='action' && subTab==='players' && (
+          <div style={{ animation:'card-in 0.3s ease-out', padding:'0 16px' }}>
+            {me && <HeroCard player={me} isCurrentUser onClick={()=>onOpenProfile&&onOpenProfile(me.id, effectiveGroup)}/>}
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:10 }}>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:'#64748b', letterSpacing:3 }}>🏆 LEADERBOARD</div>
+              <button onClick={()=>setShowRatingInfo(true)} style={{ background:'none', border:'none', color:'#4ade80', cursor:'pointer', fontFamily:"'Rajdhani',sans-serif", fontSize:11, fontWeight:700, padding:0 }}>How ELO works →</button>
             </div>
             {filteredPlayers.map((p,idx) => (
               <LeaderRow key={p.id} player={p} rank={idx+1} isCurrentUser={p.id===currentUser.id} onClick={()=>onOpenProfile&&onOpenProfile(p.id, effectiveGroup)}/>
             ))}
           </div>
         )}
-        {tab==='players' && (
-          <div style={{ textAlign:'center', padding:'32px 16px 16px', color:'#1e293b', fontFamily:"'Rajdhani',sans-serif", fontSize:12, letterSpacing:1, fontWeight:700 }}>
-            ↓ KEEP SCROLLING FOR TEAMS
-          </div>
-        )}
-        {tab === 'teams' && (
-          <div style={{ animation:'card-in 0.3s ease-out' }}>
+
+        {tab==='action' && subTab==='teams' && (
+          <div style={{ animation:'card-in 0.3s ease-out', padding:'0 16px' }}>
             <TeamsTab allPlayers={filteredPlayers} currentUserId={currentUser.id}/>
           </div>
         )}
-        {tab==='teams' && (
-          <div style={{ textAlign:'center', padding:'32px 16px 16px', color:'#1e293b', fontFamily:"'Rajdhani',sans-serif", fontSize:12, letterSpacing:1, fontWeight:700 }}>
-            ↓ KEEP SCROLLING FOR GAMES
-          </div>
-        )}
-        {tab === 'games' && (
+        {tab==='action' && subTab==='games' && (
           <div style={{ animation:'card-in 0.3s ease-out' }}>
             <GamesTab recentGames={filteredGames} players={filteredPlayers} loading={loading} isAdmin={isAdmin} groups={groups} onDeleteGame={async(id)=>{ if(window.confirm('Delete this game? Stats will be updated for all players.')) { const r = await deleteGame(id); if(r.success){ setTimeout(()=>refetch(), 800) } else { alert('Delete failed: ' + r.message) } }}} onEditGame={(g)=>setEditGame(g)}/>
           </div>
         )}
-        {tab === 'goals' && (
+        {tab==='goals' && (
           <div style={{ animation:'card-in 0.3s ease-out' }}>
             <GoalsTab currentUserId={currentUser.id} allGames={recentGames}/>
           </div>
         )}
-        {tab === 'report' && (
+        {tab==='report' && (
           <div style={{ padding:'16px', animation:'card-in 0.3s ease-out' }}>
             <ReportCard players={filteredPlayers} currentUserId={currentUser.id} groups={groups} activeGroup={effectiveGroup}/>
           </div>
         )}
 
-        {tab === 'videos' && (
+        {tab==='deuce' && (
           <div style={{ padding:'16px', animation:'card-in 0.3s ease-out' }}>
             <VideoTab currentUserId={currentUser.id}/>
           </div>
@@ -994,11 +962,7 @@ export default function Dashboard({ onOpenProfile, gameNav, onGameNavHandled }) 
       </div>
 
       {/* FAB */}
-      <div style={{ position:'fixed', bottom:0, left:'50%', transform:'translateX(-50%)', zIndex:50, width:'100%', maxWidth:480, padding:'10px 16px 24px', background:'linear-gradient(to top,rgba(6,13,20,1) 65%,transparent)', pointerEvents:'none' }}>
-        <button onClick={()=>setShowLogGame(true)} style={{ display:'block', width:'92%', margin:'0 auto', background:'linear-gradient(135deg,#14532d,#166534)', border:'1.5px solid #4ade80', color:'#4ade80', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:3, padding:'13px', borderRadius:50, cursor:'pointer', animation:'fab-pulse 2.5s ease-in-out infinite', pointerEvents:'all' }}>
-          + ADD GAME
-        </button>
-      </div>
+
 
 
       {showSettings && (
@@ -1061,6 +1025,35 @@ export default function Dashboard({ onOpenProfile, gameNav, onGameNavHandled }) 
       )}
       {showNinja && <RacquetNinja onClose={()=>setShowNinja(false)} currentUser={currentUser} currentPlayer={players?.find(p=>p.id===currentUser.id)}/>}
 
+
+      {/* ── Floating + button — hidden when LogGame is open ── */}
+      {!showLogGame && <div onClick={()=>setShowLogGame(true)} style={{ position:'fixed', bottom:100, right:20, zIndex:51, width:44, height:44, borderRadius:'50%', background:'rgba(6,13,20,0.9)', border:'1.5px solid rgba(74,222,128,0.5)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:'0 2px 12px rgba(74,222,128,0.15)', backdropFilter:'blur(8px)', animation:'fab-jump 3s ease-in-out infinite' }}>
+        <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><line x1="9" y1="2" x2="9" y2="16" stroke="#4ade80" strokeWidth="2" strokeLinecap="round"/><line x1="2" y1="9" x2="16" y2="9" stroke="#4ade80" strokeWidth="2" strokeLinecap="round"/></svg>
+      </div>}
+
+      {/* ── Bottom Nav ── */}
+      <div style={{ position:'fixed', bottom:20, left:'50%', transform:'translateX(-50%)', zIndex:50, width:'calc(100% - 48px)', maxWidth:400 }}>
+        <div style={{ display:'flex', alignItems:'center', background:'rgba(10,14,24,0.85)', backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)', border:'1px solid rgba(255,255,255,0.1)', borderRadius:28, padding:'8px 6px', boxShadow:'0 8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.06)' }}>
+          {[
+            { id:'action', label:'Action', color:'#4ade80', icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> },
+            { id:'goals',  label:'Goals',  color:'#c084fc', icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg> },
+            { id:'report', label:'Report', color:'#60a5fa', icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
+            { id:'deuce',  label:'Deuce',  color:'#fb923c', icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> },
+          ].map(t=>{
+            const active = tab===t.id
+            return (
+              <button key={t.id} onClick={()=>setTab(t.id)}
+                style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:3, padding:'6px 4px', borderRadius:22, border:'none', cursor:'pointer', transition:'all 0.2s',
+                  background: active ? `${t.color}18` : 'transparent',
+                  color: active ? t.color : '#334155' }}>
+                {t.icon}
+                <span style={{ fontFamily:"'Rajdhani',sans-serif", fontSize:9, fontWeight:700, letterSpacing:1, lineHeight:1 }}>{t.label.toUpperCase()}</span>
+                {active && <div style={{ width:4, height:4, borderRadius:'50%', background:t.color, marginTop:-1 }}/>}
+              </button>
+            )
+          })}
+        </div>
+      </div>
 
       {showLogGame && <LogGame onClose={()=>setShowLogGame(false)} onGameLogged={handleGameLogged} activeGroup={effectiveGroup} groupMembers={groupMembers} groups={groups} currentUserId={currentUser.id} defaultSingles={gamePreference==='singles'}/>}
     </div>
