@@ -29,7 +29,7 @@ function PAv({ player, size=60, float=false, dim=false }) {
   return (
     <div style={{ textAlign:'center', opacity:dim?0.4:1, animation:float?'float-player 2s ease-in-out infinite':'none' }}>
       <div style={{ position:'relative', width:size, height:size, margin:'0 auto 4px' }}>
-        <div style={{ width:size, height:size, borderRadius:'50%', overflow:'hidden', border:'2.5px solid '+level.aura, boxShadow:'0 0 14px '+level.glow, background:'#1a2a1a' }}>
+        <div style={{ width:size, height:size, borderRadius:'50%', overflow:'hidden', border:'2.5px solid rgba(255,255,255,0.2)', background:'#1a2a1a' }}>
           {!err
             ? <img src={player.profile_pic||getAvatarUrl(player.id)} width={size} height={size} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={()=>setErr(true)}/>
             : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:size*0.4,color:level.aura}}>{player.display_name.charAt(0)}</div>
@@ -82,7 +82,7 @@ function SkillsSheet({ playerMap, teamA, teamB, winner, onSubmit, onSkip }) {
                   <div style={{ width:48, height:48, borderRadius:'50%', overflow:'hidden', border:'1.5px solid '+level.aura, background:'#1a2a1a', flexShrink:0 }}>
                     <img src={playerMap[pid]?.profile_pic||getAvatarUrl(pid)} width={48} height={48} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>{ e.target.onerror=null; e.target.src=getAvatarUrl(pid) }}/>
                   </div>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:'#4ade80', letterSpacing:0.5, lineHeight:1, textAlign:'center' }}>{p.display_name}</div>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, color:'#4ade80', letterSpacing:0.5, lineHeight:1, textAlign:'center' }}>{p.display_name}</div>
                   <div style={{ height:1, background:'rgba(255,255,255,0.05)', width:'100%' }}/>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:4, justifyContent:'center' }}>
                     {SKILLS_DEF.map(s => {
@@ -121,7 +121,7 @@ function SkillsSheet({ playerMap, teamA, teamB, winner, onSubmit, onSkip }) {
                   <div style={{ width:48, height:48, borderRadius:'50%', overflow:'hidden', border:'1.5px solid '+level.aura, background:'#1a2a1a', flexShrink:0 }}>
                     <img src={playerMap[pid]?.profile_pic||getAvatarUrl(pid)} width={48} height={48} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>{ e.target.onerror=null; e.target.src=getAvatarUrl(pid) }}/>
                   </div>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:'#60a5fa', letterSpacing:0.5, lineHeight:1, textAlign:'center' }}>{p.display_name}</div>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, color:'#60a5fa', letterSpacing:0.5, lineHeight:1, textAlign:'center' }}>{p.display_name}</div>
                   <div style={{ height:1, background:'rgba(255,255,255,0.05)', width:'100%' }}/>
                   <div style={{ display:'flex', flexWrap:'wrap', gap:4, justifyContent:'center' }}>
                     {SKILLS_DEF.map(s => {
@@ -160,7 +160,7 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
   const { currentUser } = useAuth()
   const { getPlayers, logGame } = useGameLogger()
   const [isSingles, setIsSingles] = useState(defaultSingles)
-  const [scores, setScores] = useState([{ scoreA:"", scoreB:"" }])
+  const [scores, setScores] = useState([{ scoreA:'', scoreB:'' }])
   const [showFatality, setShowFatality] = useState(false)
 
   const [players, setPlayers]           = useState([])
@@ -253,7 +253,7 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
   const isDoublesReady = teamA.length===2 && teamB.length===2
   const isSinglesReady = teamA.length===1 && teamB.length===1
   const teamsReady = isDoublesReady || isSinglesReady
-  const allScoresFilled = scores.every(s=>s.scoreA!==''&&s.scoreB!==''&&parseInt(s.scoreA)!==parseInt(s.scoreB))
+  const allScoresFilled = scores.some(s=>s.scoreA!==''&&s.scoreB!==''&&parseInt(s.scoreA)!==parseInt(s.scoreB))
   const canProceed = teamsReady
   function teamLabel(team) { return team.map(pid=>playerMap[pid]?.display_name||'?').join(' · ') }
 
@@ -265,14 +265,24 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
   }
 
   async function handleSubmit() {
-    const sA=parseInt(scores[0]?.scoreA)||0, sB=parseInt(scores[0]?.scoreB)||0
-    if (isNaN(sA)||isNaN(sB)||sA<0||sB<0) { setError('Enter valid scores'); return }
-    if (sA===sB) { setError('Scores cannot be equal'); return }
+    const validScores = scores.filter(s=>s.scoreA!==''&&s.scoreB!==''&&parseInt(s.scoreA)!==parseInt(s.scoreB))
+    if (validScores.length===0) { setError('Enter at least one valid score'); return }
     setLoading(true); setError('')
-    const result = await logGame(teamA, teamB, sA, sB)
+    let lastResult = null
+    for (const s of validScores) {
+      lastResult = await logGame(teamA, teamB, parseInt(s.scoreA), parseInt(s.scoreB), activeGroup?.id||null)
+      if (!lastResult?.success) { setError(lastResult?.message||'Error logging game'); setLoading(false); return }
+    }
     setLoading(false)
-    if (!result.success) { setError(result.message); return }
-    setGameId(result.game?.id); setWinner(sA>sB?'A':'B'); setShowSkills(true)
+    const sA=parseInt(validScores[0].scoreA), sB=parseInt(validScores[0].scoreB)
+    // Fatality check on first game
+    const margin = Math.abs(sA-sB)
+    if (margin>=10) {
+      setShowFatality(true)
+      setTimeout(()=>{ setShowFatality(false); onGameLogged&&onGameLogged(); onClose() }, 2800)
+    } else {
+      setGameId(lastResult?.game?.id); setWinner(sA>sB?'A':'B'); setShowSkills(true)
+    }
   }
 
   async function handleSkillsSubmit(selected) {
@@ -418,7 +428,7 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
                       <div style={{width:44,height:44,borderRadius:'50%',overflow:'hidden',border:'2px solid '+(inA||inB?level.aura:level.aura+'44'),margin:'0 auto 5px',background:'#1a2a1a'}}>
                         <img src={p.profile_pic||getAvatarUrl(p.id)} width={44} height={44} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>{ e.target.onerror=null; e.target.src=getAvatarUrl(p.id) }}/>
                       </div>
-                      <div style={{fontSize:13,fontWeight:700,color:inA?'#4ade80':inB?'#60a5fa':'#e2e8f0',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:0.5,lineHeight:1.1,wordBreak:'break-word'}}>{p.display_name}</div>
+                      <div style={{fontSize:15,fontWeight:700,color:inA?'#4ade80':inB?'#60a5fa':'#e2e8f0',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:0.5,lineHeight:1.1,wordBreak:'break-word'}}>{p.display_name}</div>
                     </div>
                   )
                 })}

@@ -17,6 +17,7 @@ import HowRatingWorks from './HowRatingWorks'
 import ReportCard from './ReportCard'
 import RacquetNinja from './racquet-ninja/RacquetNinja'
 import TournamentsPage from './tournaments/TournamentsPage'
+import EditGameModal from './EditGameModal'
 
 function getLevel(wins) {
   if (wins >= 50) return { name:'LEGEND',    tier:5, aura:'#ffd700', bg:'#2a1f00', glow:'rgba(255,215,0,0.4)',   emoji:'👑' }
@@ -235,14 +236,13 @@ function HeroCard({ player, isCurrentUser, onClick }) {
             <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:20, background:`${level.aura}22`, color:level.aura, border:`1px solid ${level.aura}44`, fontFamily:"'Rajdhani',sans-serif", letterSpacing:0.5, whiteSpace:'nowrap' }}>{level.emoji} {level.name}</span>
           </div>
           <div style={{ flex:1, minWidth:0, paddingTop:2 }}>
-            {isCurrentUser && <div style={{ fontSize:9, color:level.aura, letterSpacing:2, fontWeight:700, fontFamily:"'Rajdhani',sans-serif", marginBottom:1 }}>YOUR PROFILE</div>}
             <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, letterSpacing:2, color:'#fff', lineHeight:1, marginBottom:5 }}>{player.display_name}</div>
             {(()=>{ const r=player.rating_doubles||1000; const t=getRatingTier(r); const c=isCalibrating(player.rating_doubles_games||0); return (
-              <div style={{ display:'inline-flex', alignItems:'center', gap:4, padding:'2px 8px', borderRadius:6, background:`${t.color}15`, border:`1px solid ${t.color}30`, marginBottom:4 }}>
-                <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:11, color:t.color, letterSpacing:0.5 }}>{t.emoji} {c?'CALIBRATING':r+' ELO'}</span>
+              <div style={{ display:'inline-flex', alignItems:'center', gap:6, padding:'4px 12px', borderRadius:10, background:`linear-gradient(135deg,${t.color}22,${t.color}08)`, border:`1px solid ${t.color}40`, backdropFilter:'blur(8px)', boxShadow:`0 2px 16px ${t.color}20`, marginBottom:4 }}>
+                <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:t.color, letterSpacing:1, lineHeight:1 }}>{c?'?':r}</span>
+                <span style={{ fontSize:8, color:t.color+'88', fontWeight:700, letterSpacing:1.5 }}>{t.emoji}</span>
               </div>
             )})()}
-            {((player.current_streak||0) >= 3) && <div><span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:20, background:'rgba(249,115,22,0.12)', border:'1px solid rgba(249,115,22,0.3)', color:'#fb923c', fontFamily:"'Rajdhani',sans-serif" }}>🔥 {player.current_streak} streak</span></div>}
           </div>
           <div style={{ textAlign:'center', flexShrink:0 }}>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:38, color:level.aura, lineHeight:1, textShadow:`0 0 16px ${level.glow}` }}>{winPct}%</div>
@@ -276,12 +276,14 @@ function LeaderRow({ player, rank, isCurrentUser, onClick }) {
   const rCalib = isCalibrating(player.rating_doubles_games || 0)
   return (
     <div onClick={onClick} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:isCurrentUser?`${level.aura}0e`:'rgba(255,255,255,0.02)', border:`1px solid ${isCurrentUser?level.aura+'44':'rgba(255,255,255,0.07)'}`, borderRadius:14, cursor:'pointer', marginBottom:8, transition:'all 0.2s' }}>
-      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:2, flexShrink:0 }}>
-        <div style={{ width:32, padding:'1px 0', borderRadius:4, background:`${rTier.color}12`, border:`1px solid ${rTier.color}25`, textAlign:'center' }}>
-          <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:8, color:rTier.color }}>{rCalib?'?':player.rating_doubles||1000}</span>
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3, flexShrink:0 }}>
+        {/* Rank chip — top */}
+        <div style={{ width:44, height:24, borderRadius:8, background:badge.bg, border:`1px solid ${badge.border}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:badge.color, letterSpacing:0.5 }}>{badge.label}</span>
         </div>
-        <div style={{ width:32, height:26, borderRadius:7, background:badge.bg, border:`1px solid ${badge.border}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:12, color:badge.color }}>{badge.label}</span>
+        {/* ELO chip — glassy, number only */}
+        <div style={{ width:44, padding:'5px 2px', borderRadius:8, background:`linear-gradient(135deg,${rTier.color}20,${rTier.color}08)`, border:`1px solid ${rTier.color}40`, backdropFilter:'blur(8px)', textAlign:'center', boxShadow:`0 2px 12px ${rTier.color}22` }}>
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:19, color:rTier.color, lineHeight:1, letterSpacing:0.5 }}>{rCalib?'?':player.rating_doubles||1000}</div>
         </div>
       </div>
       <Av id={player.id} size={42} aura={level.aura} profilePic={player.profile_pic}/>
@@ -289,7 +291,6 @@ function LeaderRow({ player, rank, isCurrentUser, onClick }) {
         <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:3 }}>
           <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:1, color:isCurrentUser?level.aura:'#f1f5f9', lineHeight:1 }}>{player.display_name}</span>
           {isCurrentUser && <span style={{ fontSize:9, color:'#4ade80', fontWeight:700, background:'rgba(74,222,128,0.12)', padding:'1px 5px', borderRadius:6, fontFamily:"'Rajdhani',sans-serif", letterSpacing:1 }}>YOU</span>}
-          {((player.current_streak||0) >= 3) && <span style={{ fontSize:11, color:'#f97316' }}>🔥{player.current_streak}</span>}
         </div>
         <div style={{ height:3, background:'rgba(255,255,255,0.07)', borderRadius:2, overflow:'hidden', maxWidth:100 }}>
           <div style={{ height:'100%', width:`${winPct}%`, background:level.aura, borderRadius:2 }}/>
@@ -741,13 +742,16 @@ export default function Dashboard({ onOpenProfile, gameNav, onGameNavHandled }) 
 
   useEffect(() => { loadGroups() }, [])
 
-  // Handle game chip navigation from PlayerProfile
+  // Handle navigation from PlayerProfile
   useEffect(() => {
     if (gameNav?.tab === 'games') {
       setTab('games')
       setHighlightedGame(gameNav.gameId)
       onGameNavHandled && onGameNavHandled()
       setTimeout(() => setHighlightedGame(null), 3000)
+    } else if (gameNav?.tab === 'rating') {
+      setShowRatingInfo(true)
+      onGameNavHandled && onGameNavHandled()
     }
   }, [gameNav])
   useEffect(() => {
@@ -990,14 +994,6 @@ export default function Dashboard({ onOpenProfile, gameNav, onGameNavHandled }) 
         </button>
       </div>
 
-      {/* Racquet Ninja floating button — bottom right */}
-      <div onClick={()=>setShowRN(true)} style={{ position:'fixed', bottom:96, right:16, zIndex:60, display:'flex', flexDirection:'column', alignItems:'center', gap:4, cursor:'pointer' }}>
-        <div style={{ width:52, height:52, borderRadius:'50%', background:'linear-gradient(135deg,#fbbf24,#d97706)', border:'2.5px solid rgba(251,191,36,0.8)', boxShadow:'0 0 20px rgba(251,191,36,0.5), 0 4px 16px rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:26, animation:'rn-fab-glow 2.5s ease-in-out infinite' }}>
-          🥷
-        </div>
-        <div style={{ fontSize:8, color:'#fbbf24', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, textShadow:'0 0 8px rgba(251,191,36,0.6)', textAlign:'center', lineHeight:1.1 }}>RACQUET<br/>NINJA</div>
-        <style>{`@keyframes rn-fab-glow{0%,100%{box-shadow:0 0 20px rgba(251,191,36,0.5),0 4px 16px rgba(0,0,0,0.4)}50%{box-shadow:0 0 35px rgba(251,191,36,0.8),0 4px 20px rgba(0,0,0,0.5)}}`}</style>
-      </div>
 
       {showSettings && (
         <SettingsPage
@@ -1029,11 +1025,10 @@ export default function Dashboard({ onOpenProfile, gameNav, onGameNavHandled }) 
         />
       )}
       {joinGroup && (
-        <JoinCourtModal
-          group={joinGroup}
-          currentUserId={currentUser.id}
+        <MyCourts
+          currentUser={currentUser}
+          initialView="join"
           onClose={() => setJoinGroup(null)}
-          onJoined={() => { loadGroups(); setJoinGroup(null) }}
         />
       )}
       {editGame && (
@@ -1060,15 +1055,6 @@ export default function Dashboard({ onOpenProfile, gameNav, onGameNavHandled }) 
       )}
       {showNinja && <RacquetNinja onClose={()=>setShowNinja(false)} currentUser={currentUser} currentPlayer={players?.find(p=>p.id===currentUser.id)}/>}
 
-      {/* Racquet Ninja Floating Button */}
-      {!showNinja && (
-        <div onClick={()=>setShowNinja(true)} style={{ position:'fixed', bottom:88, right:16, zIndex:60, display:'flex', flexDirection:'column', alignItems:'center', gap:5, cursor:'pointer', animation:'ninja-float 3s ease-in-out infinite' }}>
-          <div style={{ width:52, height:52, borderRadius:'50%', overflow:'hidden', border:'2.5px solid #4ade80', boxShadow:'0 0 16px rgba(74,222,128,0.35)', background:'#0a1a0a' }}>
-            <img src="/racquet-ninja.jpg" alt="Racquet Ninja" style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.style.display='none' }}/>
-          </div>
-          <div style={{ fontSize:8, color:'#4ade80', letterSpacing:1.5, fontWeight:700, fontFamily:"'Rajdhani',sans-serif", whiteSpace:'nowrap', background:'rgba(6,13,20,0.85)', padding:'2px 7px', borderRadius:10, border:'1px solid rgba(74,222,128,0.25)' }}>RACQUET NINJA</div>
-        </div>
-      )}
 
       {showLogGame && <LogGame onClose={()=>setShowLogGame(false)} onGameLogged={handleGameLogged} activeGroup={effectiveGroup} groupMembers={groupMembers} groups={groups} currentUserId={currentUser.id} defaultSingles={gamePreference==='singles'}/>}
     </div>

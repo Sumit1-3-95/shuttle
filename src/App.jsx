@@ -31,6 +31,7 @@ export default function App() {
       playerId={profileState.id}
       groupId={profileState.groupId}
       onBack={() => setProfileState(null)}
+      onHowRatingWorks={() => { setProfileState(null); setGameNav({ tab: 'rating' }) }}
       onGameChipClick={(gameId) => {
         setProfileState(null) // close profile
         setGameNav({ gameId, tab: 'games' }) // signal Dashboard to open games tab

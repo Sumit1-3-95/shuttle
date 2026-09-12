@@ -1,6 +1,6 @@
 // src/components/PlayerProfile.jsx — v3
 // Fixed back button, smooth tabs, standardised layout, skills/flaws section
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../supabaseClient'
 import { useAuth } from '../context/AuthContext'
 import { usePlayerProfile } from '../hooks/usePlayerProfile'
@@ -125,10 +125,17 @@ function Toast({ toast }) {
   )
 }
 
-export default function PlayerProfile({ playerId, groupId, onBack, onGameChipClick }) {
+export default function PlayerProfile({ playerId, groupId, onBack, onGameChipClick, onHowRatingWorks }) {
   const { currentUser } = useAuth()
   const isOwnProfile = currentUser?.id === playerId
   const { player, games, allPlayers, skills, loading, refreshing, toast, hasNewGame, refresh } = usePlayerProfile(playerId, groupId)
+  const [ratingHistory, setRatingHistory] = useState([])
+
+  useEffect(() => {
+    if (!playerId) return
+    supabase.from('rating_history').select('*').eq('player_id', playerId).eq('game_type','doubles').order('created_at', { ascending:true }).limit(30)
+      .then(({ data }) => setRatingHistory(data||[]))
+  }, [playerId])
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
   const [photoToast, setPhotoToast]         = useState(null)
 
@@ -164,8 +171,11 @@ export default function PlayerProfile({ playerId, groupId, onBack, onGameChipCli
     </div>
   )
 
-  const level   = getLevel(player.total_wins||0)
-  const winPct  = player.total_games>0 ? Math.round((player.total_wins/player.total_games)*100) : 0
+  const level        = getLevel(player.total_wins||0)
+  const winPct       = player.total_games>0 ? Math.round((player.total_wins/player.total_games)*100) : 0
+  const rating_doubles = player.rating_doubles||1000
+  const tier           = getRatingTier(rating_doubles)
+  const calibrating    = isCalibrating(player.rating_doubles_games||0)
   const ptDiff  = (player.points_scored||0)-(player.points_conceded||0)
 
   // Days played this calendar month
@@ -230,6 +240,7 @@ export default function PlayerProfile({ playerId, groupId, onBack, onGameChipCli
 
   const tabs = [
     { id:'overview', label:'Overview' },
+    { id:'elo',      label:'ELO' },
     { id:'charts',   label:'Charts' },
     { id:'h2h',      label:'H2H' },
     { id:'skills',   label:'Skills' },
@@ -307,7 +318,11 @@ export default function PlayerProfile({ playerId, groupId, onBack, onGameChipCli
             <span style={{ fontSize:13, fontWeight:700, padding:'5px 14px', borderRadius:20, background:`${level.aura}22`, color:level.aura, border:`1.5px solid ${level.aura}55`, fontFamily:"'Rajdhani',sans-serif", letterSpacing:1 }}>
               {level.emoji} {level.name}
             </span>
-            <span style={{ fontSize:12, color:'#64748b', fontFamily:"'Rajdhani',sans-serif" }}>{getCharacterName(playerId)}</span>
+            {/* ELO badge — tappable, opens ELO tab */}
+            <span onClick={()=>setTab('elo')} style={{ display:'inline-flex', alignItems:'center', gap:4, fontSize:11, fontWeight:700, padding:'5px 12px', borderRadius:20, background:`${tier.color}18`, color:tier.color, border:`1.5px solid ${tier.color}40`, fontFamily:"'Rajdhani',sans-serif", cursor:'pointer' }}>
+              <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, lineHeight:1 }}>{calibrating?'?':rating_doubles}</span>
+              <span style={{ fontSize:9, letterSpacing:1, opacity:0.7 }}>ELO ›</span>
+            </span>
           </div>
 
           {/* Recent form dots — simple W/L */}
@@ -420,25 +435,50 @@ export default function PlayerProfile({ playerId, groupId, onBack, onGameChipCli
                 const rDelta   = inA ? g.rating_delta_a : g.rating_delta_b
                 return (
                   <div key={g.id} onClick={()=>onGameChipClick&&onGameChipClick(g.id)}
-                    style={{ display:'flex', alignItems:'center', gap:10, background:won?'rgba(74,222,128,0.04)':'rgba(248,113,113,0.03)', border:`1px solid ${won?'rgba(74,222,128,0.15)':'rgba(248,113,113,0.1)'}`, borderRadius:14, padding:'11px 12px', cursor:'pointer' }}>
-                    {/* W/L badge */}
-                    <div style={{ width:30, height:30, borderRadius:'50%', background:won?'rgba(74,222,128,0.15)':'rgba(248,113,113,0.15)', border:`1px solid ${won?'#4ade80':'#f87171'}`, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:700, fontFamily:"'Bebas Neue',sans-serif", color:won?'#4ade80':'#f87171', flexShrink:0 }}>{won?'W':'L'}</div>
-                    {/* Teams info */}
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:3 }}>
-                        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'#f1f5f9', letterSpacing:2 }}>{myScore} — {oppScore}</span>
-                        <span style={{ fontSize:9, padding:'1px 6px', borderRadius:10, background:'rgba(255,255,255,0.05)', color:'#475569', fontWeight:700 }}>{isSingles?'1v1':'2v2'}</span>
+                    style={{ background:'rgba(255,255,255,0.02)', border:`1px solid ${won?'rgba(74,222,128,0.18)':'rgba(248,113,113,0.15)'}`, borderLeft:`3px solid ${won?'#4ade80':'#f87171'}`, borderRadius:14, padding:'11px 12px', cursor:'pointer', marginBottom:0 }}>
+                    {/* Top row: score + type + date */}
+                    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:8 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#f1f5f9', letterSpacing:3 }}>{myScore} — {oppScore}</span>
+                        <span style={{ fontSize:9, padding:'2px 7px', borderRadius:20, background:won?'rgba(74,222,128,0.12)':'rgba(248,113,113,0.1)', color:won?'#4ade80':'#f87171', border:`1px solid ${won?'rgba(74,222,128,0.25)':'rgba(248,113,113,0.2)'}`, fontWeight:700, fontFamily:"'Rajdhani',sans-serif" }}>{won?'WIN':'LOSS'}</span>
+                        <span style={{ fontSize:9, padding:'2px 7px', borderRadius:20, background:'rgba(255,255,255,0.05)', color:'#475569', fontWeight:700 }}>{isSingles?'1v1':'2v2'}</span>
                       </div>
-                      <div style={{ fontSize:10, color:'#475569', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                        {myNames.length ? `w/ ${myNames.join(' & ')} ` : ''}vs {oppNames.join(' & ')}
+                      <div style={{ textAlign:'right' }}>
+                        <div style={{ fontSize:10, color:'#334155' }}>{new Date(g.played_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div>
+                        {rDelta!=null && <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:won?'#4ade80':'#f87171', marginTop:1 }}>{won&&rDelta>0?'+':''}{rDelta}</div>}
                       </div>
                     </div>
-                    {/* Right: date + rating delta */}
-                    <div style={{ textAlign:'right', flexShrink:0 }}>
-                      <div style={{ fontSize:10, color:'#334155', marginBottom:3 }}>{new Date(g.played_at).toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div>
-                      {rDelta!=null && <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:won?'#4ade80':'#f87171' }}>{won?'+':''}{rDelta}</div>}
+                    {/* Bottom row: avatars + player names */}
+                    <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                      {/* My team */}
+                      <div style={{ display:'flex', alignItems:'center', gap:5, flex:1, minWidth:0 }}>
+                        <div style={{ display:'flex' }}>
+                          {[...myIds].slice(0,2).map((id,pi) => (
+                            <div key={id} style={{ width:24, height:24, borderRadius:'50%', overflow:'hidden', border:`1.5px solid ${won?'#4ade8066':'rgba(255,255,255,0.15)'}`, background:'#1a2a1a', marginLeft:pi>0?-8:0, zIndex:2-pi }}>
+                              <img src={playerMap[id]?.profile_pic||getAvatarUrl(id)} style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.onerror=null; e.target.src=getAvatarUrl(id) }}/>
+                            </div>
+                          ))}
+                        </div>
+                        <span style={{ fontFamily:"'Rajdhani',sans-serif", fontSize:12, color:'#94a3b8', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                          {[...myIds].map(id=>playerMap[id]?.display_name?.split(' ')[0]||'?').join(' & ')}
+                        </span>
+                      </div>
+                      {/* VS divider */}
+                      <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:11, color:'#1e293b', flexShrink:0 }}>VS</span>
+                      {/* Opponent team */}
+                      <div style={{ display:'flex', alignItems:'center', gap:5, flex:1, minWidth:0, justifyContent:'flex-end' }}>
+                        <span style={{ fontFamily:"'Rajdhani',sans-serif", fontSize:12, color:'#64748b', fontWeight:600, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', textAlign:'right' }}>
+                          {oppNames.join(' & ')}
+                        </span>
+                        <div style={{ display:'flex' }}>
+                          {[...oppIds].slice(0,2).map((id,pi) => (
+                            <div key={id} style={{ width:24, height:24, borderRadius:'50%', overflow:'hidden', border:'1.5px solid rgba(255,255,255,0.1)', background:'#1a2a1a', marginLeft:pi>0?-8:0 }}>
+                              <img src={playerMap[id]?.profile_pic||getAvatarUrl(id)} style={{ width:'100%', height:'100%', objectFit:'cover' }} onError={e=>{ e.target.onerror=null; e.target.src=getAvatarUrl(id) }}/>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                    <div style={{ fontSize:14, color:'#1e293b', flexShrink:0 }}>›</div>
                   </div>
                 )
               })}
@@ -522,6 +562,93 @@ export default function PlayerProfile({ playerId, groupId, onBack, onGameChipCli
         )}
 
         {/* SKILLS */}
+        {tab==='elo' && (
+          <div key="elo" style={{ animation:'tab-fade 0.25s ease-out' }}>
+            {/* ELO Rating Hero */}
+            <div style={{ background:`linear-gradient(135deg,${tier.color}12,rgba(0,0,0,0))`, border:`1px solid ${tier.color}25`, borderRadius:20, padding:'20px 16px', marginBottom:14, textAlign:'center' }}>
+              <div style={{ fontSize:10, color:tier.color, letterSpacing:3, fontWeight:700, marginBottom:6 }}>CURRENT ELO RATING</div>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:56, color:tier.color, lineHeight:1, textShadow:`0 0 30px ${tier.color}44` }}>{calibrating?'?':rating_doubles}</div>
+              <div style={{ fontSize:12, color:'#475569', marginTop:4 }}>{tier.emoji} {tier.name} · {calibrating?`${player.rating_doubles_games||0}/15 calibration games`:'Rated'}</div>
+              {calibrating && (
+                <div style={{ marginTop:10, height:4, background:'rgba(255,255,255,0.08)', borderRadius:2, overflow:'hidden' }}>
+                  <div style={{ height:'100%', width:`${Math.min(100,((player.rating_doubles_games||0)/15)*100)}%`, background:tier.color, borderRadius:2 }}/>
+                </div>
+              )}
+            </div>
+
+            {/* Rating history chart */}
+            <div className="chart-card" style={{ marginBottom:14 }}>
+              <div style={{ fontSize:10, color:'#475569', letterSpacing:2, fontWeight:700, marginBottom:4, fontFamily:"'Rajdhani',sans-serif" }}>📈 RATING HISTORY</div>
+              <div style={{ fontSize:11, color:'#334155', marginBottom:12 }}>Your ELO over last {ratingHistory.length} games</div>
+              {ratingHistory.length >= 2
+                ? <LineChart data={ratingHistory.map(h=>({ label:'', value:h.rating_after||h.rating_before }))} color={tier.color} height={100}/>
+                : <div style={{ textAlign:'center', color:'#334155', padding:24, fontSize:12 }}>Play more games to see your rating trend</div>
+              }
+            </div>
+
+            {/* Key stats */}
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:14 }}>
+              {[
+                { label:'PEAK ELO', val: ratingHistory.length ? Math.max(...ratingHistory.map(h=>h.rating_after||0), rating_doubles) : rating_doubles, color:'#fbbf24' },
+                { label:'GAMES RATED', val: player.rating_doubles_games||0, color:'#60a5fa' },
+                { label:'AVG ± PER GAME', val: ratingHistory.length ? `±${Math.round(ratingHistory.slice(-10).reduce((s,h)=>s+Math.abs(h.delta||0),0)/(Math.min(10,ratingHistory.length)||1))}` : '—', color:'#c084fc' },
+                { label:'SINGLES ELO', val: player.rating_singles||1000, color:'#4ade80' },
+              ].map(s=>(
+                <div key={s.label} style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:14, padding:'12px', textAlign:'center' }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, color:s.color, lineHeight:1 }}>{s.val}</div>
+                  <div style={{ fontSize:9, color:'#475569', letterSpacing:1.5, marginTop:4, fontWeight:700 }}>{s.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Recent ELO changes */}
+            {ratingHistory.length > 0 && (
+              <div className="chart-card" style={{ marginBottom:14 }}>
+                <div style={{ fontSize:10, color:'#475569', letterSpacing:2, fontWeight:700, marginBottom:10, fontFamily:"'Rajdhani',sans-serif" }}>RECENT CHANGES</div>
+                {ratingHistory.slice(-8).reverse().map((h,i)=>{
+                  const delta = h.delta||0
+                  const won = delta >= 0
+                  return (
+                    <div key={i} style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6, padding:'6px 10px', background:'rgba(255,255,255,0.02)', borderRadius:10 }}>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:14, color:won?'#4ade80':'#f87171', width:36, textAlign:'right', flexShrink:0 }}>{won?'+':''}{delta}</div>
+                      <div style={{ flex:1, height:3, background:'rgba(255,255,255,0.06)', borderRadius:2, overflow:'hidden' }}>
+                        <div style={{ height:'100%', width:`${Math.min(100,Math.abs(delta)*3)}%`, background:won?'#4ade80':'#f87171', marginLeft:won?0:'auto', borderRadius:2 }}/>
+                      </div>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'#94a3b8', width:40, flexShrink:0 }}>{h.rating_after||h.rating_before}</div>
+                      <div style={{ fontSize:9, color:'#334155', flexShrink:0 }}>{new Date(h.created_at||h.played_at||'').toLocaleDateString('en-IN',{day:'numeric',month:'short'})}</div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* K-factor explainer */}
+            <div style={{ background:'rgba(255,255,255,0.02)', border:'1px solid rgba(255,255,255,0.07)', borderRadius:14, padding:'14px 16px', marginBottom:12 }}>
+              <div style={{ fontSize:10, color:'#475569', letterSpacing:2, fontWeight:700, marginBottom:8, fontFamily:"'Rajdhani',sans-serif" }}>HOW YOUR ELO MOVES</div>
+              {[
+                { games:`1–15`, k:'K40', desc:'Calibration — big swings, finding your true level', color:'#f87171' },
+                { games:`16–50`, k:'K24', desc:'Settling — rating becomes more stable', color:'#fbbf24' },
+                { games:`51+`, k:'K16', desc:'Established — small precise adjustments', color:'#4ade80' },
+              ].map(r=>(
+                <div key={r.k} style={{ display:'flex', alignItems:'flex-start', gap:10, marginBottom:8 }}>
+                  <span style={{ fontSize:10, padding:'2px 7px', borderRadius:10, background:`${r.color}15`, color:r.color, fontWeight:700, flexShrink:0, fontFamily:"'Rajdhani',sans-serif" }}>{r.k}</span>
+                  <div>
+                    <div style={{ fontSize:11, color:'#94a3b8', fontWeight:700 }}>Games {r.games}</div>
+                    <div style={{ fontSize:10, color:'#475569' }}>{r.desc}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* CTA */}
+            <div onClick={()=>onHowRatingWorks&&onHowRatingWorks()} style={{ background:'linear-gradient(135deg,rgba(74,222,128,0.1),rgba(74,222,128,0.04))', border:'1px solid rgba(74,222,128,0.2)', borderRadius:14, padding:'14px 16px', textAlign:'center', cursor:'pointer' }}>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color:'#4ade80', letterSpacing:2, marginBottom:4 }}>WANT TO UNDERSTAND MORE?</div>
+              <div style={{ fontSize:12, color:'#475569', marginBottom:8 }}>Learn how ELO works, how K-factors affect your rating, and how to climb faster.</div>
+              <div style={{ fontSize:12, color:'#4ade80', fontWeight:700 }}>📊 Open Rating Guide →</div>
+            </div>
+          </div>
+        )}
+
         {tab==='skills' && (
           <div key="skills" style={{ animation:'tab-fade 0.25s ease-out' }}>
             <div style={{ fontSize:12, color:'#475569', letterSpacing:2, textTransform:'uppercase', fontWeight:700, marginBottom:16, fontFamily:"'Rajdhani',sans-serif" }}>
