@@ -238,7 +238,27 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
 
   function updateScore(i, field, val) {
     if (!/^\d{0,2}$/.test(val)) return
-    setScores(prev => prev.map((s,idx)=>idx===i?{...s,[field]:val}:s))
+    setScores(prev => {
+      const next = prev.map((s,idx) => {
+        if (idx !== i) return s
+        let updated = { ...s, [field]: val }
+        // Auto-fill opposite box to 21 if this box is double digit and not 21
+        if (val.length === 2 && parseInt(val) !== 21) {
+          const other = field === 'scoreA' ? 'scoreB' : 'scoreA'
+          if (updated[other] === '') updated[other] = '21'
+        }
+        return updated
+      })
+      return next
+    })
+    // Auto-advance cursor to next input when double digit entered
+    if (val.length === 2) {
+      setTimeout(() => {
+        const inputs = document.querySelectorAll('.sb')
+        const idx = field === 'scoreA' ? i * 2 : i * 2 + 1
+        if (inputs[idx + 1]) inputs[idx + 1].focus()
+      }, 50)
+    }
   }
 
   function handleModeToggle() {
@@ -256,6 +276,17 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
   const allScoresFilled = scores.some(s=>s.scoreA!==''&&s.scoreB!==''&&parseInt(s.scoreA)!==parseInt(s.scoreB))
   const canProceed = teamsReady
   function teamLabel(team) { return team.map(pid=>playerMap[pid]?.display_name||'?').join(' · ') }
+
+  // Auto-close celebration after 3s
+  useEffect(() => {
+    if (step===3 && winner) {
+      const t = setTimeout(() => {
+        onGameLogged && onGameLogged()
+        onClose && onClose()
+      }, 3000)
+      return () => clearTimeout(t)
+    }
+  }, [step, winner])
 
   function winnerLabel() {
     const sA=parseInt(scores[0]?.scoreA)||0, sB=parseInt(scores[0]?.scoreB)||0
@@ -281,7 +312,7 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
       setShowFatality(true)
       setTimeout(()=>{ setShowFatality(false); onGameLogged&&onGameLogged(); onClose() }, 2800)
     } else {
-      setGameId(lastResult?.game?.id); setWinner(sA>sB?'A':'B'); setShowSkills(true)
+      setGameId(lastResult?.game?.id); setWinner(sA>sB?'A':'B'); setStep(3)
     }
   }
 
@@ -320,7 +351,7 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
         .pc.a{background:rgba(74,222,128,0.18);border-color:rgba(74,222,128,0.55);}
         .pc.b{background:rgba(96,165,250,0.18);border-color:rgba(96,165,250,0.55);}
         .pc.d{opacity:0.2;cursor:not-allowed;pointer-events:none;}
-        .sb{background:rgba(0,0,0,0.7);border:2px solid rgba(255,255,255,0.1);color:#f1f5f9;font-family:'Bebas Neue',sans-serif;font-size:56px;text-align:center;border-radius:16px;width:90px;outline:none;padding:8px 0;-webkit-appearance:none;transition:all 0.2s;}
+        .sb{background:rgba(0,0,0,0.7);border:2px solid rgba(255,255,255,0.1);color:#f1f5f9;font-family:'Bebas Neue',sans-serif;font-size:32px;text-align:center;border-radius:14px;width:72px;height:72px;outline:none;padding:0;-webkit-appearance:none;transition:all 0.2s;display:flex;align-items:center;justify-content:center;}
         .sb:focus{border-color:#4ade80;box-shadow:0 0 20px rgba(74,222,128,0.25);}
         .sb::placeholder{color:#1e3a2f;}
         .cb{width:100%;background:linear-gradient(135deg,#14532d,#166534);border:1.5px solid #4ade80;color:#4ade80;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;padding:14px;border-radius:50px;cursor:pointer;transition:all 0.2s;}
@@ -330,10 +361,6 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
         .tt.b{background:rgba(96,165,250,0.15);border-color:#60a5fa;color:#60a5fa;}
       `}</style>
 
-      {showSkills && (
-        <SkillsSheet playerMap={playerMap} teamA={teamA} teamB={teamB} winner={winner}
-          onSubmit={handleSkillsSubmit} onSkip={()=>handleSkillsSubmit({})}/>
-      )}
 
       {/* CELEBRATE */}
       {step===3&&winner&&(
@@ -364,7 +391,7 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
       )}
 
       {/* STEP 1 TEAMS */}
-      {step===1&&!showSkills&&(
+      {step===1&&(
         <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column'}}>
           <div style={{flex:1,position:'relative',minHeight:0}}>
             <CourtBackground style={{height:'100%'}}>
@@ -428,7 +455,7 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
                       <div style={{width:44,height:44,borderRadius:'50%',overflow:'hidden',border:'2px solid '+(inA||inB?level.aura:level.aura+'44'),margin:'0 auto 5px',background:'#1a2a1a'}}>
                         <img src={p.profile_pic||getAvatarUrl(p.id)} width={44} height={44} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>{ e.target.onerror=null; e.target.src=getAvatarUrl(p.id) }}/>
                       </div>
-                      <div style={{fontSize:15,fontWeight:700,color:inA?'#4ade80':inB?'#60a5fa':'#e2e8f0',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:0.5,lineHeight:1.1,wordBreak:'break-word'}}>{p.display_name}</div>
+                      <div style={{fontSize:16,fontWeight:700,color:inA?'#4ade80':inB?'#60a5fa':'#e2e8f0',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:0.5,lineHeight:1.1,wordBreak:'break-word'}}>{p.display_name}</div>
                     </div>
                   )
                 })}
@@ -454,23 +481,21 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
       )}
 
       {/* STEP 2 SCORE */}
-      {step===2&&!showSkills&&(
+      {step===2&&(
         <div style={{position:'absolute',inset:0,display:'flex',flexDirection:'column',justifyContent:'flex-end'}}>
           <div style={{flex:1,position:'relative',minHeight:0}}>
             <CourtBackground style={{height:'100%'}}>
               <div style={{position:'absolute',top:12,left:14,zIndex:5}}>
-                <div style={{background:'rgba(0,0,0,0.65)',borderRadius:10,padding:'5px 12px',border:'1px solid rgba(74,222,128,0.35)',display:'inline-block'}}>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'#4ade80',letterSpacing:2}}>TEAM A</div>
-                  <div style={{fontFamily:"'Rajdhani',sans-serif",fontSize:11,color:'rgba(74,222,128,0.8)',fontWeight:600,marginTop:1}}>{teamLabel(teamA)}</div>
+                <div style={{background:'rgba(0,0,0,0.7)',borderRadius:10,padding:'5px 12px',border:'1px solid rgba(74,222,128,0.35)',display:'inline-block'}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'#4ade80',letterSpacing:1,lineHeight:1}}>{teamA.map(pid=>playerMap[pid]?.display_name?.split(' ')[0]||'?').join(' & ')}</div>
                 </div>
               </div>
               <div style={{position:'absolute',top:'22%',left:0,right:0,display:'flex',justifyContent:'center',gap:24}}>
                 {teamA.map(pid=>playerMap[pid]&&<div key={pid} style={{animation:'float-player 2s ease-in-out infinite'}}><PAv player={playerMap[pid]} size={56}/></div>)}
               </div>
               <div style={{position:'absolute',bottom:'38%',left:14,zIndex:5}}>
-                <div style={{background:'rgba(0,0,0,0.65)',borderRadius:10,padding:'5px 12px',border:'1px solid rgba(96,165,250,0.35)',display:'inline-block'}}>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'#60a5fa',letterSpacing:2}}>TEAM B</div>
-                  <div style={{fontFamily:"'Rajdhani',sans-serif",fontSize:11,color:'rgba(96,165,250,0.8)',fontWeight:600,marginTop:1}}>{teamLabel(teamB)}</div>
+                <div style={{background:'rgba(0,0,0,0.7)',borderRadius:10,padding:'5px 12px',border:'1px solid rgba(96,165,250,0.35)',display:'inline-block'}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'#60a5fa',letterSpacing:1,lineHeight:1}}>{teamB.map(pid=>playerMap[pid]?.display_name?.split(' ')[0]||'?').join(' & ')}</div>
                 </div>
               </div>
               <div style={{position:'absolute',bottom:'14%',left:0,right:0,display:'flex',justifyContent:'center',gap:24}}>
@@ -478,47 +503,44 @@ export default function LogGame({ onClose, onGameLogged, activeGroup, groupMembe
               </div>
             </CourtBackground>
           </div>
-          <div style={{background:'rgba(6,13,20,0.98)',borderTop:'1px solid rgba(74,222,128,0.15)',borderRadius:'22px 22px 0 0',padding:'18px 16px 28px',animation:'panel-up 0.3s ease-out'}}>
-            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:'#64748b',letterSpacing:3,textAlign:'center',marginBottom:14}}>FINAL SCORE</div>
-            {/* Team labels */}
-            <div style={{display:'flex',gap:12,marginBottom:10}}>
+          <div style={{background:'rgba(6,13,20,0.98)',borderTop:'1px solid rgba(74,222,128,0.15)',borderRadius:'22px 22px 0 0',padding:'16px 16px 36px',animation:'panel-up 0.3s ease-out'}}>
+            {/* Player names instead of TEAM A/TEAM B */}
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
               <div style={{flex:1,textAlign:'center'}}>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:'#4ade80',letterSpacing:2,marginBottom:2}}>TEAM A</div>
-                <div style={{fontSize:11,color:'#4ade8088',fontFamily:"'Rajdhani',sans-serif",fontWeight:700}}>{teamLabel(teamA)}</div>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'#4ade80',letterSpacing:1,lineHeight:1}}>{teamA.map(pid=>playerMap[pid]?.display_name?.split(' ')[0]||'?').join(' & ')}</div>
               </div>
-              <div style={{width:32}}/>
+              <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:12,color:'#334155',flexShrink:0}}>VS</div>
               <div style={{flex:1,textAlign:'center'}}>
-                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:'#60a5fa',letterSpacing:2,marginBottom:2}}>TEAM B</div>
-                <div style={{fontSize:11,color:'#60a5fa88',fontFamily:"'Rajdhani',sans-serif",fontWeight:700}}>{teamLabel(teamB)}</div>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'#60a5fa',letterSpacing:1,lineHeight:1}}>{teamB.map(pid=>playerMap[pid]?.display_name?.split(' ')[0]||'?').join(' & ')}</div>
               </div>
             </div>
 
-            {/* Score rows */}
+            {/* Score rows — smaller inputs */}
             {scores.map((s,i)=>{
               const sA=parseInt(s.scoreA)||0, sB=parseInt(s.scoreB)||0
               const both=s.scoreA!==''&&s.scoreB!==''
               const aW=both&&sA>sB, bW=both&&sB>sA
               return (
-                <div key={i} style={{display:'flex',alignItems:'center',gap:8,marginBottom:8}}>
-                  <div style={{fontSize:10,color:'#334155',fontWeight:700,fontFamily:"'Bebas Neue',sans-serif",minWidth:14}}>G{i+1}</div>
+                <div key={i} style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,marginBottom:8}}>
+                  <div style={{fontSize:10,color:'#334155',fontWeight:700,fontFamily:"'Bebas Neue',sans-serif",minWidth:16,textAlign:'center'}}>G{i+1}</div>
                   <input className="sb" type="number" inputMode="numeric" min="0" max="99"
                     value={s.scoreA} placeholder="–" autoFocus={i===0}
                     onChange={e=>updateScore(i,'scoreA',e.target.value)}
-                    style={{flex:1,borderColor:aW?'rgba(74,222,128,0.5)':bW?'rgba(248,113,113,0.4)':'rgba(255,255,255,0.1)',color:s.scoreA?'#f1f5f9':'#1e3a2f'}}/>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'#1e3a2f'}}>—</div>
+                    style={{width:72,height:72,flex:'none',fontSize:32,padding:0,borderColor:aW?'rgba(74,222,128,0.5)':bW?'rgba(248,113,113,0.4)':'rgba(255,255,255,0.1)',color:s.scoreA?'#f1f5f9':'#1e3a2f'}}/>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'#1e3a2f',flexShrink:0}}>—</div>
                   <input className="sb" type="number" inputMode="numeric" min="0" max="99"
                     value={s.scoreB} placeholder="–"
                     onChange={e=>updateScore(i,'scoreB',e.target.value)}
-                    style={{flex:1,borderColor:bW?'rgba(74,222,128,0.5)':aW?'rgba(248,113,113,0.4)':'rgba(255,255,255,0.1)',color:s.scoreB?'#f1f5f9':'#1e3a2f'}}/>
-                  {scores.length>1&&<button onClick={()=>removeScoreRow(i)} style={{background:'none',border:'none',color:'#334155',cursor:'pointer',fontSize:16,padding:'0 4px',flexShrink:0}}>✕</button>}
+                    style={{width:72,height:72,flex:'none',fontSize:32,padding:0,borderColor:bW?'rgba(74,222,128,0.5)':aW?'rgba(248,113,113,0.4)':'rgba(255,255,255,0.1)',color:s.scoreB?'#f1f5f9':'#1e3a2f'}}/>
+                  {scores.length>1&&<button onClick={()=>removeScoreRow(i)} style={{background:'none',border:'none',color:'#334155',cursor:'pointer',fontSize:14,padding:'0 2px',flexShrink:0}}>✕</button>}
                 </div>
               )
             })}
 
-            {/* Add game button */}
+            {/* Add multiple games button */}
             {scores.length < 5 && (
-              <button onClick={addScoreRow} style={{width:'100%',background:'rgba(255,255,255,0.03)',border:'1px dashed rgba(255,255,255,0.12)',color:'#475569',borderRadius:10,padding:'8px',cursor:'pointer',fontFamily:"'Rajdhani',sans-serif",fontSize:12,fontWeight:700,marginBottom:4}}>
-                + Add another game
+              <button onClick={addScoreRow} style={{width:'100%',background:'rgba(255,255,255,0.03)',border:'1px dashed rgba(255,255,255,0.1)',color:'#475569',borderRadius:8,padding:'6px',cursor:'pointer',fontFamily:"'Rajdhani',sans-serif",fontSize:11,fontWeight:700,marginTop:2,marginBottom:6}}>
+                + Add Multiple Games
               </button>
             )}
             {wLabel&&(
