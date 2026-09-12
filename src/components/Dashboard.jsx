@@ -264,34 +264,36 @@ function LeaderRow({ player, rank, isCurrentUser, onClick }) {
   const rCalib = isCalibrating(player.rating_doubles_games || 0)
   return (
     <div onClick={onClick} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 12px', background:isCurrentUser?`${level.aura}0e`:'rgba(255,255,255,0.02)', border:`1px solid ${isCurrentUser?level.aura+'44':'rgba(255,255,255,0.07)'}`, borderRadius:14, cursor:'pointer', marginBottom:8, transition:'all 0.2s' }}>
+      {/* Rank + ELO left column */}
       <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3, flexShrink:0 }}>
-        {/* Rank chip — top */}
-        <div style={{ width:44, height:24, borderRadius:8, background:badge.bg, border:`1px solid ${badge.border}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:badge.color, letterSpacing:0.5 }}>{badge.label}</span>
+        <div style={{ width:42, height:22, borderRadius:7, background:badge.bg, border:`1px solid ${badge.border}`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:12, color:badge.color, letterSpacing:0.5 }}>{badge.label}</span>
         </div>
-        {/* ELO chip — glassy, number only */}
-        <div style={{ width:44, padding:'5px 2px', borderRadius:8, background:`linear-gradient(135deg,${rTier.color}20,${rTier.color}08)`, border:`1px solid ${rTier.color}40`, backdropFilter:'blur(8px)', textAlign:'center', boxShadow:`0 2px 12px ${rTier.color}22` }}>
-          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:19, color:rTier.color, lineHeight:1, letterSpacing:0.5 }}>{rCalib?'?':player.rating_doubles||1000}</div>
+        <div style={{ width:42, padding:'4px 2px', borderRadius:7, background:`linear-gradient(135deg,${rTier.color}20,${rTier.color}08)`, border:`1px solid ${rTier.color}40`, backdropFilter:'blur(8px)', textAlign:'center' }}>
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, color:rTier.color, lineHeight:1 }}>{rCalib?'?':player.rating_doubles||1000}</div>
         </div>
       </div>
-      <Av id={player.id} size={42} aura={level.aura} profilePic={player.profile_pic}/>
+      {/* Avatar + tier tag below */}
+      <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:3, flexShrink:0 }}>
+        <Av id={player.id} size={40} aura={level.aura} profilePic={player.profile_pic}/>
+        <span style={{ fontSize:8, fontWeight:700, padding:'1px 5px', borderRadius:6, background:`${level.aura}15`, color:level.aura, border:`1px solid ${level.aura}28`, fontFamily:"'Rajdhani',sans-serif", letterSpacing:0.5, whiteSpace:'nowrap' }}>{level.name}</span>
+      </div>
+      {/* Name + win bar — full flex */}
       <div style={{ flex:1, minWidth:0 }}>
-        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:3 }}>
-          <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:1, color:isCurrentUser?level.aura:'#f1f5f9', lineHeight:1 }}>{player.display_name}</span>
-          {isCurrentUser && <span style={{ fontSize:9, color:'#4ade80', fontWeight:700, background:'rgba(74,222,128,0.12)', padding:'1px 5px', borderRadius:6, fontFamily:"'Rajdhani',sans-serif", letterSpacing:1 }}>YOU</span>}
+        <div style={{ display:'flex', alignItems:'center', gap:5, marginBottom:5 }}>
+          <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:0.5, color:isCurrentUser?level.aura:'#f1f5f9', lineHeight:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{player.display_name}</span>
+          {isCurrentUser && <span style={{ fontSize:8, color:'#4ade80', fontWeight:700, background:'rgba(74,222,128,0.12)', padding:'1px 5px', borderRadius:6, fontFamily:"'Rajdhani',sans-serif", letterSpacing:1, flexShrink:0 }}>YOU</span>}
         </div>
-        <div style={{ height:3, background:'rgba(255,255,255,0.07)', borderRadius:2, overflow:'hidden', maxWidth:100 }}>
+        <div style={{ height:3, background:'rgba(255,255,255,0.07)', borderRadius:2, overflow:'hidden' }}>
           <div style={{ height:'100%', width:`${winPct}%`, background:level.aura, borderRadius:2 }}/>
         </div>
-        <div style={{ marginTop:4 }}>
-          <span style={{ fontSize:9, fontWeight:700, padding:'2px 7px', borderRadius:10, background:`${level.aura}15`, color:level.aura, border:`1px solid ${level.aura}30`, fontFamily:"'Rajdhani',sans-serif" }}>{level.emoji} {level.name}</span>
-        </div>
       </div>
+      {/* Stats — wins + win% only */}
       <div style={{ display:'flex', gap:4, flexShrink:0 }}>
-        {[{v:player.total_wins||0,l:'W',c:'#4ade80',bg:'rgba(74,222,128,0.08)'},{v:player.total_losses||0,l:'L',c:'#f87171',bg:'rgba(248,113,113,0.08)'},{v:`${winPct}%`,l:'WIN',c:level.aura,bg:'rgba(255,255,255,0.05)'}].map(s=>(
-          <div key={s.l} style={{ textAlign:'center', background:s.bg, borderRadius:7, padding:'4px 6px', minWidth:30 }}>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'#ffffff', fontWeight:700, lineHeight:1 }}>{s.v}</div>
-            <div style={{ fontSize:9, color:'#94a3b8', fontFamily:"'Rajdhani',sans-serif" }}>{s.l}</div>
+        {[{v:player.total_wins||0,l:'W',c:'#4ade80',bg:'rgba(74,222,128,0.08)'},{v:`${winPct}%`,l:'WIN%',c:level.aura,bg:'rgba(255,255,255,0.05)'}].map(s=>(
+          <div key={s.l} style={{ textAlign:'center', background:s.bg, borderRadius:7, padding:'4px 7px', minWidth:32 }}>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, color:s.c, lineHeight:1 }}>{s.v}</div>
+            <div style={{ fontSize:8, color:'#475569', fontFamily:"'Rajdhani',sans-serif", marginTop:1 }}>{s.l}</div>
           </div>
         ))}
       </div>
