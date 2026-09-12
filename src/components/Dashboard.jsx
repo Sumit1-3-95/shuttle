@@ -18,6 +18,7 @@ import ReportCard from './ReportCard'
 import RacquetNinja from './racquet-ninja/RacquetNinja'
 import TournamentsPage from './tournaments/TournamentsPage'
 import EditGameModal from './EditGameModal'
+import GoalsTab from './GoalsTab'
 
 function getLevel(wins) {
   if (wins >= 50) return { name:'LEGEND',    tier:5, aura:'#ffd700', bg:'#2a1f00', glow:'rgba(255,215,0,0.4)',   emoji:'👑' }
@@ -920,7 +921,7 @@ export default function Dashboard({ onOpenProfile, gameNav, onGameNavHandled }) 
 
       {/* Tabs */}
       <div style={{ position:'sticky', top:54, zIndex:38, background:'rgba(6,13,20,0.97)', backdropFilter:'blur(12px)', display:'flex', borderBottom:'2px solid rgba(255,255,255,0.05)', overflowX:'auto' }}>
-        {[{id:'players',label:'PLAYERS'},{id:'teams',label:'TEAMS'},{id:'games',label:'GAMES'},{id:'report',label:'REPORT'},{id:'videos',label:'DEUCE'}].map(t=>(
+        {[{id:'players',label:'PLAYERS'},{id:'teams',label:'TEAMS'},{id:'games',label:'GAMES'},{id:'goals',label:'GOALS'},{id:'report',label:'REPORT'},{id:'videos',label:'DEUCE'}].map(t=>(
           <button key={t.id} className={`tab-btn${tab===t.id?' active':''}`} onClick={()=>switchTab(t.id)} style={t.id==='videos' ? {
             color: tab==='videos' ? '#fb923c' : '#f97316',
             borderBottomColor: tab==='videos' ? '#fb923c' : 'transparent',
@@ -972,6 +973,11 @@ export default function Dashboard({ onOpenProfile, gameNav, onGameNavHandled }) 
         {tab === 'games' && (
           <div style={{ animation:'card-in 0.3s ease-out' }}>
             <GamesTab recentGames={filteredGames} players={filteredPlayers} loading={loading} isAdmin={isAdmin} groups={groups} onDeleteGame={async(id)=>{ if(window.confirm('Delete this game? Stats will be updated for all players.')) { const r = await deleteGame(id); if(r.success){ setTimeout(()=>refetch(), 800) } else { alert('Delete failed: ' + r.message) } }}} onEditGame={(g)=>setEditGame(g)}/>
+          </div>
+        )}
+        {tab === 'goals' && (
+          <div style={{ animation:'card-in 0.3s ease-out' }}>
+            <GoalsTab currentUserId={currentUser.id} allGames={recentGames}/>
           </div>
         )}
         {tab === 'report' && (
