@@ -170,7 +170,7 @@ function DayCircle({ day, mPct, wPct, isToday, isFuture, onClick }) {
 }
 
 // ── Main GoalsTab ─────────────────────────────────────────────
-export default function GoalsTab({ currentUserId, allGames }) {
+export default function GoalsTab({ currentUserId, allGames, players }) {
   const [goals,      setGoals]      = useState(null)
   const [showSetup,  setShowSetup]  = useState(false)
   const [dayStats,   setDayStats]   = useState({})
@@ -178,8 +178,9 @@ export default function GoalsTab({ currentUserId, allGames }) {
   const [loading,    setLoading]    = useState(true)
   const [viewDate,   setViewDate]   = useState(new Date()) // for month nav
 
-  const now      = new Date()
-  const todayStr = now.toISOString().slice(0,10)
+  const now       = new Date()
+  const todayStr  = now.toISOString().slice(0,10)
+  const playerMap = Object.fromEntries((players||[]).map(p=>[p.id, p]))
 
   const year  = viewDate.getFullYear()
   const month = viewDate.getMonth()
@@ -212,10 +213,13 @@ export default function GoalsTab({ currentUserId, allGames }) {
   }
 
   async function saveGoals(m, w) {
-    const p = { player_id:currentUserId, daily_matches_goal:m, daily_wins_goal:w, updated_at:new Date().toISOString() }
-    await supabase.from('player_goals').upsert(p)
-    await supabase.from('player_goal_history').insert({ player_id:currentUserId, matches_goal:m, wins_goal:w, effective_from:todayStr })
-    setGoals(p); setShowSetup(false)
+    const p = { player_id:currentUserId, daily_matches_goal:Number(m), daily_wins_goal:Number(w), updated_at:new Date().toISOString() }
+    // Delete then insert to avoid upsert conflict issues
+    await supabase.from('player_goals').delete().eq('player_id', currentUserId)
+    const { data: saved } = await supabase.from('player_goals').insert(p).select().single()
+    await supabase.from('player_goal_history').insert({ player_id:currentUserId, matches_goal:Number(m), wins_goal:Number(w), effective_from:todayStr })
+    setGoals(saved || p)
+    setShowSetup(false)
   }
 
   if (loading) return <div style={{ textAlign:'center', color:'#334155', padding:60, fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:3 }}>LOADING...</div>
@@ -394,7 +398,7 @@ export default function GoalsTab({ currentUserId, allGames }) {
                     <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:11, color:won?G:'#f87171', width:14 }}>{won?'W':'L'}</div>
                     <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'#f1f5f9', letterSpacing:2 }}>{myScore}–{oppScore}</div>
                     <div style={{ flex:1, fontSize:11, color:'#475569', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                      vs {oppIds.map(id=>g.team_a_ids?.includes(id)||g.team_b_ids?.includes(id)?id:id).join(' & ')}
+                      vs {oppIds.map(id=>playerMap[id]?.display_name?.split(' ')[0]||'?').join(' & ')}
                     </div>
                     <div style={{ fontSize:10, color:'#334155' }}>{g.is_singles?'1v1':'2v2'}</div>
                   </div>
