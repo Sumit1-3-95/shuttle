@@ -216,12 +216,11 @@ function HeroCard({ player, isCurrentUser, onClick }) {
       </svg>
       <div style={{ position:'relative', zIndex:1, padding:'14px 16px 12px' }}>
         <div style={{ display:'flex', alignItems:'center', gap:14, marginBottom:16 }}>
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:4, flexShrink:0 }}>
+          <div style={{ flexShrink:0 }}>
             <div style={{ position:'relative' }}>
-              <Av id={player.id} size={62} aura={level.aura} profilePic={player.profile_pic} style={{ border:`2.5px solid ${level.aura}`, boxShadow:`0 0 18px ${level.glow}` }}/>
+              <Av id={player.id} size={58} aura={level.aura} profilePic={player.profile_pic} style={{ border:`2.5px solid ${level.aura}`, boxShadow:`0 0 16px ${level.glow}` }}/>
               {(level.tier >= 4) && <div style={{ position:'absolute', inset:-4, borderRadius:'50%', border:`1.5px solid ${level.aura}`, borderTopColor:'transparent', borderRightColor:'transparent', animation:'spin-ring 3s linear infinite' }}/>}
             </div>
-
           </div>
           <div style={{ flex:1, minWidth:0, paddingTop:2 }}>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:24, letterSpacing:2, color:'#fff', lineHeight:1, marginBottom:5 }}>{player.display_name}</div>
@@ -905,15 +904,27 @@ export default function Dashboard({ onOpenProfile, gameNav, onGameNavHandled }) 
               </button>
             ))}
           </div>
-          {/* Court chips — only in action tab */}
-          {myGroupIds.length > 0 && (
-            <div style={{ padding:'6px 16px 8px', display:'flex', gap:8, overflowX:'auto' }}>
-              <button className={`group-chip${effectiveGroup==='all'?' active':''}`} onClick={()=>setActiveGroup('all')} style={{flexShrink:0}}>All</button>
-              {groups.filter(g=>myGroupIds.includes(g.id)).map(g=>(
-                <button key={g.id} className={`group-chip${effectiveGroup===g.id?' active':''}`} onClick={()=>setActiveGroup(g.id)} style={{flexShrink:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:130}}>{g.name}</button>
-              ))}
-            </div>
-          )}
+        </div>
+      )}
+      {/* Court chips — non-sticky, scrolls with content */}
+      {tab==='action' && myGroupIds.length > 0 && (
+        <div style={{ padding:'8px 16px 6px', display:'flex', alignItems:'center', gap:8, overflowX:'auto', borderBottom:'1px solid rgba(255,255,255,0.04)' }}>
+          <span style={{ fontSize:9, color:'#334155', fontWeight:700, letterSpacing:2, flexShrink:0, fontFamily:"'Rajdhani',sans-serif" }}>COURTS</span>
+          {/* Selected court always first, then rest */}
+          {[
+            { id:'all', name:'All' },
+            ...groups.filter(g=>myGroupIds.includes(g.id))
+          ].sort((a,b)=>{
+            if (a.id===effectiveGroup) return -1
+            if (b.id===effectiveGroup) return 1
+            return 0
+          }).map(g=>(
+            <button key={g.id} className={`group-chip${effectiveGroup===g.id?' active':''}`}
+              onClick={()=>setActiveGroup(g.id)}
+              style={{flexShrink:0,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:130}}>
+              {g.name}
+            </button>
+          ))}
         </div>
       )}
 

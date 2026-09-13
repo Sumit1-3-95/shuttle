@@ -154,7 +154,7 @@ export default function PlayerProfile({ playerId, groupId, onBack, onGameChipCli
 
   useEffect(() => {
     if (!playerId) return
-    supabase.from('rating_history').select('*').eq('player_id', playerId).eq('game_type','doubles').order('created_at', { ascending:true }).limit(30)
+    supabase.from('rating_history').select('*').eq('player_id', playerId).eq('game_type','doubles').order('created_at', { ascending:false }).limit(20)
       .then(({ data }) => setRatingHistory(data||[]))
   }, [playerId])
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
@@ -602,7 +602,7 @@ export default function PlayerProfile({ playerId, groupId, onBack, onGameChipCli
                     <div key={h} style={{ fontSize:8, color:'#334155', fontWeight:700, letterSpacing:1, textAlign:h==='OPPONENT'?'left':'center' }}>{h}</div>
                   ))}
                 </div>
-                {ratingHistory.slice(-10).reverse().map((h,i)=>{
+                {ratingHistory.slice(0,10).map((h,i)=>{
                   const delta = h.delta||0
                   const won   = delta >= 0
                   // Find matching game to get opponent info

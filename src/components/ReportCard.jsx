@@ -140,23 +140,63 @@ function PersonalCard({ player, periodGames, ratingHistory, drillSessions, getPe
           </div>
         )}
 
-        {/* Best partner — half width chip */}
-        {bestPartner && playerMap[bestPartner[0]] && (
-          <div style={{ display:'inline-flex', flexDirection:'column', background:'rgba(74,222,128,0.07)', border:'1px solid rgba(74,222,128,0.2)', borderRadius:12, padding:'10px 12px', marginBottom:14, minWidth:0, maxWidth:'50%' }}>
-            <div style={{ fontSize:9, color:'rgba(74,222,128,0.5)', letterSpacing:2, fontWeight:700, marginBottom:4 }}>🤝 BEST PARTNER</div>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:14, color:'#f1f5f9', letterSpacing:0.5, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{playerMap[bestPartner[0]]?.display_name?.split(' ')[0]}</div>
-            <div style={{ fontSize:10, color:'#4ade80', marginTop:3 }}>{bestPartner[1].wins}W</div>
-          </div>
-        )}
-
-        {/* Brag line */}
-        {myWins > 0 && (
-          <div style={{ textAlign:'center', padding:'10px', background:'rgba(74,222,128,0.06)', border:'1px solid rgba(74,222,128,0.15)', borderRadius:10 }}>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'#4ade80', letterSpacing:2 }}>
-              {winPct>=70?'DOMINANT WEEK 🔥':winPct>=50?'SOLID PERFORMANCE 💪':'KEEP GRINDING 🏸'}
+        {/* Best partner + rivalry side by side with avatars */}
+        {(()=>{
+          // Find best rivalry from allGames
+          const rivMap = {}
+          allGames.filter(g=>g.team_a_ids?.includes(currentUserId)||g.team_b_ids?.includes(currentUserId)).forEach(g=>{
+            const inA=g.team_a_ids?.includes(currentUserId)
+            const opps=(inA?g.team_b_ids:g.team_a_ids)||[]
+            opps.forEach(oid=>{
+              const k=[currentUserId,oid].sort().join('|')
+              if(!rivMap[k]) rivMap[k]={pid:oid,games:0,wins:0}
+              rivMap[k].games++
+              if(g.winner_team===(inA?'A':'B')) rivMap[k].wins++
+            })
+          })
+          const rivalry = Object.values(rivMap).filter(r=>r.games>=2).sort((a,b)=>b.games-a.games)[0]
+          return (
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:14 }}>
+              {/* Best partner */}
+              {bestPartner && playerMap[bestPartner[0]] && (() => {
+                const p = playerMap[bestPartner[0]]
+                return (
+                  <div style={{ background:'rgba(74,222,128,0.06)', border:'1px solid rgba(74,222,128,0.18)', borderRadius:12, padding:'10px' }}>
+                    <div style={{ fontSize:8, color:'rgba(74,222,128,0.5)', letterSpacing:2, fontWeight:700, marginBottom:7 }}>🤝 BEST PARTNER</div>
+                    <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                      <div style={{ width:28, height:28, borderRadius:'50%', overflow:'hidden', border:'2px solid rgba(74,222,128,0.4)', background:'#1a2a1a', flexShrink:0 }}>
+                        <img src={p.profile_pic||getAvatarUrl(p.id)} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.src=getAvatarUrl(p.id)}/>
+                      </div>
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'#f1f5f9', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.display_name?.split(' ')[0]}</div>
+                        <div style={{ fontSize:9, color:'#4ade80' }}>{bestPartner[1].wins}W</div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
+              {/* Rivalry */}
+              {rivalry && playerMap[rivalry.pid] && (() => {
+                const p = playerMap[rivalry.pid]
+                const rivPct = Math.round(rivalry.wins/rivalry.games*100)
+                return (
+                  <div style={{ background:'rgba(248,113,113,0.06)', border:'1px solid rgba(248,113,113,0.18)', borderRadius:12, padding:'10px' }}>
+                    <div style={{ fontSize:8, color:'rgba(248,113,113,0.5)', letterSpacing:2, fontWeight:700, marginBottom:7 }}>⚔️ RIVALRY</div>
+                    <div style={{ display:'flex', alignItems:'center', gap:7 }}>
+                      <div style={{ width:28, height:28, borderRadius:'50%', overflow:'hidden', border:'2px solid rgba(248,113,113,0.4)', background:'#1a2a1a', flexShrink:0 }}>
+                        <img src={p.profile_pic||getAvatarUrl(p.id)} style={{width:'100%',height:'100%',objectFit:'cover'}} onError={e=>e.target.src=getAvatarUrl(p.id)}/>
+                      </div>
+                      <div style={{ minWidth:0 }}>
+                        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'#f1f5f9', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.display_name?.split(' ')[0]}</div>
+                        <div style={{ fontSize:9, color:'#f87171' }}>{rivalry.games}G · {rivPct}%W</div>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
-          </div>
-        )}
+          )
+        })()}
 
         {/* Court + date */}
         <div style={{ display:'flex', justifyContent:'space-between', marginTop:14, fontSize:9, color:'rgba(255,255,255,0.2)', fontWeight:700, letterSpacing:1 }}>
