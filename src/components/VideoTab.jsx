@@ -167,7 +167,7 @@ export default function VideoTab({ currentUserId }) {
   async function loadAll() {
     setLoading(true)
     const [{ data: vids }, { data: w }] = await Promise.all([
-      supabase.from('videos').select('*').eq('is_active', true).order('created_at', { ascending: false }),
+      supabase.from('videos').select('*').eq('is_active', true).order('sort_order', { ascending: true }),
       supabase.from('watched_videos').select('video_id').eq('player_id', currentUserId),
     ])
     // Only PREVIOUS sessions count for ranking
@@ -178,7 +178,7 @@ export default function VideoTab({ currentUserId }) {
     const sorted = [...(vids||[])].sort((a, b) => {
       const aW = prevIds.has(a.id), bW = prevIds.has(b.id)
       if (aW !== bW) return aW ? 1 : -1
-      return new Date(b.created_at) - new Date(a.created_at)
+      return (a.sort_order||0) - (b.sort_order||0)
     })
     setVideos(sorted)
     setLoading(false)
